@@ -27,7 +27,7 @@ function parseDate(value) {
 }
 
 try {
-    const workbook = xlsx.readFile("./data/interns.xlsx");
+    const workbook = xlsx.readFile("../data/interns.xlsx");
 
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
