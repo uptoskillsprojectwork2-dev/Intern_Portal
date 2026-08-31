@@ -1,5 +1,7 @@
 import express from 'express';
 import authRouter from './routes/auth.routes.js';
+import internRoutes from './routes/intern.routes.js';
+import hrRoutes from './routes/hr.routes.js';
 import cookieParser from 'cookie-parser';
 import dns from 'dns';
 
@@ -17,5 +19,8 @@ app.use(cookieParser());
 
 // Mount authentication routes at `/api/auth` (e.g., `/api/auth/login`).
 app.use('/api/auth', authRouter);
+
+app.use('/api/intern', internRoutes);
+app.use('/api/hr', hrRoutes);
 
 export default app;
