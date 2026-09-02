@@ -2,70 +2,61 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
-{
-    fullName: {
-        type: String
+    {
+        fullName: {
+            type: String,
+            required: true
+        },
+
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+            lowercase: true,
+            trim: true
+        },
+
+        mobileNo: {
+            type: String
+        },
+
+        internCode: {
+            type: String,
+            unique: true,
+            sparse: true
+        },
+
+        domain: {
+            type: String
+        },
+
+        startDate: {
+            type: Date
+        },
+
+        endDate: {
+            type: Date
+        },
+
+        password: {
+            type: String,
+            required: function () {
+                return !this.internCode;
+            }
+        },
+
+        role: {
+            type: String,
+            enum: ["admin", "intern", "teamleader"],
+            default: "intern"
+        }
     },
+    {
+        timestamps: true
+    });
 
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true,
-        trim: true
-    },
 
-    mobileNo: {
-        type: String
-    },
-
-    internCode: {
-        type: String,
-        unique: true
-    },
-
-    domain: {
-        type: String
-    },
-
-    startDate: {
-        type: Date
-    },
-
-    endDate: {
-        type: Date
-    },
-
-    password: {
-        type: String,
-        required: true
-    },
-
-    role: {
-        type: String,
-        enum: ["admin", "intern", "teamleader"],
-        default: "intern"
-    }
-},
-{
-    timestamps: true
-});
-
-userSchema.pre("save", async function () {
-
-    if (!this.isModified("password")) {
-        return;
-    }
-
-    const salt = await bcrypt.genSalt(10);
-
-    this.password = await bcrypt.hash(
-        this.password,
-        salt
-    );
-});
-
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
 
     return bcrypt.compare(
         candidatePassword,
@@ -73,6 +64,20 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
     );
 
 };
+
+userSchema.pre("save", async function (next) {
+    if (!this.internCode) {
+        this.internCode = this.email
+    }
+
+    if (!this.isModified("password")) {
+        return;
+    }
+
+    // Never store a plain-text password or intern code.
+    this.password = await bcrypt.hash(this.password, 10);
+    next;
+});
 
 const userModel = mongoose.model(
     "user",
