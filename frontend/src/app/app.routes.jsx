@@ -1,5 +1,5 @@
 import {createBrowserRouter} from "react-router"
-import InternLogin from "../pages/intern/Login"
+import Login from "../pages/auth/Login.jsx"
 
 const routes = createBrowserRouter([
     {
@@ -7,8 +7,8 @@ const routes = createBrowserRouter([
         element: <div>Home</div>
     },
     {
-        path: "intern/login",
-        element: <InternLogin />
+        path: "/login",
+        element: <Login />
     }
 ])
 

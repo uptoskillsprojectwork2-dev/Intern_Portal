@@ -1,4 +1,4 @@
-import { body, validationResult } from 'express-validator';
+import { body, oneOf, validationResult } from 'express-validator';
 
 function validate(req, res, next) {
   const errors = validationResult(req);
@@ -13,6 +13,11 @@ function validate(req, res, next) {
 }
 
 export const registerValidator = [
+  body('fullName')
+    .trim()
+    .notEmpty()
+    .withMessage('Full name is required'),
+
   body('email')
     .trim()
     .notEmpty()
@@ -21,13 +26,13 @@ export const registerValidator = [
     .withMessage('Email must be valid')
     .normalizeEmail(),
 
-  body('password')
+  body('internCode')
     .notEmpty()
-    .withMessage('Password is required')
+    .withMessage('Intern code is required')
     .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long')
+    .withMessage('Intern code must be at least 6 characters long')
     .matches(/\d/)
-    .withMessage('Password must contain at least one number'),
+    .withMessage('Intern code must contain at least one number'),
     
   validate,
 ];
@@ -41,9 +46,31 @@ export const loginValidator = [
     .isEmail()
     .withMessage('Email must be valid')
     .normalizeEmail(),
-  body('password')
+  oneOf([
+    body('internCode').trim().notEmpty(),
+    body('password').trim().notEmpty()
+  ], {
+    message: 'Intern code or password is required'
+  }),
+  validate
+];
+
+export const teamLeaderValidator = [
+  body('fullName')
     .trim()
     .notEmpty()
-    .withMessage('Password is required'),
+    .withMessage('Full name is required'),
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('Email is required')
+    .isEmail()
+    .withMessage('Email must be valid')
+    .normalizeEmail(),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long'),
   validate
 ];

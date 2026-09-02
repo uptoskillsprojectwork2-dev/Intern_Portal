@@ -3,6 +3,135 @@
 
 ---
 
+## Quick Start
+
+This repository contains a React/Vite frontend and an Express/Node.js backend. MongoDB is required by the backend.
+
+### Prerequisites
+
+- Node.js 20 or newer and npm
+- MongoDB running locally or a MongoDB Atlas connection string
+- Git
+
+Check the installed versions:
+
+```bash
+node --version
+npm --version
+```
+
+### 1. Clone the repository
+
+```bash
+git clone <your-github-repository-url>
+cd Intern_Portal
+```
+
+### 2. Configure the backend
+
+Create `backend/.env`:
+
+```env
+MONGO_URI=mongodb://127.0.0.1:27017/uptoskill
+JWT_SECRET=replace-this-with-a-long-random-secret
+FRONTEND_URL=http://localhost:5173
+```
+
+For MongoDB Atlas, replace `MONGO_URI` with the Atlas connection string and make sure the database user and network access rules allow your machine to connect. Do not commit `.env` or any secret values to GitHub.
+
+Install backend dependencies:
+
+```bash
+cd backend
+npm install
+```
+
+### 3. Configure and install the frontend
+
+Open a second terminal from the repository root and run:
+
+```bash
+cd frontend
+npm install
+```
+
+The current frontend authentication service uses `http://localhost:3000` as its backend URL. Keep the backend on port `3000` for local development unless the frontend service is updated as well.
+
+### 4. Start the application
+
+Run the backend in the first terminal:
+
+```bash
+cd backend
+npm run dev
+```
+
+Run the frontend in the second terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Open the Vite URL shown in the terminal, normally [http://localhost:5173](http://localhost:5173). The backend listens on [http://localhost:3000](http://localhost:3000).
+
+The backend should log `MongoDB connected successfully` before authentication requests are made. Stop either development server with `Ctrl+C`.
+
+### 5. Import intern accounts (optional)
+
+To import interns from an Excel workbook, place the file at `backend/data/interns.xlsx`. The importer expects these column names:
+
+| Column | Required |
+|---|---|
+| `Full Name` | Yes |
+| `Email ID` | Yes |
+| `Intern Code` | Yes |
+| `Mobile No.` | No |
+| `Domain` | No |
+| `Start Date` | No |
+| `End Date` | No |
+
+Then run:
+
+```bash
+cd backend
+node scripts/importInterns.js
+```
+
+Imported accounts use the intern code as the initial password. Change that behavior before production use and never publish the workbook because it contains personal information.
+
+### Useful commands
+
+From `frontend/`:
+
+```bash
+npm run lint       # Check frontend code
+npm run build      # Create a production build
+npm run preview    # Preview the production build locally
+```
+
+From `backend/`:
+
+```bash
+npm run dev        # Start the backend with nodemon
+```
+
+The backend currently has no automated test script. The frontend lint and build commands are the minimum local verification checks.
+
+### Troubleshooting
+
+- **`Mongo URI is not defined in env`**: create `backend/.env` and define `MONGO_URI`.
+- **MongoDB connection failed**: verify MongoDB is running, the Atlas URI is correct, and your IP is allowed in Atlas network access.
+- **CORS or login request errors**: run the frontend on port `5173`, keep the backend on port `3000`, and check `FRONTEND_URL`.
+- **Port already in use**: stop the process using port `3000` or `5173`, then restart the relevant app.
+- **Login does not work after import**: use the imported email and matching intern code as the initial password.
+
+### Current implementation status
+
+The current working implementation includes the React/Vite application, Express API, MongoDB connection, cookie-based authentication flow, role-aware routes, login screen, and dashboard scaffolding. The architecture and feature sections below describe the planned full portal, including certificate workflows, AI services, PDF generation, notifications, and retention jobs; those modules still need to be implemented before production deployment.
+
+---
+
 ## 1. Project Objective
 
 UPTOSKILL is a centralized web-based Internship Management Portal that automates the complete internship certificate lifecycle — request, review, generation, and download — removing the need for manual email-based coordination between interns and HR. It is built on the **MERN stack** (MongoDB, Express.js, React.js, Node.js) with AI-powered certificate generation, validation, and support.
