@@ -45,3 +45,27 @@ export const updateCertificateStatus = async (req, res) => {
         res.status(500).json({ message: "Error updating certificate", error: error.message });
     }
 };
+
+
+// Add this new function to your hr.controller.js file
+export const getMyInterns = async (req, res) => {
+    try {
+        const teamLeaderId = req.user.id;
+
+        // Fetch interns assigned to this specific Team Leader / HR
+        const interns = await userModel.find({ 
+            role: "intern", 
+            assignedTeamLeader: teamLeaderId 
+        }).select("fullName email mobileNo domain startDate endDate role");
+
+        res.status(200).json({
+            message: "Interns fetched successfully",
+            data: interns
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            message: "Server error fetching interns", 
+            error: error.message 
+        });
+    }
+};
