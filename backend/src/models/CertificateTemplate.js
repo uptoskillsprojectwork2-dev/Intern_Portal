@@ -1,79 +1,79 @@
 import mongoose from "mongoose";
 
 const certificateTemplateSchema = new mongoose.Schema(
-{
-    templateCode: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true
-    },
+    {
+        templateCode: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true
+        },
 
-    templateName: {
-        type: String,
-        required: true,
-        trim: true
-    },
+        templateName: {
+            type: String,
+            required: true,
+            trim: true
+        },
 
-    certificateType: {
-        type: String,
-        required: true,
-        trim: true,
-        index: true
-    },
+        certificateType: {
+            type: String,
+            required: true,
+            trim: true,
+            index: true
+        },
 
-    title: {
-        type: String,
-        required: true,
-        trim: true
-    },
+        title: {
+            type: String,
+            required: true,
+            trim: true
+        },
 
-    description: {
-        type: String,
-        trim: true
-    },
+        description: {
+            type: String,
+            trim: true
+        },
 
-    content: {
-        type: String
-    },
+        content: {
+            type: String
+        },
 
-    placeholders: {
-        type: [String],
-        default: []
-    },
+        placeholders: {
+            type: [String],
+            default: []
+        },
 
-    logoPath: {
-        type: String
-    },
+        logoPath: {
+            type: String
+        },
 
-    backgroundPath: {
-        type: String
-    },
+        backgroundPath: {
+            type: String
+        },
 
-    signaturePath: {
-        type: String
-    },
+        signaturePath: {
+            type: String
+        },
 
-    version: {
-        type: Number,
-        default: 1
-    },
+        version: {
+            type: Number,
+            default: 1
+        },
 
-    status: {
-        type: String,
-        enum: ["draft", "active", "inactive", "archived"],
-        default: "draft",
-        index: true
-    },
+        status: {
+            type: String,
+            enum: ["draft", "active", "inactive", "archived"],
+            default: "draft",
+            index: true
+        },
 
-    createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user"
-    }
-},
-{
-    timestamps: true
-});
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "user"
+        }
+    },
+    {
+        timestamps: true
+    });
 
 certificateTemplateSchema.pre("save", async function () {
     if (this.createdBy) {

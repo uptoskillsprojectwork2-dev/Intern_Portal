@@ -1,6 +1,17 @@
 import express from 'express';
 import { registerValidator, teamLeaderValidator } from "../validators/auth.validator.js";
-import { createIntern, createTeamLeader, getAllTeamLeaders, getInternsByTeamLeader, getForwardedRequests, finalizeRequest } from "../controllers/admin.controller.js";
+import { 
+  createIntern, 
+  createTeamLeader, 
+  getAllTeamLeaders, 
+  getInternsByTeamLeader, 
+  getForwardedRequests, 
+  finalizeRequest,
+  createTemplate,
+  getAllTemplates,
+  updateTemplate,
+  toggleTemplateActive
+} from "../controllers/admin.controller.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
 
@@ -21,4 +32,10 @@ adminRouter.get("/forwarded-requests", verifyAuth, requireAdmin, getForwardedReq
 
 adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRequest);
 
-export default adminRouter;
+// Template Management Routes
+adminRouter.post("/templates", verifyAuth, requireAdmin, createTemplate);
+adminRouter.get("/templates", verifyAuth, requireAdmin, getAllTemplates);
+adminRouter.patch("/templates/:id", verifyAuth, requireAdmin, updateTemplate);
+adminRouter.patch("/templates/:id/toggle", verifyAuth, requireAdmin, toggleTemplateActive);
+
+export default adminRouter;

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { generateInternCode } from "../utils/generateInternCode.js";
 import CertificateRequest from '../models/CertificateRequest.js';
+import CertificateTemplate from '../models/CertificateTemplate.model.js';
 
 dotenv.config()
 
@@ -207,3 +208,123 @@ export const finalizeRequest = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+export const createTemplate = async (req, res) => {
+  try {
+    const { name, templateName, certificateType, htmlContent, content, isActive } = req.body;
+
+    const tName = name || templateName;
+    const tHtml = htmlContent || content;
+
+    if (!tName || !certificateType || !tHtml) {
+      return res.status(400).json({ message: "name, certificateType, and htmlContent are required fields" });
+    }
+
+    const template = await CertificateTemplate.create({
+      name: tName,
+      templateName: tName,
+      certificateType,
+      htmlContent: tHtml,
+      content: tHtml,
+      isActive: isActive !== undefined ? isActive : true,
+      status: (isActive !== false) ? "active" : "inactive",
+      createdBy: req.user.id
+    });
+
+    return res.status(201).json({
+      message: "Template created successfully",
+      template
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+export const getAllTemplates = async (req, res) => {
+  try {
+    const filter = {};
+    if (req.query.certificateType) {
+      filter.certificateType = req.query.certificateType;
+    }
+    if (req.query.isActive !== undefined) {
+      filter.isActive = req.query.isActive === 'true';
+    }
+
+    const templates = await CertificateTemplate.find(filter)
+      .populate('createdBy', 'fullName email')
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ templates });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+export const updateTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, templateName, certificateType, htmlContent, content, isActive } = req.body;
+
+    const template = await CertificateTemplate.findById(id);
+    if (!template) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+
+    if (name !== undefined) {
+      template.name = name;
+      template.templateName = name;
+    } else if (templateName !== undefined) {
+      template.name = templateName;
+      template.templateName = templateName;
+    }
+
+    if (certificateType !== undefined) {
+      template.certificateType = certificateType;
+    }
+
+    if (htmlContent !== undefined) {
+      template.htmlContent = htmlContent;
+      template.content = htmlContent;
+    } else if (content !== undefined) {
+      template.htmlContent = content;
+      template.content = content;
+    }
+
+    if (isActive !== undefined) {
+      template.isActive = isActive;
+      template.status = isActive ? "active" : "inactive";
+    }
+
+    await template.save();
+
+    return res.status(200).json({
+      message: "Template updated successfully",
+      template
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+export const toggleTemplateActive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const template = await CertificateTemplate.findById(id);
+
+    if (!template) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+
+    template.isActive = !template.isActive;
+    template.status = template.isActive ? "active" : "inactive";
+
+    await template.save();
+
+    return res.status(200).json({
+      message: `Template ${template.isActive ? 'activated' : 'deactivated'} successfully`,
+      template
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
