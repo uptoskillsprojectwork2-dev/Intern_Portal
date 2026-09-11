@@ -25,7 +25,6 @@ const certificateSchema = new mongoose.Schema(
     internshipId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "internship",
-        required: true,
         index: true
     },
 
@@ -60,9 +59,13 @@ const certificateSchema = new mongoose.Schema(
 
     status: {
         type: String,
-        enum: ["generated", "issued", "revoked", "expired"],
-        default: "generated",
+        enum: ["draft", "generated", "issued", "revoked", "expired", "finalized"],
+        default: "draft",
         index: true
+    },
+
+    htmlContent: {
+        type: String
     },
 
     pdfPath: {
@@ -97,8 +100,11 @@ certificateSchema.pre("save", async function () {
     const user = await userModel.findById(this.userId);
     if (!user) throw new Error("userId does not reference an existing user");
 
-    const internship = await internshipModel.findById(this.internshipId);
-    if (!internship) throw new Error("internshipId does not reference an existing internship");
+    if (this.internshipId) {
+        const internshipModel = mongoose.model("internship");
+        const internship = await internshipModel.findById(this.internshipId);
+        if (!internship) throw new Error("internshipId does not reference an existing internship");
+    }
 
     if (this.templateId) {
         const certificateTemplateModel = mongoose.model("certificate_template");

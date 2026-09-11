@@ -3,6 +3,11 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { generateInternCode } from "../utils/generateInternCode.js";
 import CertificateRequest from '../models/CertificateRequest.js';
+import {
+  generateDraftForRequest,
+  getDraftCertificateById,
+  updateDraftHtmlContent
+} from '../services/certificateDraft.service.js';
 
 dotenv.config()
 
@@ -200,10 +205,46 @@ export const finalizeRequest = async (req, res) => {
     if (action === 'reject') request.rejectionReason = rejectionReason;
 
     await request.save();
-    res.json({ request });
 
-    // certificate generation trigger goes here later, once status === 'approved'
+    let certificate = null;
+    if (action === 'approve') {
+      certificate = await generateDraftForRequest(request, req.user.id);
+    }
+
+    return res.status(200).json({
+      message: action === 'approve' ? 'Request approved and draft generated' : 'Request rejected',
+      request,
+      certificate
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ message: err.message || 'Server error' });
+  }
+};
+
+export const getCertificateDraft = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const certificate = await getDraftCertificateById(id);
+    return res.status(200).json({ success: true, certificate });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ message: err.message || 'Server error' });
+  }
+};
+
+export const updateCertificateDraft = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { htmlContent } = req.body;
+    const certificate = await updateDraftHtmlContent(id, htmlContent);
+    return res.status(200).json({
+      success: true,
+      message: 'Certificate draft updated successfully',
+      certificate
+    });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({ message: err.message || 'Server error' });
   }
 };

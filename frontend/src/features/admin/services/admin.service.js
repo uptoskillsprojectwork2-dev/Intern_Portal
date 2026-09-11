@@ -30,3 +30,6 @@ export const finalizeRequest = (id, action, rejectionReason) => request(
   `/api/admin/requests/${id}/finalize`,
   action === 'reject' ? { action, rejectionReason } : { action }
 );
+
+export const getCertificateDraft = (id) => request('get', `/api/admin/certificates/draft/${id}`);
+export const updateCertificateDraft = (id, htmlContent) => request('patch', `/api/admin/certificates/draft/${id}`, { htmlContent });
