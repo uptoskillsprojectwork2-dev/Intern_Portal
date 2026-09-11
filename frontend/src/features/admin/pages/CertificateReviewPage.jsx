@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getCertificateDraft, updateCertificateDraft, finalizeCertificate } from '../services/admin.service';
+import {
+  getCertificateDraft,
+  updateCertificateDraft,
+  finalizeCertificate,
+  downloadAdminCertificatePdf
+} from '../services/admin.service';
 import './CertificateReviewPage.css';
 
 const formatDisplayDate = (date) => {
@@ -24,6 +29,7 @@ export default function CertificateReviewPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [error, setError] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [warning, setWarning] = useState(null);
@@ -138,6 +144,20 @@ export default function CertificateReviewPage() {
     }
   };
 
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf) return;
+    setDownloadingPdf(true);
+    setError(null);
+    try {
+      const fileName = `${certificate?.certificateNumber || 'certificate'}.pdf`;
+      await downloadAdminCertificatePdf(id, fileName);
+    } catch (err) {
+      setError(err.message || 'Failed to download certificate PDF');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const hasUnsavedChanges = editedHtml !== initialHtml;
 
   if (loading) {
@@ -220,8 +240,19 @@ export default function CertificateReviewPage() {
               </button>
             </>
           ) : (
-            <div className="cert-finalized-badge">
-              ✓ Certificate Finalized
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className="cert-finalized-badge">
+                ✓ Certificate Finalized
+              </div>
+              <button
+                type="button"
+                className="cert-save-btn"
+                onClick={handleDownloadPdf}
+                disabled={downloadingPdf}
+                aria-label="Download Finalized Certificate PDF"
+              >
+                {downloadingPdf ? 'Downloading...' : '⬇ Download PDF'}
+              </button>
             </div>
           )}
         </div>

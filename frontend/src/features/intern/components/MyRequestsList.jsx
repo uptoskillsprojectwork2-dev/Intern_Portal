@@ -44,8 +44,13 @@ export default function MyRequestsList() {
           <p className="request-eyebrow">REQUEST HISTORY</p>
           <h2 id="my-requests-title">My certificate requests</h2>
         </div>
-        <button className="requests-refresh" type="button" onClick={refetch}>
-          Refresh
+        <button
+          className="requests-refresh"
+          type="button"
+          onClick={refetch}
+          disabled={loading}
+        >
+          {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
 

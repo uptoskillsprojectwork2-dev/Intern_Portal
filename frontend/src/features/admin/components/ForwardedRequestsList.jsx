@@ -11,12 +11,13 @@ export default function ForwardedRequestsList() {
   const { requests, loading, error, refetch, approveRequest, rejectRequest } = useForwardedRequests();
   const [rejectingId, setRejectingId] = useState(null);
   const [retryingId, setRetryingId] = useState(null);
+  const [approvingId, setApprovingId] = useState(null);
   const [reason, setReason] = useState('');
   const [actionError, setActionError] = useState(null);
   const [approvalSuccess, setApprovalSuccess] = useState(null);
 
   const handleRetry = async (id) => {
-    if (retryingId) return;
+    if (retryingId || approvingId) return;
     setActionError(null);
     setRetryingId(id);
     try {
@@ -37,7 +38,9 @@ export default function ForwardedRequestsList() {
   };
 
   const approve = async (id) => {
+    if (approvingId || retryingId) return;
     setActionError(null);
+    setApprovingId(id);
     try {
       const result = await approveRequest(id);
       if (result?.certificate?._id) {
@@ -49,11 +52,13 @@ export default function ForwardedRequestsList() {
       }
     } catch (requestError) {
       setActionError(requestError.message);
+    } finally {
+      setApprovingId(null);
     }
   };
 
   const reject = async (id) => {
-    if (!reason.trim()) return;
+    if (!reason.trim() || approvingId) return;
     setActionError(null);
     try {
       await rejectRequest(id, reason.trim());
@@ -131,8 +136,22 @@ export default function ForwardedRequestsList() {
               </div>
             ) : (
               <>
-                <button type="button" className="forwarded-approve-button" onClick={() => approve(id)}>Approve</button>
-                <button type="button" className="forwarded-reject-button" onClick={() => setRejectingId(id)}>Reject</button>
+                <button
+                  type="button"
+                  className="forwarded-approve-button"
+                  onClick={() => approve(id)}
+                  disabled={approvingId === id || retryingId === id}
+                >
+                  {approvingId === id ? 'Approving...' : 'Approve'}
+                </button>
+                <button
+                  type="button"
+                  className="forwarded-reject-button"
+                  onClick={() => setRejectingId(id)}
+                  disabled={approvingId === id || retryingId === id}
+                >
+                  Reject
+                </button>
               </>
             )}
           </div>

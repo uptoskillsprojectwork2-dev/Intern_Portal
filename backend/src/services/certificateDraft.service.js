@@ -101,17 +101,34 @@ export const generateDraftForRequest = async (request, adminId) => {
   const certificateNumber = await generateCertificateNumber();
   const verificationCode = generateVerificationCode();
 
-  // Populate placeholders with real values
+  // Populate placeholders with real values (supporting both PascalCase and camelCase)
+  const internName = (intern.fullName || '').trim();
+  const internCode = (intern.internCode || request.internCode || '').trim();
+  const department = (intern.domain || '').trim();
+  const certTypeStr = request.certificateType ? request.certificateType.replace(/_/g, ' ') : '';
+  const startDateStr = formatDisplayDate(intern.startDate);
+  const endDateStr = formatDisplayDate(intern.endDate);
+  const issueDateStr = formatDisplayDate(new Date());
+
   const templatePayload = {
-    InternName: intern.fullName || '',
+    InternName: internName,
+    internName: internName,
     CertificateNumber: certificateNumber,
-    Department: intern.domain || '',
-    StartDate: formatDisplayDate(intern.startDate),
-    EndDate: formatDisplayDate(intern.endDate),
-    IssueDate: formatDisplayDate(new Date()),
-    InternCode: intern.internCode || request.internCode || '',
-    CertificateType: request.certificateType ? request.certificateType.replace(/_/g, ' ') : '',
-    VerificationCode: verificationCode
+    certificateNumber: certificateNumber,
+    Department: department,
+    department: department,
+    StartDate: startDateStr,
+    startDate: startDateStr,
+    EndDate: endDateStr,
+    endDate: endDateStr,
+    IssueDate: issueDateStr,
+    issueDate: issueDateStr,
+    InternCode: internCode,
+    internCode: internCode,
+    CertificateType: certTypeStr,
+    certificateType: certTypeStr,
+    VerificationCode: verificationCode,
+    verificationCode: verificationCode
   };
 
   const renderTemplate = Handlebars.compile(template.content);

@@ -188,11 +188,12 @@ export const downloadCertificateForRequest = async (req, res) => {
       return res.status(404).json({ message: 'Certificate PDF has not been generated yet' });
     }
 
-    // Safe path resolution: prevent path traversal attacks
+    // Safe path resolution: strictly prevent path traversal attacks
+    const uploadsBaseDir = path.resolve(process.cwd(), 'uploads');
     const safePdfPath = path.resolve(process.cwd(), certificate.pdfPath);
 
-    // Ensure the resolved path resides within uploads
-    if (!safePdfPath.startsWith(path.resolve(process.cwd(), 'uploads'))) {
+    const relative = path.relative(uploadsBaseDir, safePdfPath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
       return res.status(403).json({ message: 'Invalid file path' });
     }
 
@@ -200,10 +201,15 @@ export const downloadCertificateForRequest = async (req, res) => {
       return res.status(404).json({ message: 'Certificate PDF file not found on server' });
     }
 
-    const downloadFileName = `${certificate.certificateNumber || 'certificate'}.pdf`;
+    const safeCertNum = (certificate.certificateNumber || 'certificate').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const downloadFileName = `${safeCertNum}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
     return res.download(safePdfPath, downloadFileName);
   } catch (err) {
-    return res.status(500).json({ message: 'Server error', error: err.message });
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Server error'
+    });
   }
 };

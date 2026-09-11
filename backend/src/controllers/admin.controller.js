@@ -237,7 +237,7 @@ export const getCertificateDraft = async (req, res) => {
     return res.status(200).json({ success: true, certificate });
   } catch (err) {
     const statusCode = err.statusCode || 500;
-    return res.status(statusCode).json({ message: err.message || 'Server error' });
+    return res.status(statusCode).json({ success: false, message: err.message || 'Server error' });
   }
 };
 
@@ -253,7 +253,7 @@ export const updateCertificateDraft = async (req, res) => {
     });
   } catch (err) {
     const statusCode = err.statusCode || 500;
-    return res.status(statusCode).json({ message: err.message || 'Server error' });
+    return res.status(statusCode).json({ success: false, message: err.message || 'Server error' });
   }
 };
 
@@ -376,9 +376,11 @@ export const downloadCertificatePdf = async (req, res) => {
       return res.status(404).json({ message: 'Certificate PDF file path not found' });
     }
 
+    const uploadsBaseDir = path.resolve(process.cwd(), 'uploads');
     const safePdfPath = path.resolve(process.cwd(), certificate.pdfPath);
 
-    if (!safePdfPath.startsWith(path.resolve(process.cwd(), 'uploads'))) {
+    const relative = path.relative(uploadsBaseDir, safePdfPath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
       return res.status(403).json({ message: 'Invalid file path' });
     }
 
@@ -386,13 +388,15 @@ export const downloadCertificatePdf = async (req, res) => {
       return res.status(404).json({ message: 'Certificate PDF file not found on disk' });
     }
 
-    const downloadFileName = `${certificate.certificateNumber || 'certificate'}.pdf`;
+    const safeCertNum = (certificate.certificateNumber || 'certificate').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const downloadFileName = `${safeCertNum}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
     return res.download(safePdfPath, downloadFileName);
   } catch (err) {
-    return res.status(500).json({
-      message: 'Server error',
-      error: err.message
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Server error'
     });
   }
 };
