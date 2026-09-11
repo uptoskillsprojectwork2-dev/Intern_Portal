@@ -1,0 +1,22 @@
+◇ injected env (0) from backend\.env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌘ override existing { override: true }
+▶ Day 5 Test Cases A - J
+  ✔ CASE A: Intern requests another intern's certificate -> 403 Access denied (1.0776ms)
+  ✔ CASE B: Intern requests certificate for request with no certificate -> 404 (0.2945ms)
+  ✔ CASE C: Intern requests a draft certificate -> 400 Draft NOT exposed (0.2051ms)
+  ✔ CASE D: Intern requests a finalized certificate -> 200 metadata returned (0.2225ms)
+  ✔ CASE E: Admin requests all certificates -> 200 overview data returned (0.2194ms)
+  ✔ CASE F: Non-admin attempts GET /api/admin/certificates -> 403 Forbidden (0.1714ms)
+  ✔ CASE G: Admin retries approved request with no certificate -> 200 Draft generated (18.0819ms)
+  ✔ CASE H: Admin retries request that already has certificateId -> 409 Duplicate prevented (0.2975ms)
+  ✔ CASE I: Admin retries rejected/ineligible request -> 400 Bad Request (0.2084ms)
+  ✔ CASE J: Certificate PDF does not exist at persisted location -> 404 Controlled Error (0.4599ms)
+✔ Day 5 Test Cases A - J (23.096ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 567.453

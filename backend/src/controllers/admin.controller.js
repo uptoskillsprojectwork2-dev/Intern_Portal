@@ -1,8 +1,12 @@
 import User from "../models/User.js";
+import Certificate from "../models/Certificate.js";
+import CertificateRequest from '../models/CertificateRequest.js';
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
+import path from "path";
+import fs from "fs";
 import { generateInternCode } from "../utils/generateInternCode.js";
-import CertificateRequest from '../models/CertificateRequest.js';
 import {
   generateDraftForRequest,
   getDraftCertificateById,
@@ -318,6 +322,116 @@ export const finalizeCertificate = async (req, res) => {
       email: {
         status: emailStatus
       }
+    });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Server error'
+    });
+  }
+};
+
+export const getAllCertificates = async (req, res) => {
+  try {
+    const certificates = await Certificate.find()
+      .select('-htmlContent')
+      .populate('userId', 'fullName email internCode domain')
+      .populate('templateId', 'templateName certificateType')
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      certificates
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: err.message
+    });
+  }
+};
+
+export const downloadCertificatePdf = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID format' });
+    }
+
+    const certificate = await Certificate.findById(id);
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    if (certificate.status === 'draft') {
+      return res.status(400).json({
+        message: 'Draft certificates do not have a finalized PDF available for download'
+      });
+    }
+
+    if (!certificate.pdfPath) {
+      return res.status(404).json({ message: 'Certificate PDF file path not found' });
+    }
+
+    const safePdfPath = path.resolve(process.cwd(), certificate.pdfPath);
+
+    if (!safePdfPath.startsWith(path.resolve(process.cwd(), 'uploads'))) {
+      return res.status(403).json({ message: 'Invalid file path' });
+    }
+
+    if (!fs.existsSync(safePdfPath)) {
+      return res.status(404).json({ message: 'Certificate PDF file not found on disk' });
+    }
+
+    const downloadFileName = `${certificate.certificateNumber || 'certificate'}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    return res.download(safePdfPath, downloadFileName);
+  } catch (err) {
+    return res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
+  }
+};
+
+export const retryCertificateGeneration = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid request ID format' });
+    }
+
+    const request = await CertificateRequest.findById(id);
+    if (!request) {
+      return res.status(404).json({ message: 'Certificate request not found' });
+    }
+
+    // Workflow invariant: ONLY for an approved request
+    if (request.status !== 'approved') {
+      return res.status(400).json({
+        message: `Retry generation is only permitted for 'approved' requests. Current status is '${request.status}'`
+      });
+    }
+
+    // Invariant: request must NOT already have a certificate
+    if (request.certificateId) {
+      return res.status(409).json({
+        message: 'A certificate is already associated with this request. Duplicate generation prevented.'
+      });
+    }
+
+    // Generate new draft certificate using Day 3 draft generator
+    const draft = await generateDraftForRequest(request, req.user.id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Draft certificate regenerated successfully',
+      certificate: draft,
+      request
     });
   } catch (err) {
     const statusCode = err.statusCode || 500;

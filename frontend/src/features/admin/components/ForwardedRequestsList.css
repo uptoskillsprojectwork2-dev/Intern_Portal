@@ -22,4 +22,23 @@
 .forwarded-request-actions button:disabled { opacity: .6; cursor: not-allowed; }
 .forwarded-reject-form { display: grid; grid-template-columns: 1fr auto auto; gap: 7px; width: 100%; }
 .forwarded-reject-form input { min-width: 0; padding: 10px 11px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--card); font: inherit; }
+.forwarded-retry-button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--accent, #3b82f6);
+  background: color-mix(in srgb, var(--accent, #3b82f6) 15%, transparent);
+  color: var(--accent, #3b82f6);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.forwarded-retry-button:hover:not(:disabled) {
+  background: var(--accent, #3b82f6);
+  color: #ffffff;
+}
+.forwarded-retry-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 @media (max-width: 700px) { .forwarded-requests-panel { padding: 22px 18px; } .forwarded-request-row { flex-direction: column; } .forwarded-request-actions { justify-content: flex-start; min-width: 0; } .forwarded-reject-form { grid-template-columns: 1fr 1fr; } .forwarded-reject-form input { grid-column: 1 / -1; } }

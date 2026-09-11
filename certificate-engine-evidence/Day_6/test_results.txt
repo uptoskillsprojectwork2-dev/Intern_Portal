@@ -1,0 +1,18 @@
+◇ injected env (0) from backend\.env // tip: ⌁ auth for agents [www.vestauth.com]
+◇ injected env (0) from .env // tip: ⌘ suppress logs { quiet: true }
+▶ Day 6 Hardening & Edge-Case Verification
+  ✔ Edge Case 1: Malformed ObjectId rejection on intern endpoints (0.8705ms)
+  ✔ Edge Case 2: Malformed ObjectId rejection on admin endpoints (0.2648ms)
+  ✔ Edge Case 9: Attempt to edit finalized certificate is rejected with 400 (0.4503ms)
+  ✔ Edge Case 10: Attempt to finalize non-draft certificate is rejected with 409 (0.309ms)
+  ✔ Template Casing Normalization: Both camelCase and PascalCase render without empty placeholders (7.0343ms)
+  ✔ Security: Admin Overview does not expose password or sensitive user tokens (0.2996ms)
+✔ Day 6 Hardening & Edge-Case Verification (10.5849ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 583.0308

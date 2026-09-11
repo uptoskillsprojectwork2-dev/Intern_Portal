@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useForwardedRequests from '../hooks/useForwardedRequests';
+import { retryCertificateGeneration } from '../services/admin.service';
 import './ForwardedRequestsList.css';
 
 const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
@@ -9,9 +10,31 @@ export default function ForwardedRequestsList() {
   const navigate = useNavigate();
   const { requests, loading, error, refetch, approveRequest, rejectRequest } = useForwardedRequests();
   const [rejectingId, setRejectingId] = useState(null);
+  const [retryingId, setRetryingId] = useState(null);
   const [reason, setReason] = useState('');
   const [actionError, setActionError] = useState(null);
   const [approvalSuccess, setApprovalSuccess] = useState(null);
+
+  const handleRetry = async (id) => {
+    if (retryingId) return;
+    setActionError(null);
+    setRetryingId(id);
+    try {
+      const result = await retryCertificateGeneration(id);
+      if (result?.certificate?._id) {
+        setApprovalSuccess({
+          certificateId: result.certificate._id,
+          certificateNumber: result.certificate.certificateNumber || 'Draft',
+          internName: result.request?.userId?.fullName || 'Intern'
+        });
+        refetch();
+      }
+    } catch (retryError) {
+      setActionError(retryError.message || 'Failed to retry certificate generation');
+    } finally {
+      setRetryingId(null);
+    }
+  };
 
   const approve = async (id) => {
     setActionError(null);
@@ -86,7 +109,14 @@ export default function ForwardedRequestsList() {
                 Review Draft
               </button>
             ) : request.status === 'approved' ? (
-              <span className="forwarded-unavailable">Draft unavailable</span>
+              <button
+                type="button"
+                className="forwarded-retry-button"
+                onClick={() => handleRetry(id)}
+                disabled={retryingId === id}
+              >
+                {retryingId === id ? 'Generating...' : 'Retry Generation'}
+              </button>
             ) : rejectingId === id ? (
               <div className="forwarded-reject-form">
                 <input
