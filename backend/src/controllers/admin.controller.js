@@ -8,6 +8,10 @@ import {
   getDraftCertificateById,
   updateDraftHtmlContent
 } from '../services/certificateDraft.service.js';
+import {
+  finalizeCertificate as finalizeCertService
+} from '../services/certificate.service.js';
+import { sendEmail } from '../utils/sendEmail.js';
 
 dotenv.config()
 
@@ -246,5 +250,80 @@ export const updateCertificateDraft = async (req, res) => {
   } catch (err) {
     const statusCode = err.statusCode || 500;
     return res.status(statusCode).json({ message: err.message || 'Server error' });
+  }
+};
+
+export const finalizeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const adminId = req.user?.id;
+
+    const { certificate, request, filePath } = await finalizeCertService(id, adminId);
+
+    let emailStatus = 'pending';
+    let emailError = null;
+
+    const recipientEmail = certificate.userId?.email;
+    const recipientName = certificate.userId?.fullName || 'Intern';
+
+    if (recipientEmail) {
+      try {
+        await sendEmail({
+          to: recipientEmail,
+          subject: `Your Certificate: ${certificate.certificateNumber}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <h2>Congratulations, ${recipientName}!</h2>
+              <p>Your certificate <strong>${certificate.certificateNumber}</strong> has been finalized and issued.</p>
+              <p>Please find your certificate attached as a PDF document.</p>
+              <br/>
+              <p>Best regards,<br/>UPTOSKILL Team</p>
+            </div>
+          `,
+          attachments: [
+            {
+              filename: `${certificate.certificateNumber}.pdf`,
+              path: filePath
+            }
+          ]
+        });
+        emailStatus = 'sent';
+      } catch (err) {
+        emailStatus = 'failed';
+        emailError = err.message;
+      }
+    } else {
+      emailStatus = 'skipped_no_email';
+    }
+
+    if (emailStatus === 'failed') {
+      return res.status(207).json({
+        success: true,
+        partialSuccess: true,
+        message: 'Certificate finalized and PDF generated successfully, but email dispatch failed.',
+        certificate,
+        request,
+        email: {
+          status: 'failed',
+          error: emailError
+        }
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Certificate finalized and PDF generated successfully',
+      certificate,
+      request,
+      email: {
+        status: emailStatus
+      }
+    });
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    return res.status(statusCode).json({
+      success: false,
+      message: err.message || 'Server error'
+    });
   }
 };

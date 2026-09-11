@@ -8,7 +8,8 @@ import {
   getForwardedRequests,
   finalizeRequest,
   getCertificateDraft,
-  updateCertificateDraft
+  updateCertificateDraft,
+  finalizeCertificate
 } from "../controllers/admin.controller.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
@@ -34,5 +35,8 @@ adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRe
 adminRouter.get("/certificates/draft/:id", verifyAuth, requireAdmin, getCertificateDraft);
 adminRouter.patch("/certificates/draft/:id", verifyAuth, requireAdmin, updateCertificateDraft);
 adminRouter.put("/certificates/draft/:id", verifyAuth, requireAdmin, updateCertificateDraft);
+
+// Certificate finalization and PDF generation endpoint (Day 4)
+adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finalizeCertificate);
 
 export default adminRouter;

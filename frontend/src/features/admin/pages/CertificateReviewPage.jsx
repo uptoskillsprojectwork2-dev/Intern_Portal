@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getCertificateDraft, updateCertificateDraft } from '../services/admin.service';
+import { getCertificateDraft, updateCertificateDraft, finalizeCertificate } from '../services/admin.service';
 import './CertificateReviewPage.css';
 
 const formatDisplayDate = (date) => {
@@ -23,8 +23,10 @@ export default function CertificateReviewPage() {
   const [initialHtml, setInitialHtml] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
   const [error, setError] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [warning, setWarning] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -91,6 +93,51 @@ export default function CertificateReviewPage() {
     }
   };
 
+  const handleFinalize = async () => {
+    if (finalizing || saving || !isEditable) return;
+
+    if (hasUnsavedChanges) {
+      const confirmSave = window.confirm('You have unsaved changes. Would you like to save them before finalizing?');
+      if (confirmSave) {
+        try {
+          const saveRes = await updateCertificateDraft(id, editedHtml);
+          const updated = saveRes.certificate || saveRes;
+          setCertificate((prev) => ({ ...prev, ...updated }));
+          setInitialHtml(editedHtml);
+        } catch (saveErr) {
+          setError(saveErr.message || 'Failed to save changes prior to finalization');
+          return;
+        }
+      }
+    }
+
+    const confirmFinalize = window.confirm(
+      'Are you sure you want to finalize this certificate? This will generate the immutable PDF, mark the certificate as finalized, and deliver it via email.'
+    );
+    if (!confirmFinalize) return;
+
+    setFinalizing(true);
+    setError(null);
+    setFeedback(null);
+    setWarning(null);
+
+    try {
+      const response = await finalizeCertificate(id);
+      const updated = response.certificate || response;
+      setCertificate((prev) => ({ ...prev, ...updated }));
+
+      if (response.partialSuccess) {
+        setWarning(response.message || 'Certificate finalized and PDF generated, but email delivery was unavailable.');
+      } else {
+        setFeedback(response.message || 'Certificate finalized and PDF generated successfully!');
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to finalize certificate');
+    } finally {
+      setFinalizing(false);
+    }
+  };
+
   const hasUnsavedChanges = editedHtml !== initialHtml;
 
   if (loading) {
@@ -148,19 +195,35 @@ export default function CertificateReviewPage() {
         </div>
 
         <div className="cert-review-top-actions">
-          {hasUnsavedChanges && (
+          {hasUnsavedChanges && isEditable && (
             <span style={{ fontSize: '12px', color: '#f59e0b', fontWeight: 600 }}>
               ● Unsaved changes
             </span>
           )}
-          <button
-            type="button"
-            className="cert-save-btn"
-            onClick={handleSave}
-            disabled={saving || !isEditable || (!hasUnsavedChanges && !feedback)}
-          >
-            {saving ? 'Saving Draft...' : 'Save Draft'}
-          </button>
+          {isEditable ? (
+            <>
+              <button
+                type="button"
+                className="cert-save-btn"
+                onClick={handleSave}
+                disabled={saving || finalizing || (!hasUnsavedChanges && !feedback)}
+              >
+                {saving ? 'Saving Draft...' : 'Save Draft'}
+              </button>
+              <button
+                type="button"
+                className="cert-finalize-btn"
+                onClick={handleFinalize}
+                disabled={saving || finalizing}
+              >
+                {finalizing ? 'Finalizing...' : 'Finalize & Send'}
+              </button>
+            </>
+          ) : (
+            <div className="cert-finalized-badge">
+              ✓ Certificate Finalized
+            </div>
+          )}
         </div>
       </header>
 
@@ -203,6 +266,19 @@ export default function CertificateReviewPage() {
             type="button"
             style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer' }}
             onClick={() => setFeedback(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {warning && (
+        <div className="cert-review-alert warning" role="alert" style={{ marginTop: '16px' }}>
+          <span>⚠ {warning}</span>
+          <button
+            type="button"
+            style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer' }}
+            onClick={() => setWarning(null)}
           >
             ✕
           </button>

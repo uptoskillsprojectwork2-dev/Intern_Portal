@@ -7,7 +7,7 @@ dotenv.config({
     override: true
 });
 
-export const sendEmail = async ({ to, subject, html }) => {
+export const sendEmail = async ({ to, subject, html, attachments }) => {
     const { BREVO_SMTP_USER, BREVO_SMTP_KEY, BREVO_SENDER_EMAIL } = process.env;
 
     if (!BREVO_SMTP_USER || !BREVO_SMTP_KEY) {
@@ -27,10 +27,16 @@ export const sendEmail = async ({ to, subject, html }) => {
         }
     });
 
-    return transporter.sendMail({
+    const mailOptions = {
         from: `"UPTOSKILL" <${BREVO_SENDER_EMAIL}>`,
         to,
         subject,
         html
-    });
+    };
+
+    if (attachments && Array.isArray(attachments) && attachments.length > 0) {
+        mailOptions.attachments = attachments;
+    }
+
+    return transporter.sendMail(mailOptions);
 };
