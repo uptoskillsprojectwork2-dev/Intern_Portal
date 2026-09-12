@@ -5,6 +5,8 @@ import hrRoutes from './routes/hr.routes.js';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import dns from 'dns';
+import dotenv from 'dotenv';
+dotenv.config();
 
 // Use public DNS providers (Cloudflare and Google) to avoid local DNS issues.
 // Remove or modify if you rely on system DNS or have internal DNS requirements.

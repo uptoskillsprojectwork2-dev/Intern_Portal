@@ -31,5 +31,4 @@ const certificateRequestSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
 export default mongoose.model('CertificateRequest', certificateRequestSchema);

@@ -40,3 +40,23 @@ export const getMyRequests = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+import Certificate from '../models/Certificate.model.js';
+
+export const getCertificateForRequest = async (req, res) => {
+  try {
+    const certificate = await Certificate.findOne({ 
+      requestId: req.params.id, 
+      userId: req.user.id, 
+      status: 'finalized' 
+    });
+    
+    if (!certificate) {
+      return res.status(404).json({ success: false, error: 'Finalized certificate not found' });
+    }
+    
+    res.status(200).json({ success: true, data: certificate });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

@@ -48,7 +48,7 @@ export async function createIntern(req, res) {
         })
     } catch (err) {
         res.status(500).json({
-            message: "internal server error"
+            message: "internal server error",
         })
 
     }
