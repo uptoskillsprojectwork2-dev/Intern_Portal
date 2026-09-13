@@ -30,3 +30,33 @@ export const finalizeRequest = (id, action, rejectionReason) => request(
   `/api/admin/requests/${id}/finalize`,
   action === 'reject' ? { action, rejectionReason } : { action }
 );
+
+// ================================
+// Certificate Template APIs Day 1
+// ================================
+
+export const createTemplate = (payload) =>
+  request(
+    'post',
+    '/api/admin/templates',
+    payload
+  );
+
+export const getAllTemplates = () =>
+  request(
+    'get',
+    '/api/admin/templates'
+  );
+
+export const updateTemplate = (id, payload) =>
+  request(
+    'patch',
+    `/api/admin/templates/${id}`,
+    payload
+  );
+
+export const toggleTemplateActive = (id) =>
+  request(
+    'patch',
+    `/api/admin/templates/${id}/toggle`
+  );
