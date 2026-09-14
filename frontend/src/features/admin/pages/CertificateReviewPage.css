@@ -1,0 +1,67 @@
+.certificate-review-page {
+  width: 100%;
+}
+
+.certificate-review-header {
+  margin-bottom: 24px;
+}
+
+.certificate-review-header h1 {
+  margin: 4px 0 8px;
+}
+
+.certificate-review-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.certificate-editor,
+.certificate-preview-panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.review-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.review-card-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.review-card-header span {
+  padding: 5px 10px;
+  border-radius: 20px;
+  background: #f3f4f6;
+  font-size: 12px;
+}
+
+.certificate-html-editor {
+  width: 100%;
+  min-height: 600px;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.certificate-preview {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .certificate-review-layout {
+    grid-template-columns: 1fr;
+  }
+}
