@@ -60,3 +60,38 @@ export const toggleTemplateActive = (id) =>
     'patch',
     `/api/admin/templates/${id}/toggle`
   );
+
+// ================================
+// Certificate DRAFT 
+// ================================
+
+export const getCertificateDraft = (id) =>
+  request('get', `/api/admin/certificates/${id}`);
+
+export const getAllCertificates = () =>
+  request("get", "/api/admin/certificates");
+
+export const downloadCertificatePdf = async (id) => {
+  const response = await adminApi.get(
+    `/api/admin/certificates/${id}/download`,
+    {
+      responseType: "blob",
+    }
+  );
+
+  return response;
+};
+
+export const updateCertificateDraft = (id, htmlContent) =>
+  request('patch', `/api/admin/certificates/${id}`, {
+    htmlContent,
+  });
+
+export const finalizeCertificate = (id) =>
+  request('post', `/api/admin/certificates/${id}/finalize`);
+  
+export const retryCertificateGeneration = (id) =>
+  request(
+    'post',
+    `/api/admin/requests/${id}/retry-generation`
+  );

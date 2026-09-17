@@ -1,0 +1,23 @@
+.shared-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 120px;
+  font-size: 14px;
+}
+
+.shared-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: shared-loading-spin 0.7s linear infinite;
+}
+
+@keyframes shared-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

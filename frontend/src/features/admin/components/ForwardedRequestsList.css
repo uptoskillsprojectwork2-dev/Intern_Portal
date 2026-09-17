@@ -1,21 +1,427 @@
-.forwarded-requests-panel { max-width: 1080px; margin: 0 auto; padding: 28px 32px; border: 1px solid var(--border); border-radius: 20px; background: color-mix(in srgb, var(--card) 94%, transparent); box-shadow: 0 18px 45px var(--shadow); }
-.forwarded-requests-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-.forwarded-requests-heading h2 { margin: 0; font-size: 24px; }
-.forwarded-requests-count { padding: 7px 10px; border-radius: 999px; color: var(--accent); background: color-mix(in srgb, var(--accent) 13%, transparent); font-size: 11px; font-weight: 800; white-space: nowrap; }
-.forwarded-requests-state { margin: 0; color: var(--muted); font-size: 14px; }
-.forwarded-requests-error { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 0; padding: 12px 14px; border-radius: 9px; color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); font-size: 13px; font-weight: 700; }
-.forwarded-requests-error button { padding: 7px 11px; border: 1px solid currentColor; border-radius: 7px; color: inherit; background: transparent; font-weight: 800; cursor: pointer; }
-.forwarded-requests-list { display: grid; gap: 12px; }
-.forwarded-request-row { display: flex; justify-content: space-between; gap: 18px; padding: 17px; border: 1px solid var(--border); border-radius: 12px; background: var(--input); }
-.forwarded-request-details h3 { margin: 0 0 5px; font-size: 15px; }
-.forwarded-request-details p { margin: 7px 0 0; font-size: 13px; }
-.forwarded-request-meta { color: var(--muted); font-size: 12px !important; }
-.forwarded-request-reason { max-width: 600px; color: var(--muted); line-height: 1.4; }
-.forwarded-request-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 170px; }
-.forwarded-request-actions button { padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: transparent; font-size: 12px; font-weight: 800; cursor: pointer; }
-.forwarded-request-actions .forwarded-approve-button { border-color: var(--success); color: var(--success); }
-.forwarded-request-actions .forwarded-reject-button { border-color: var(--error); color: var(--error); }
-.forwarded-request-actions button:disabled { opacity: .6; cursor: not-allowed; }
-.forwarded-reject-form { display: grid; grid-template-columns: 1fr auto auto; gap: 7px; width: 100%; }
-.forwarded-reject-form input { min-width: 0; padding: 10px 11px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--card); font: inherit; }
-@media (max-width: 700px) { .forwarded-requests-panel { padding: 22px 18px; } .forwarded-request-row { flex-direction: column; } .forwarded-request-actions { justify-content: flex-start; min-width: 0; } .forwarded-reject-form { grid-template-columns: 1fr 1fr; } .forwarded-reject-form input { grid-column: 1 / -1; } }
+/* =========================================
+   CERTIFICATE REQUESTS
+========================================= */
+
+.forwarded-requests-panel {
+  width: 100%;
+  margin-top: 20px;
+}
+
+/* =========================================
+   HEADER
+========================================= */
+
+.forwarded-requests-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+
+  margin-bottom: 18px;
+}
+
+.forwarded-requests-heading h2 {
+  margin: 5px 0 7px;
+
+  color: var(--text);
+
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.forwarded-requests-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 75px;
+  height: 30px;
+
+  padding: 0 12px;
+
+  border: 1px solid rgba(113, 104, 232, 0.2);
+  border-radius: 999px;
+
+  background: rgba(113, 104, 232, 0.1);
+  color: #9b95ff;
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* =========================================
+   ERROR
+========================================= */
+
+.forwarded-requests-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+
+  margin: 0 0 14px;
+  padding: 12px 14px;
+
+  border: 1px solid rgba(248, 113, 113, 0.18);
+  border-radius: 10px;
+
+  background: rgba(127, 29, 29, 0.16);
+  color: #f87171;
+
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.forwarded-requests-error button {
+  flex-shrink: 0;
+
+  height: 32px;
+  padding: 0 13px;
+
+  border: 1px solid #f87171;
+  border-radius: 7px;
+
+  background: transparent;
+  color: #f87171;
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.forwarded-requests-error button:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* =========================================
+   LOADING / EMPTY STATE
+========================================= */
+
+.forwarded-requests-state {
+  margin: 0;
+
+  padding: 40px 20px;
+
+  text-align: center;
+
+  background: var(--card);
+
+  border: 1px solid var(--border);
+  border-radius: 14px;
+
+  color: var(--muted);
+
+  font-size: 13px;
+}
+
+/* =========================================
+   REQUEST LIST
+========================================= */
+
+.forwarded-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* =========================================
+   REQUEST CARD
+========================================= */
+
+.forwarded-request-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 25px;
+
+  padding: 19px 20px;
+
+  background: var(--card);
+
+  border: 1px solid var(--border);
+  border-radius: 13px;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.forwarded-request-row:hover {
+  background: rgba(113, 104, 232, 0.025);
+  border-color: rgba(113, 104, 232, 0.35);
+}
+
+/* =========================================
+   REQUEST DETAILS
+========================================= */
+
+.forwarded-request-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.forwarded-request-details h3 {
+  margin: 0 0 7px;
+
+  color: var(--text);
+
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.forwarded-request-meta {
+  margin: 0 0 10px;
+
+  color: var(--muted);
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.forwarded-request-details > p:not(.forwarded-request-meta):not(
+    .forwarded-request-reason
+  ) {
+  display: inline-flex;
+
+  margin: 0;
+
+  padding: 5px 9px;
+
+  border: 1px solid var(--border);
+  border-radius: 6px;
+
+  background: var(--input);
+
+  color: var(--text);
+
+  font-size: 10px;
+
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.forwarded-request-reason {
+  margin: 10px 0 0;
+
+  color: var(--muted);
+
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* =========================================
+   ACTIONS
+========================================= */
+
+.forwarded-request-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 8px;
+
+  flex-shrink: 0;
+}
+
+/* =========================================
+   APPROVE
+========================================= */
+
+.forwarded-approve-button {
+  appearance: none;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 78px;
+  height: 35px;
+
+  padding: 0 14px;
+
+  border: 1px solid #34d399;
+  border-radius: 8px;
+
+  background: rgba(52, 211, 153, 0.08);
+  color: #34d399;
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.forwarded-approve-button:hover:not(:disabled) {
+  background: #34d399;
+  color: #07130e;
+
+  transform: translateY(-1px);
+}
+
+.forwarded-approve-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   REJECT
+========================================= */
+
+.forwarded-reject-button {
+  appearance: none;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 70px;
+  height: 35px;
+
+  padding: 0 14px;
+
+  border: 1px solid #f87171;
+  border-radius: 8px;
+
+  background: rgba(248, 113, 113, 0.07);
+  color: #f87171;
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.forwarded-reject-button:hover {
+  background: #f87171;
+  color: #1a0808;
+
+  transform: translateY(-1px);
+}
+
+/* =========================================
+   RETRY GENERATION
+========================================= */
+
+.forwarded-request-actions
+  .forwarded-approve-button:only-child {
+  min-width: 135px;
+}
+
+/* =========================================
+   REJECT FORM
+========================================= */
+
+.forwarded-reject-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forwarded-reject-form input {
+  width: 190px;
+  height: 35px;
+
+  padding: 0 11px;
+
+  box-sizing: border-box;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: var(--input);
+  color: var(--text);
+
+  font-family: inherit;
+  font-size: 11px;
+
+  outline: none;
+}
+
+.forwarded-reject-form input:focus {
+  border-color: #7168e8;
+  box-shadow: 0 0 0 3px rgba(113, 104, 232, 0.1);
+}
+
+.forwarded-reject-form button {
+  height: 35px;
+  padding: 0 12px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: var(--input);
+  color: var(--text);
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.forwarded-reject-form button:first-of-type {
+  border-color: #f87171;
+  color: #f87171;
+}
+
+.forwarded-reject-form button:first-of-type:hover {
+  background: #f87171;
+  color: #1a0808;
+}
+
+.forwarded-reject-form button:last-of-type:hover {
+  border-color: #7168e8;
+}
+
+/* =========================================
+   RESPONSIVE
+========================================= */
+
+@media (max-width: 800px) {
+  .forwarded-request-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .forwarded-request-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .forwarded-requests-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .forwarded-request-actions {
+    flex-wrap: wrap;
+  }
+
+  .forwarded-reject-form {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .forwarded-reject-form input {
+    width: 100%;
+  }
+}

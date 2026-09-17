@@ -80,8 +80,7 @@ export default function TemplateList({
                 template._id ||
                 template.id;
 
-              const active =
-                Boolean(template.isActive);
+              const active = template.status === "active";
 
               return (
                 <article

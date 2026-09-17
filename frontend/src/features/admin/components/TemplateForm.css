@@ -1,0 +1,21 @@
+.admin-submit {
+  padding: 10px 18px;
+  border: 1px solid var(--success);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--success);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-submit:hover:not(:disabled) {
+  background: var(--success);
+  color: #fff;
+}
+
+.admin-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,3 +1,4 @@
+import "./TemplateForm.css";
 import { useEffect, useState } from "react";
 
 const CERTIFICATE_TYPES = [
@@ -13,17 +14,205 @@ const CERTIFICATE_TYPES = [
 
 const EMPTY_FORM = {
   name: "",
-  certificateType: CERTIFICATE_TYPES[0],
-  htmlContent: `<!DOCTYPE html>
-<html>
-  <body>
-    <h1>Certificate of Completion</h1>
+  certificateType: "completion_certificate",
 
-    <p>
-      This certifies that {{fullName}}
-      has successfully completed the internship.
-    </p>
-  </body>
+  htmlContent: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    body {
+      font-family: Georgia, "Times New Roman", serif;
+      background: white;
+      color: #1f2937;
+    }
+
+    .certificate {
+      width: 297mm;
+      height: 210mm;
+      padding: 5mm;
+      background: #ffffff;
+      border: 7mm solid #0867d8;
+    }
+
+    .certificate-inner {
+      width: 100%;
+      height: 100%;
+      border: 0.7mm solid #d6ad32;
+      padding: 18mm 25mm;
+      position: relative;
+      text-align: center;
+    }
+
+    .brand {
+      font-size: 24px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      color: #0867d8;
+      margin-bottom: 8mm;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 32px;
+      letter-spacing: 5px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+
+    .subtitle {
+      margin-top: 4mm;
+      font-size: 15px;
+      letter-spacing: 3px;
+      color: #6b7280;
+    }
+
+    .intro {
+      margin-top: 4mm;
+      font-size: 15px;
+      color: #4b5563;
+    }
+
+    .intern-name {
+      margin: 5mm 0 3mm;
+      font-size: 34px;
+      font-weight: bold;
+      color: #0867d8;
+    }
+
+    .domain {
+      font-size: 18px;
+      font-weight: bold;
+      color: #1f2937;
+    }
+
+    .dates {
+      margin-top: 3mm;
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .details {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      position: absolute;
+      left: 25mm;
+      right: 25mm;
+      bottom: 16mm;
+    }
+
+    .detail-block {
+      text-align: left;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .detail-block.right {
+      text-align: right;
+    }
+
+    .detail-label {
+      font-weight: bold;
+      color: #1f2937;
+    }
+
+    .verification {
+      position: absolute;
+      bottom: 6mm;
+      left: 0;
+      right: 0;
+      font-size: 9px;
+      color: #9ca3af;
+    }
+
+    .signature {
+      position: absolute;
+      bottom: 15mm;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 45mm;
+      border-top: 1px solid #9ca3af;
+      padding-top: 2mm;
+      font-size: 10px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="certificate">
+    <div class="certificate-inner">
+
+      <div class="brand">
+        UPTOSKILLS
+      </div>
+
+      <h1 class="title">
+        CERTIFICATE
+      </h1>
+
+      <div class="subtitle">
+        OF INTERNSHIP COMPLETION
+      </div>
+
+      <div class="intro">
+        This certificate is proudly presented to
+      </div>
+
+      <div class="intern-name">
+        {{fullName}}
+      </div>
+
+      <div class="domain">
+        {{domain}}
+      </div>
+
+      <div class="dates">
+        Internship Period: {{startDate}} — {{endDate}}
+      </div>
+
+      <div class="signature">
+        Authorized Signatory
+      </div>
+
+      <div class="details">
+        <div class="detail-block">
+          <div class="detail-label">Certificate ID</div>
+          {{certificateNumber}}
+        </div>
+
+        <div class="detail-block right">
+          <div class="detail-label">Issued On</div>
+          {{issueDate}}
+        </div>
+      </div>
+
+      <div class="verification">
+        Verification Code: {{verificationCode}}
+      </div>
+
+    </div>
+  </div>
+</body>
 </html>`,
 };
 

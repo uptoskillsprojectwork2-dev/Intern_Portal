@@ -20,3 +20,19 @@ export const getMyRequests = async () => {
   const response = await internApi.get('/requests');
   return response.data;
 };
+
+export const getCertificateForRequest = async (id) => {
+  const response = await internApi.get(`/requests/${id}/certificate`);
+  return response.data;
+};
+
+export const downloadCertificateForRequest = async (id) => {
+  const response = await internApi.get(
+    `/requests/${id}/certificate/download`,
+    {
+      responseType: 'blob',
+    }
+  );
+
+  return response;
+};

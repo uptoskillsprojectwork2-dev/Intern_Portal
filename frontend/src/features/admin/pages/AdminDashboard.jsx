@@ -6,6 +6,7 @@ import CreateTl from "../components/CreateTl";
 import ForwardedRequestsList from "../components/ForwardedRequestsList";
 import TeamLeadersSection from "../components/TeamLeadersSection";
 import TemplatesSection from "../components/TemplatesSection";
+import CertificatesOverview from "../components/CertificatesOverview";
 
 import "./AdminDashboard.css";
 
@@ -75,12 +76,30 @@ const AdminDashboard = () => {
 
           <button
             className={`admin-nav-item ${
+              activeView === "certificates" ? "active" : ""
+            }`}
+            onClick={() => setActiveView("certificates")}
+          >
+            <span>▤</span> Certificates
+          </button>
+
+          <button
+            className={`admin-nav-item ${
               activeView === "templates" ? "active" : ""
             }`}
             onClick={() => setActiveView("templates")}
           >
             <span>▣</span>
             Templates
+          </button>
+
+          <button
+            className={`admin-nav-item ${
+              activeView === "certificate-review" ? "active" : ""
+            }`}
+            onClick={() => setActiveView("certificate-review")}
+          >
+            <span>▤</span> Certificate Review
           </button>
         </nav>
         <div className="admin-sidebar-note">
@@ -98,14 +117,28 @@ const AdminDashboard = () => {
                 ? "Create an intern"
                 : activeView === "teamleader"
                   ? "Create a team leader"
-                  : "Certificate requests"}
+                  : activeView === "requests"
+                    ? "Certificate requests"
+                    : activeView === "certificates"
+                      ? "Certificates"
+                      : activeView === "templates"
+                        ? "Certificate templates"
+                        : "Certificate review"}
           </h1>
           <p>
             {activeView === "overview"
               ? "Manage your portal accounts from one secure workspace."
               : activeView === "requests"
                 ? "Finalize certificate requests forwarded by Team Leaders."
-                : "Complete the details below to create a new portal account."}
+                : activeView === "certificates"
+                  ? "View, review, and manage generated certificates."
+                  : activeView === "templates"
+                    ? "Create and manage certificate templates."
+                    : activeView === "intern"
+                      ? "Create a new intern account."
+                      : activeView === "teamleader"
+                        ? "Create a new team leader account."
+                        : "Review, edit and finalize the certificate before sending it to the intern."}
           </p>
         </header>
 
@@ -158,19 +191,20 @@ const AdminDashboard = () => {
                 </button>
               </div>
             </section>
+
             <TeamLeadersSection />
           </>
         ) : activeView === "intern" ? (
           <CreateIntern />
         ) : activeView === "teamleader" ? (
           <CreateTl />
-        ) : (
+        ) : activeView === "requests" ? (
           <ForwardedRequestsList />
-        )}
-
-        {/* Templates tab */}
-        {activeView === "templates" && <TemplatesSection />}
-        
+        ) : activeView === "templates" ? (
+          <TemplatesSection />
+        ) : activeView === "certificates" ? (
+          <CertificatesOverview />
+        ) : null}
       </main>
     </div>
   );
