@@ -39,6 +39,18 @@ const notificationSchema = new mongoose.Schema(
 
     readAt: {
         type: Date
+    },
+
+    dedupeKey: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+        index: true
+    },
+
+    metadata: {
+        type: mongoose.Schema.Types.Mixed
     }
 },
 {

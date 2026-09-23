@@ -7,7 +7,9 @@ import {
 	getAssignedInternById,
 	updateAssignedIntern,
 	getRequestsForReview,
-	reviewRequestAsTL
+	reviewRequestAsTL,
+	getTLNotifications,
+	markNotificationRead
 } from '../controllers/teamleader.controller.js';
 
 const teamleaderRouter = express.Router();
@@ -29,5 +31,8 @@ teamleaderRouter.patch('/interns/:id', updateAssignedIntern);
 teamleaderRouter.get('/requests-for-review', getRequestsForReview);
 
 teamleaderRouter.patch('/requests/:id/review', reviewRequestAsTL);
+
+teamleaderRouter.get('/notifications', getTLNotifications);
+teamleaderRouter.patch('/notifications/:id/read', markNotificationRead);
 
 export default teamleaderRouter;

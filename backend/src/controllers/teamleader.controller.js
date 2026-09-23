@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
+import Notification from '../models/Notification.js';
 import { logAudit } from '../utils/auditLogger.js';
 
 export async function createIntern(req, res) {
@@ -284,3 +285,47 @@ export const reviewRequestAsTL = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+export const getTLNotifications = async (req, res) => {
+  try {
+    const tlId = req.user.id;
+    const notifications = await Notification.find({ userId: tlId })
+      .sort({ isRead: 1, createdAt: -1 })
+      .limit(50);
+    return res.status(200).json({
+      notifications,
+      total: notifications.length
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+export const markNotificationRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid notification ID' });
+    }
+
+    const notification = await Notification.findById(id);
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    if (notification.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ message: 'Access denied to this notification' });
+    }
+
+    notification.isRead = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    return res.status(200).json({
+      message: 'Notification marked as read',
+      notification
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};

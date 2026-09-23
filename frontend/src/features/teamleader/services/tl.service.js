@@ -50,3 +50,13 @@ export const createIntern = async (payload) => {
     throw new Error(validationMessage || data?.message || 'Unable to create intern.', { cause: error });
   }
 };
+
+export const getTLNotifications = async () => {
+  const response = await tlApi.get('/notifications');
+  return response.data;
+};
+
+export const markNotificationRead = async (id) => {
+  const response = await tlApi.patch(`/notifications/${id}/read`);
+  return response.data;
+};
