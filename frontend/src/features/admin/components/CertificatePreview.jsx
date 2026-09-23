@@ -1,71 +1,86 @@
-import { useRef, useEffect } from 'react';
-import './CertificatePreview.css';
+import { useRef } from "react";
 
-/**
- * CertificatePreview
- *
- * Reusable certificate HTML preview component.
- * Safely renders HTML inside a controlled, isolated iframe.
- *
- * @param {Object} props
- * @param {string} props.htmlContent - The raw HTML string representing the certificate.
- */
-export default function CertificatePreview({ htmlContent = '' }) {
+export default function CertificatePreview({ html }) {
   const iframeRef = useRef(null);
 
-  useEffect(() => {
+  const handleLoad = () => {
     const iframe = iframeRef.current;
-    if (!iframe) return;
 
-    // Reactively update iframe document when htmlContent changes
-    if ('srcdoc' in iframe) {
-      iframe.srcdoc = htmlContent || '';
-    } else if (iframe.contentDocument) {
-      try {
-        iframe.contentDocument.open();
-        iframe.contentDocument.write(htmlContent || '');
-        iframe.contentDocument.close();
-      } catch {
-        // Fallback in case of document write restriction
-        iframe.setAttribute('srcdoc', htmlContent || '');
-      }
+    if (!iframe) {
+      return;
     }
-  }, [htmlContent]);
 
-  const hasContent = typeof htmlContent === 'string' && htmlContent.trim().length > 0;
+    try {
+      const document = iframe.contentDocument;
+
+      if (!document?.documentElement || !document.body) {
+        return;
+      }
+
+      const htmlElement = document.documentElement;
+      const body = document.body;
+
+      /*
+       * The certificate template is designed for A4 landscape.
+       * Scale the complete document to the available iframe width.
+       */
+      const availableWidth = iframe.clientWidth;
+      const certificateWidth = 1122; // Approx. A4 landscape at 96 DPI
+
+      const scale = Math.min(
+        availableWidth / certificateWidth,
+        1
+      );
+
+      htmlElement.style.width = `${certificateWidth}px`;
+      htmlElement.style.minWidth = `${certificateWidth}px`;
+      htmlElement.style.maxWidth = `${certificateWidth}px`;
+      htmlElement.style.overflow = "hidden";
+
+      body.style.width = `${certificateWidth}px`;
+      body.style.minWidth = `${certificateWidth}px`;
+      body.style.maxWidth = `${certificateWidth}px`;
+      body.style.margin = "0";
+      body.style.overflow = "hidden";
+      body.style.transformOrigin = "top left";
+      body.style.transform = `scale(${scale})`;
+
+      /*
+       * Prevent the iframe document from creating
+       * horizontal scrolling.
+       */
+      htmlElement.style.overflowX = "hidden";
+      body.style.overflowX = "hidden";
+    } catch (error) {
+      console.error(
+        "Unable to scale certificate preview:",
+        error
+      );
+    }
+  };
+
+  const previewHtml =
+    html ||
+    `
+      <p style="
+        font-family: sans-serif;
+        padding: 24px;
+        margin: 0;
+      ">
+        Certificate preview will appear here.
+      </p>
+    `;
 
   return (
-    <section className="certificate-preview-container" aria-label="Certificate preview workspace">
-      <header className="certificate-preview-header">
-        <div className="certificate-preview-title-group">
-          <span className="certificate-preview-status-dot" aria-hidden="true" />
-          <h2 className="certificate-preview-title">Certificate Live Preview</h2>
-        </div>
-        <div className="certificate-preview-badge">
-          <span>Real-time HTML</span>
-        </div>
-      </header>
-
-      <div className="certificate-preview-viewport">
-        {hasContent ? (
-          <iframe
-            ref={iframeRef}
-            srcDoc={htmlContent}
-            title="Certificate Live Preview"
-            className="certificate-preview-iframe"
-            sandbox="allow-same-origin allow-popups"
-            loading="lazy"
-          />
-        ) : (
-          <div className="certificate-preview-empty" role="status">
-            <div className="certificate-preview-empty-icon" aria-hidden="true">
-              <span>▤</span>
-            </div>
-            <h3>No Certificate Content</h3>
-            <p>The certificate template is currently empty. Edit the HTML in the editor panel to view the live preview.</p>
-          </div>
-        )}
-      </div>
-    </section>
+    <div className="certificate-preview-shell">
+      <iframe
+        ref={iframeRef}
+        title="Certificate preview"
+        className="certificate-preview-frame"
+        srcDoc={previewHtml}
+        sandbox=""
+        onLoad={handleLoad}
+      />
+    </div>
   );
 }

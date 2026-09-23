@@ -8,11 +8,4 @@
 .requests-table th { color: var(--muted); font-size: 11px; text-align: left; text-transform: uppercase; letter-spacing: .7px; }
 .requests-table th, .requests-table td { padding: 13px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .requests-table td:nth-child(2) { text-transform: capitalize; }
-.requests-toast-wrap { margin-bottom: 16px; }
-.request-download-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--accent); border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
-.request-download-btn:hover:not(:disabled) { background: var(--accent); color: #fff; }
-.request-download-btn:disabled { opacity: 0.6; cursor: wait; }
-.request-action-disabled { color: var(--muted); font-size: 13px; }
-.download-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin 0.75s linear infinite; }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @media (max-width: 600px) { .certificate-actions { align-items: flex-start; flex-direction: column; } .request-primary-button { width: 100%; } .certificate-actions, .requests-panel { padding: 18px; } }

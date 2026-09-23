@@ -1,91 +1,112 @@
 import mongoose from "mongoose";
 
 const certificateTemplateSchema = new mongoose.Schema(
-{
-    templateCode: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true
-    },
-
-    templateName: {
-        type: String,
-        required: true,
-        trim: true
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
     },
 
     certificateType: {
-        type: String,
-        required: true,
-        trim: true,
-        index: true
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
     },
 
-    title: {
-        type: String,
-        required: true,
-        trim: true
+    // HTML template source.
+    // Required only for HTML templates.
+    htmlContent: {
+      type: String,
+      default: "",
     },
 
-    description: {
-        type: String,
-        trim: true
+    // Template format: HTML or PDF.
+    templateType: {
+      type: String,
+      enum: ["html", "pdf"],
+      default: "html",
+      index: true,
     },
 
-    content: {
-        type: String
+    // Uploaded PDF template information.
+    pdfPath: {
+      type: String,
+      default: "",
     },
 
-    placeholders: {
-        type: [String],
-        default: []
+    pdfUrl: {
+      type: String,
+      default: "",
     },
 
-    logoPath: {
-        type: String
-    },
-
-    backgroundPath: {
-        type: String
-    },
-
-    signaturePath: {
-        type: String
-    },
-
-    version: {
-        type: Number,
-        default: 1
-    },
-
-    status: {
-        type: String,
-        enum: ["draft", "active", "inactive", "archived"],
-        default: "draft",
-        index: true
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
     },
 
     createdBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user"
-    }
-},
-{
-    timestamps: true
-});
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+    },
 
-certificateTemplateSchema.pre("save", async function () {
-    if (this.createdBy) {
-        const userModel = mongoose.model("user");
-        const creator = await userModel.findById(this.createdBy);
-        if (!creator) throw new Error("createdBy does not reference an existing user");
-    }
-});
+    // Kept for compatibility with the portal's earlier template model.
+    templateCode: {
+      type: String,
+      trim: true,
+    },
 
-const certificateTemplateModel = mongoose.model(
-    "certificate_template",
-    certificateTemplateSchema
+    version: {
+      type: Number,
+      default: 1,
+    },
+
+    description: {
+      type: String,
+      trim: true,
+    },
+
+    placeholders: {
+      type: [String],
+      default: [],
+    },
+
+    logoPath: {
+      type: String,
+    },
+
+    backgroundPath: {
+      type: String,
+    },
+
+    signaturePath: {
+      type: String,
+    },
+  },
+  {
+    timestamps: true,
+  }
 );
 
-export default certificateTemplateModel;
+certificateTemplateSchema.pre("save", async function () {
+  if (!this.createdBy) return;
+
+  const User = mongoose.model("user");
+
+  const creator = await User.findById(this.createdBy).select("_id");
+
+  if (!creator) {
+    throw new Error(
+      "createdBy does not reference an existing user"
+    );
+  }
+});
+
+const CertificateTemplate = mongoose.model(
+  "certificate_template",
+  certificateTemplateSchema
+);
+
+export default CertificateTemplate;

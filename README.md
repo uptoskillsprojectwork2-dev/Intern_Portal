@@ -457,3 +457,24 @@ Since certificates are official documents, keep these guardrails non-negotiable:
 - **Validate before render.** Every factual field the AI outputs (names, dates, codes, department) must be checked against the original JSON payload it was given. Mismatches get flagged to HR, never silently rendered.
 - **Log everything.** Store the exact JSON input, the prompt version used, and the AI's raw output in `aiLogs` for every certificate — this is your audit trail if a certificate is ever disputed.
 - **Deterministic settings.** Use a low temperature (e.g., 0–0.3) for the LLM call so wording stays consistent and predictable across similar requests, rather than creative/variable.
+
+## Certificate Engine — Days 1 & 2
+
+The certificate-engine work from the six-day task plan is now wired into the existing portal:
+
+- `CertificateTemplate` stores `name`, `certificateType`, `htmlContent`, `isActive`, and `createdBy`.
+- Admin template endpoints are available under `/api/admin/templates` for create, list, edit, and activate/deactivate.
+- `certificate.service.js` creates an HTML-only draft from an approved certificate request using the active matching Handlebars template.
+- Drafts are stored in `certificates` with `status: "draft"`; PDF rendering and email delivery are intentionally left for Day 4.
+- Admin dashboard includes a Templates section and a Day 2 certificate review-page shell at `/admin/certificates/:id/review`.
+
+### Day 2 backend smoke test
+
+After installing backend dependencies and configuring MongoDB, run:
+
+```bash
+cd backend
+node scripts/test-certificate-draft.js <approved-request-id>
+```
+
+The script prints the saved certificate ID, request/template references, draft status, and merged HTML so the Handlebars output can be checked before frontend wiring on Day 3.

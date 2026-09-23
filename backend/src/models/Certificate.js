@@ -1,125 +1,65 @@
 import mongoose from "mongoose";
 
 const certificateSchema = new mongoose.Schema(
-{
-    certificateNumber: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true
+  {
+    requestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "certificate_request",
+      required: true,
+      unique: true,
+      index: true,
     },
 
     userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
-        required: true,
-        index: true
-    },
-
-    internCode: {
-        type: String,
-        required: true,
-        index: true
-    },
-
-    internshipId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "internship",
-        index: true
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      required: true,
+      index: true,
     },
 
     templateId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "certificate_template"
-    },
-
-    certificateType: {
-        type: String,
-        required: true,
-        trim: true
-    },
-
-    domain: {
-        type: String,
-        trim: true
-    },
-
-    startDate: {
-        type: Date
-    },
-
-    endDate: {
-        type: Date
-    },
-
-    issuedDate: {
-        type: Date,
-        default: Date.now
-    },
-
-    status: {
-        type: String,
-        enum: ["draft", "finalized", "generated", "issued", "revoked", "expired"],
-        default: "draft",
-        index: true
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "certificate_template",
+      required: true,
+      index: true,
     },
 
     htmlContent: {
-        type: String
+      type: String,
+      required: true,
     },
 
-    pdfPath: {
-        type: String
+    status: {
+      type: String,
+      enum: ["draft", "finalized"],
+      default: "draft",
+      index: true,
     },
 
-    verificationCode: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
-        index: true
+    fileUrl: {
+      type: String,
     },
 
-    qrCodePath: {
-        type: String
+    emailSentAt: {
+      type: Date,
     },
 
-    generatedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user"
-    }
-},
-{
-    timestamps: true
-});
-
-certificateSchema.pre("save", async function () {
-    const userModel = mongoose.model("user");
-
-    const user = await userModel.findById(this.userId);
-    if (!user) throw new Error("userId does not reference an existing user");
-
-    if (this.internshipId && mongoose.models.internship) {
-        const internshipModel = mongoose.model("internship");
-        const internship = await internshipModel.findById(this.internshipId);
-        if (!internship) throw new Error("internshipId does not reference an existing internship");
-    }
-
-    if (this.templateId) {
-        const certificateTemplateModel = mongoose.model("certificate_template");
-        const template = await certificateTemplateModel.findById(this.templateId);
-        if (!template) throw new Error("templateId does not reference an existing certificate template");
-    }
-
-    if (this.generatedBy) {
-        const generator = await userModel.findById(this.generatedBy);
-        if (!generator) throw new Error("generatedBy does not reference an existing user");
-    }
-});
-
-const certificateModel = mongoose.model(
-    "certificate",
-    certificateSchema
+    // Optional metadata retained for the later PDF/finalization phase.
+    certificateNumber: { type: String, unique: true, sparse: true, trim: true },
+    internCode: { type: String, index: true },
+    certificateType: { type: String, trim: true },
+    domain: { type: String, trim: true },
+    startDate: { type: Date },
+    endDate: { type: Date },
+    issuedDate: { type: Date },
+    pdfPath: { type: String },
+    verificationCode: { type: String, unique: true, sparse: true, trim: true, index: true },
+    qrCodePath: { type: String },
+    generatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "user" },
+  },
+  { timestamps: true }
 );
 
-export default certificateModel;
+const Certificate = mongoose.model("certificate", certificateSchema);
+
+export default Certificate;

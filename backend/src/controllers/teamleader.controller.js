@@ -1,9 +1,6 @@
-import mongoose from 'mongoose';
 import User from '../models/User.js';
 import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
-import Certificate from '../models/Certificate.js';
-import { logAudit } from '../utils/auditLogger.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -14,7 +11,7 @@ export async function createIntern(req, res) {
 			return res.status(403).json({ message: 'Team leader access required' });
 		}
 
-		const existingUser = await User.findOne({ email: email.toLowerCase() });
+		const existingUser = await User.findOne({ email });
 		if (existingUser) {
 			return res.status(409).json({ message: 'user already exists' });
 		}
@@ -22,7 +19,7 @@ export async function createIntern(req, res) {
 		const internCode = await generateInternCode();
 		const user = await User.create({
 			fullName,
-			email: email.toLowerCase(),
+			email,
 			mobileNo,
 			internCode,
 			domain,
@@ -31,8 +28,7 @@ export async function createIntern(req, res) {
 			role: 'intern',
 			password: internCode,
 			internshipDetails: {
-				teamLeader: teamLeader._id,
-				teamleaderEmail: teamLeader.email.toLowerCase(),
+				teamleaderEmail: teamLeader.email,
 				status: 'ongoing',
 				createdBy: teamLeader._id,
 			},
@@ -49,185 +45,19 @@ export async function createIntern(req, res) {
 
 export async function getInternsForTL(req, res) {
 	try {
-		const tlId = req.user.id;
-		const tlEmail = req.user.email?.toLowerCase();
-
-		const filter = {
+		const interns = await User.find({
 			role: 'intern',
-			$or: [
-				{ 'internshipDetails.teamLeader': tlId },
-				{ 'internshipDetails.teamleaderEmail': tlEmail }
-			]
-		};
-
-		if (req.query.search) {
-			const s = req.query.search.trim();
-			filter.$and = [
-				{
-					$or: [
-						{ fullName: { $regex: s, $options: 'i' } },
-						{ email: { $regex: s, $options: 'i' } },
-						{ internCode: { $regex: s, $options: 'i' } },
-						{ domain: { $regex: s, $options: 'i' } }
-					]
-				}
-			];
-		}
-
-		if (req.query.status) {
-			filter['internshipDetails.status'] = req.query.status;
-		}
-
-		const interns = await User.find(filter)
-			.select('-password -resetPasswordToken -resetPasswordExpires')
+			'internshipDetails.teamleaderEmail': req.user.email.toLowerCase(),
+		})
+			.select('-password')
 			.sort({ createdAt: -1 });
 
 		return res.status(200).json({
 			message: 'Interns fetched successfully',
 			interns,
-			total: interns.length
 		});
 	} catch (error) {
 		return res.status(500).json({ message: 'internal server error' });
-	}
-}
-
-export async function getAssignedInternById(req, res) {
-	try {
-		const { id } = req.params;
-		if (!mongoose.Types.ObjectId.isValid(id)) {
-			return res.status(400).json({ message: 'Invalid intern ID format' });
-		}
-
-		const intern = await User.findOne({ _id: id, role: 'intern' })
-			.select('-password -resetPasswordToken -resetPasswordExpires');
-
-		if (!intern) {
-			return res.status(404).json({ message: 'Intern not found' });
-		}
-
-		// Server-side ownership check
-		const tlId = req.user.id.toString();
-		const tlEmail = req.user.email?.toLowerCase();
-		const isAssigned =
-			(intern.internshipDetails?.teamLeader && intern.internshipDetails.teamLeader.toString() === tlId) ||
-			(intern.internshipDetails?.teamleaderEmail && intern.internshipDetails.teamleaderEmail.toLowerCase() === tlEmail);
-
-		if (!isAssigned) {
-			return res.status(403).json({ message: 'Access denied: Intern is not assigned to you' });
-		}
-
-		const requests = await CertificateRequest.find({ userId: intern._id }).sort({ requestedAt: -1 });
-		const certificates = await Certificate.find({ userId: intern._id, status: 'finalized' })
-			.select('-htmlContent')
-			.sort({ createdAt: -1 });
-
-		return res.status(200).json({
-			message: 'Intern fetched successfully',
-			intern,
-			requests,
-			certificates
-		});
-	} catch (error) {
-		return res.status(500).json({ message: 'Server error', error: error.message });
-	}
-}
-
-export async function updateAssignedIntern(req, res) {
-	try {
-		const { id } = req.params;
-		if (!mongoose.Types.ObjectId.isValid(id)) {
-			return res.status(400).json({ message: 'Invalid intern ID format' });
-		}
-
-		// Rejection of ownership or role hijacking attempts
-		if (
-			req.body.teamLeaderId !== undefined ||
-			req.body.teamLeader !== undefined ||
-			req.body.teamleaderEmail !== undefined ||
-			req.body.role !== undefined ||
-			req.body.password !== undefined ||
-			req.body.email !== undefined ||
-			req.body.internCode !== undefined
-		) {
-			return res.status(403).json({ message: 'Team leaders cannot reassign interns, modify roles, or alter security credentials' });
-		}
-
-		const intern = await User.findOne({ _id: id, role: 'intern' });
-		if (!intern) {
-			return res.status(404).json({ message: 'Intern not found' });
-		}
-
-		// Server-side ownership check
-		const tlId = req.user.id.toString();
-		const tlEmail = req.user.email?.toLowerCase();
-		const isAssigned =
-			(intern.internshipDetails?.teamLeader && intern.internshipDetails.teamLeader.toString() === tlId) ||
-			(intern.internshipDetails?.teamleaderEmail && intern.internshipDetails.teamleaderEmail.toLowerCase() === tlEmail);
-
-		if (!isAssigned) {
-			return res.status(403).json({ message: 'Access denied: Intern is not assigned to you' });
-		}
-
-		// Allowlist validation
-		const {
-			fullName,
-			mobileNo,
-			domain,
-			startDate,
-			endDate,
-			collegeName,
-			degree,
-			internshipTitle,
-			mentor,
-			performanceRemarks,
-			status
-		} = req.body;
-
-		const effectiveStart = startDate !== undefined ? new Date(startDate) : intern.startDate;
-		const effectiveEnd = endDate !== undefined ? new Date(endDate) : intern.endDate;
-		if (effectiveStart && effectiveEnd && effectiveStart > effectiveEnd) {
-			return res.status(400).json({ message: 'Start date cannot be after end date' });
-		}
-
-		if (status !== undefined && !['upcoming', 'ongoing', 'completed', 'cancelled'].includes(status)) {
-			return res.status(400).json({ message: 'Invalid status value. Must be upcoming, ongoing, completed, or cancelled' });
-		}
-
-		const changes = {};
-		if (fullName !== undefined) { changes.fullName = { from: intern.fullName, to: fullName }; intern.fullName = fullName; }
-		if (mobileNo !== undefined) { changes.mobileNo = { from: intern.mobileNo, to: mobileNo }; intern.mobileNo = mobileNo; }
-		if (domain !== undefined) { changes.domain = { from: intern.domain, to: domain }; intern.domain = domain; }
-		if (startDate !== undefined) { changes.startDate = { from: intern.startDate, to: startDate }; intern.startDate = startDate; }
-		if (endDate !== undefined) { changes.endDate = { from: intern.endDate, to: endDate }; intern.endDate = endDate; }
-
-		if (!intern.internshipDetails) intern.internshipDetails = {};
-		if (collegeName !== undefined) { changes.collegeName = { from: intern.internshipDetails.collegeName, to: collegeName }; intern.internshipDetails.collegeName = collegeName; }
-		if (degree !== undefined) { changes.degree = { from: intern.internshipDetails.degree, to: degree }; intern.internshipDetails.degree = degree; }
-		if (internshipTitle !== undefined) { changes.internshipTitle = { from: intern.internshipDetails.internshipTitle, to: internshipTitle }; intern.internshipDetails.internshipTitle = internshipTitle; }
-		if (mentor !== undefined) { changes.mentor = { from: intern.internshipDetails.mentor, to: mentor }; intern.internshipDetails.mentor = mentor; }
-		if (performanceRemarks !== undefined) { changes.performanceRemarks = { from: intern.internshipDetails.performanceRemarks, to: performanceRemarks }; intern.internshipDetails.performanceRemarks = performanceRemarks; }
-		if (status !== undefined) { changes.status = { from: intern.internshipDetails.status, to: status }; intern.internshipDetails.status = status; }
-
-		await intern.save();
-
-		await logAudit({
-			userId: req.user.id,
-			action: 'UPDATE_ASSIGNED_INTERN',
-			entityType: 'User',
-			entityId: intern._id,
-			description: changes,
-			req
-		});
-
-		const sanitizedIntern = await User.findById(intern._id).select('-password -resetPasswordToken -resetPasswordExpires');
-
-		return res.status(200).json({
-			message: 'Intern updated successfully',
-			intern: sanitizedIntern
-		});
-	} catch (error) {
-		return res.status(500).json({ message: 'Server error', error: error.message });
 	}
 }
 

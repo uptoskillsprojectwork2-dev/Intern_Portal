@@ -1,213 +1,300 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllCertificates, downloadAdminCertificate } from '../services/admin.service';
-import Toast from '../../../shared/components/Toast';
+import { getAllCertificates } from '../services/admin.service';
 import './CertificatesOverview.css';
 
-const formatDate = (date) => {
-  if (!date) return '—';
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
+const API_BASE_URL = 'http://localhost:3000';
+
+const formatDate = (date) =>
+  date
+    ? new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : '—';
+
+const getFileUrl = (fileUrl) => {
+  if (!fileUrl) {
+    return '';
+  }
+
+  if (
+    fileUrl.startsWith('http://') ||
+    fileUrl.startsWith('https://')
+  ) {
+    return fileUrl;
+  }
+
+  return `${API_BASE_URL}${fileUrl}`;
 };
 
-export default function CertificatesOverview() {
+const CertificatesOverview = () => {
   const navigate = useNavigate();
-  const [certificates, setCertificates] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [downloadingId, setDownloadingId] = useState(null);
-  const [toast, setToast] = useState(null);
 
-  const fetchCertificates = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const [certificates, setCertificates] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const loadCertificates = async () => {
     try {
-      const data = await getAllCertificates();
-      setCertificates(data.certificates || []);
+      setLoading(true);
+      setError('');
+
+      const response = await getAllCertificates();
+
+      setCertificates(response?.certificates || []);
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to load certificates');
+      setError(
+        err.message || 'Unable to load certificates.'
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     let isMounted = true;
-    getAllCertificates()
-      .then((data) => {
+
+    const fetchCertificates = async () => {
+      try {
+        const response = await getAllCertificates();
+
         if (isMounted) {
-          setCertificates(data.certificates || []);
-          setLoading(false);
+          setCertificates(
+            response?.certificates || []
+          );
+          setError('');
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (isMounted) {
-          setError(err.response?.data?.message || err.message || 'Failed to load certificates');
-          setLoading(false);
+          setError(
+            err.message ||
+              'Unable to load certificates.'
+          );
         }
-      });
+      } finally {
+        if (isMounted) {
+          setInitialLoading(false);
+        }
+      }
+    };
+
+    fetchCertificates();
 
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const handleDownload = async (cert) => {
-    if (!cert._id || downloadingId) return;
-
-    setDownloadingId(cert._id);
-    try {
-      const safeName = `${(cert.certificateNumber || 'Certificate').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
-      await downloadAdminCertificate(cert._id, safeName);
-      setToast({ type: 'success', message: `Downloaded ${cert.certificateNumber} successfully.` });
-    } catch (err) {
-      setToast({
-        type: 'error',
-        message: err.response?.data?.message || err.message || 'Unable to download certificate PDF.'
-      });
-    } finally {
-      setDownloadingId(null);
-      setTimeout(() => setToast(null), 5000);
-    }
-  };
-
   return (
-    <section className="certificates-overview-panel" aria-labelledby="cert-overview-title">
-      <div className="certificates-overview-heading">
+    <section
+      className="certificates-overview"
+      aria-labelledby="certificates-overview-title"
+    >
+      <div className="certificates-overview-header">
         <div>
-          <p className="admin-eyebrow">AUDIT & COMPLIANCE</p>
-          <h2 id="cert-overview-title">Issued Certificates Overview</h2>
-          <p className="cert-overview-subtext">
-            Oversight of all certificates generated and finalized across the organization.
+          <p className="certificates-overview-eyebrow">
+            CERTIFICATE OVERSIGHT
+          </p>
+
+          <h2 id="certificates-overview-title">
+            Generated certificates
+          </h2>
+
+          <p>
+            Review certificate records and access
+            finalized PDF files.
           </p>
         </div>
-        <div className="cert-overview-actions">
-          <span className="cert-overview-count">{certificates.length} Total</span>
-          <button
-            type="button"
-            className="cert-overview-refresh"
-            onClick={fetchCertificates}
-            disabled={loading}
-          >
-            {loading ? 'Refreshing…' : '↻ Refresh'}
-          </button>
-        </div>
+
+        <button
+          type="button"
+          className="certificates-overview-refresh"
+          onClick={loadCertificates}
+          disabled={loading || initialLoading}
+        >
+          {loading || initialLoading
+            ? 'Refreshing…'
+            : 'Refresh'}
+        </button>
       </div>
 
-      {toast && (
-        <div className="cert-overview-toast">
-          <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />
+      {initialLoading && (
+        <div className="certificates-overview-state">
+          Loading certificates…
         </div>
       )}
 
-      {loading && (
-        <div className="cert-overview-state" role="status">
-          <div className="cert-overview-spinner" aria-hidden="true" />
-          <p>Loading certificate records…</p>
+      {!initialLoading && error && (
+        <div
+          className="certificates-overview-state certificates-overview-error"
+          role="alert"
+        >
+          <p>{error}</p>
+
+          <button
+            type="button"
+            className="certificates-overview-retry"
+            onClick={loadCertificates}
+            disabled={loading}
+          >
+            {loading ? 'Trying…' : 'Try again'}
+          </button>
         </div>
       )}
 
-      {!loading && error && (
-        <div className="cert-overview-error" role="alert">
-          <p>⚠ {error}</p>
-          <button type="button" onClick={fetchCertificates}>Retry</button>
-        </div>
-      )}
+      {!initialLoading &&
+        !error &&
+        certificates.length === 0 && (
+          <div className="certificates-overview-state">
+            No certificates have been generated yet.
+          </div>
+        )}
 
-      {!loading && !error && certificates.length === 0 && (
-        <div className="cert-overview-empty">
-          <div className="cert-empty-icon" aria-hidden="true">📜</div>
-          <h3>No Certificates Generated Yet</h3>
-          <p>When certificate drafts are approved and finalized, their official records will appear here.</p>
-        </div>
-      )}
+      {!initialLoading &&
+        !error &&
+        certificates.length > 0 && (
+          <div className="certificates-table-wrap">
+            <table className="certificates-table">
+              <thead>
+                <tr>
+                  <th>Intern</th>
+                  <th>Certificate</th>
+                  <th>Request</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
 
-      {!loading && !error && certificates.length > 0 && (
-        <div className="cert-overview-table-wrap">
-          <table className="cert-overview-table">
-            <thead>
-              <tr>
-                <th>Certificate No.</th>
-                <th>Intern Name</th>
-                <th>Code</th>
-                <th>Type</th>
-                <th>Issued Date</th>
-                <th>Status</th>
-                <th>PDF Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {certificates.map((cert) => {
-                const isFinalized = cert.status === 'finalized';
-                const hasPdf = Boolean(cert.pdfPath) && isFinalized;
-                const isDownloading = downloadingId === cert._id;
-                const intern = cert.userId || {};
+              <tbody>
+                {certificates.map((certificate) => {
+                  const user = certificate.userId || {};
+                  const request = certificate.requestId || {};
 
-                return (
-                  <tr key={cert._id}>
-                    <td>
-                      <code className="cert-num-code">{cert.certificateNumber}</code>
-                    </td>
-                    <td>
-                      <strong>{intern.fullName || '—'}</strong>
-                    </td>
-                    <td>
-                      <span className="cert-intern-code">{cert.internCode || intern.internCode || '—'}</span>
-                    </td>
-                    <td>
-                      <span className="cert-type-text">
-                        {cert.certificateType ? cert.certificateType.replace(/_/g, ' ') : '—'}
-                      </span>
-                    </td>
-                    <td>{formatDate(cert.issuedDate || cert.createdAt)}</td>
-                    <td>
-                      <span className={`cert-status-tag ${isFinalized ? 'is-finalized' : 'is-draft'}`}>
-                        {cert.status ? cert.status.toUpperCase() : 'UNKNOWN'}
-                      </span>
-                    </td>
-                    <td>
-                      {hasPdf ? (
-                        <button
-                          type="button"
-                          className="cert-pdf-btn"
-                          onClick={() => handleDownload(cert)}
-                          disabled={isDownloading}
-                          title="Download official finalized PDF"
-                        >
-                          {isDownloading ? (
-                            <>
-                              <span className="cert-mini-spinner" aria-hidden="true" />
-                              <span>Downloading…</span>
-                            </>
-                          ) : (
-                            <span>📥 Download PDF</span>
-                          )}
-                        </button>
-                      ) : cert.status === 'draft' ? (
-                        <button
-                          type="button"
-                          className="cert-review-link-btn"
-                          onClick={() => navigate(`/admin/certificates/${cert._id}/review`)}
-                          title="Open draft in review editor"
-                        >
-                          Review Draft →
-                        </button>
-                      ) : (
-                        <span className="cert-pdf-unavailable" title="PDF is not available">
-                          Unavailable
+                  const fileUrl = getFileUrl(
+                    certificate.fileUrl
+                  );
+
+                  const certificateId =
+                    certificate._id ||
+                    certificate.id;
+
+                  return (
+                    <tr key={certificateId}>
+                      <td>
+                        <div className="certificate-intern">
+                          <strong>
+                            {user.fullName ||
+                              'Unknown intern'}
+                          </strong>
+
+                          <span>
+                            {user.email ||
+                              'No email'}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td>
+                        <div className="certificate-type">
+                          <strong>
+                            {certificate.certificateType
+                              ?.replaceAll(
+                                '_',
+                                ' '
+                              ) || '—'}
+                          </strong>
+
+                          <span>
+                            {certificate.internCode ||
+                              user.internCode ||
+                              '—'}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td>
+                        <span className="certificate-request-number">
+                          {request.requestNumber ||
+                            '—'}
                         </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      </td>
+
+                      <td>
+                        <span
+                          className={`certificate-status ${
+                            certificate.status ||
+                            'unknown'
+                          }`}
+                        >
+                          {certificate.status ||
+                            'unknown'}
+                        </span>
+                      </td>
+
+                      <td>
+                        {formatDate(
+                          certificate.createdAt
+                        )}
+                      </td>
+
+                      <td>
+                        <div className="certificate-actions">
+                          {certificate.status === 'draft' && (
+                            <button
+                              type="button"
+                              className="certificate-action review"
+                              onClick={() =>
+                                navigate(
+                                  `/admin/certificates/${certificateId}/review`
+                                )
+                              }
+                            >
+                              Review / Edit
+                            </button>
+                          )}
+
+                          {fileUrl && (
+                            <>
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="certificate-action view"
+                              >
+                                View PDF
+                              </a>
+
+                              <a
+                                href={fileUrl}
+                                download
+                                className="certificate-action download"
+                              >
+                                Download
+                              </a>
+                            </>
+                          )}
+
+                          {!fileUrl &&
+                            certificate.status !== 'draft' && (
+                              <span className="certificate-no-file">
+                                No PDF
+                              </span>
+                            )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
     </section>
   );
-}
+};
+
+export default CertificatesOverview;

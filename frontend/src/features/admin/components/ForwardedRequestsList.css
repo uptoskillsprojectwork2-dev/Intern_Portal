@@ -13,16 +13,8 @@
 .forwarded-request-reason { max-width: 600px; color: var(--muted); line-height: 1.4; }
 .forwarded-request-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 170px; }
 .forwarded-request-actions button { padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: transparent; font-size: 12px; font-weight: 800; cursor: pointer; }
-.forwarded-request-actions .forwarded-review-button { border-color: var(--accent); color: var(--accent); }
-.forwarded-request-actions .forwarded-review-button:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .forwarded-request-actions .forwarded-approve-button { border-color: var(--success); color: var(--success); }
 .forwarded-request-actions .forwarded-reject-button { border-color: var(--error); color: var(--error); }
-.forwarded-request-actions .forwarded-retry-button { border-color: #eab308; color: #eab308; background: rgba(234, 179, 8, 0.1); }
-.forwarded-request-actions .forwarded-retry-button:hover:not(:disabled) { background: #eab308; color: #000; }
-.forwarded-status-tag { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 999px; font-size: 10px; font-weight: 800; }
-.forwarded-status-tag.approved { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-.forwarded-status-tag.processing { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
-.forwarded-toast-wrap { margin-bottom: 16px; }
 .forwarded-request-actions button:disabled { opacity: .6; cursor: not-allowed; }
 .forwarded-reject-form { display: grid; grid-template-columns: 1fr auto auto; gap: 7px; width: 100%; }
 .forwarded-reject-form input { min-width: 0; padding: 10px 11px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--card); font: inherit; }

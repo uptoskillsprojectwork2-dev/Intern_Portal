@@ -1,11 +1,11 @@
 import express from 'express';
 import verifyAuth from '../middlewares/verifyAuth.js';
 import {
-  getMyRequests,
-  getProfile,
-  submitCertificateRequest,
-  getCertificateForRequest,
-  downloadCertificateForRequest
+	getMyRequests,
+	getProfile,
+	submitCertificateRequest,
+	getCertificateForRequest,
+	changePassword
 } from '../controllers/intern.controller.js';
 
 const internRouter = express.Router();
@@ -20,12 +20,12 @@ internRouter.use(verifyAuth, (req, res, next) => {
 
 internRouter.get('/profile', getProfile);
 
+internRouter.put('/change-password', changePassword);
+
 internRouter.post('/request-certificate', submitCertificateRequest);
 
 internRouter.get('/requests', getMyRequests);
 
-// Day 5 Intern Certificate Fetch and Secure Download routes
 internRouter.get('/requests/:id/certificate', getCertificateForRequest);
-internRouter.get('/requests/:id/certificate/download', downloadCertificateForRequest);
 
 export default internRouter;

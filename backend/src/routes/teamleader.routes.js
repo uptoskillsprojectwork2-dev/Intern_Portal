@@ -1,14 +1,7 @@
 import express from 'express';
 import { registerValidator } from '../validators/auth.validator.js';
 import verifyAuth from '../middlewares/verifyAuth.js';
-import {
-	createIntern,
-	getInternsForTL,
-	getAssignedInternById,
-	updateAssignedIntern,
-	getRequestsForReview,
-	reviewRequestAsTL
-} from '../controllers/teamleader.controller.js';
+import { createIntern, getInternsForTL, getRequestsForReview, reviewRequestAsTL } from '../controllers/teamleader.controller.js';
 
 const teamleaderRouter = express.Router();
 
@@ -23,8 +16,6 @@ teamleaderRouter.use(verifyAuth, (req, res, next) => {
 teamleaderRouter.post('/create-intern', registerValidator, createIntern);
 
 teamleaderRouter.get('/interns', getInternsForTL);
-teamleaderRouter.get('/interns/:id', getAssignedInternById);
-teamleaderRouter.patch('/interns/:id', updateAssignedIntern);
 
 teamleaderRouter.get('/requests-for-review', getRequestsForReview);
 

@@ -1,129 +1,223 @@
 import { useState } from 'react';
 import useCertificateRequests from '../hooks/useCertificateRequests';
+import { getCertificateForRequest } from '../services/intern.api';
 import StatusBadge from '../../shared/components/StatusBadge';
-import Toast from '../../../shared/components/Toast';
-import { getCertificateForRequest, downloadCertificatePdf } from '../services/intern.service';
 import './MyRequestsList.css';
 
-const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+const formatDate = (date) =>
+  date
+    ? new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : '—';
 
 export default function MyRequestsList() {
-  const { requests, loading, error, refetch } = useCertificateRequests();
+  const { requests, loading, error, refetch } =
+    useCertificateRequests();
+
   const [downloadingId, setDownloadingId] = useState(null);
-  const [downloadError, setDownloadError] = useState(null);
-  const [downloadSuccess, setDownloadSuccess] = useState(null);
+  const [downloadError, setDownloadError] = useState('');
 
-  const handleDownload = async (request) => {
-    const id = request._id || request.id;
-    if (!id || downloadingId) return;
-
-    setDownloadingId(id);
-    setDownloadError(null);
-    setDownloadSuccess(null);
-
+  const handleDownloadCertificate = async (requestId) => {
     try {
-      // 1. Fetch certificate metadata to verify backend confirms finalized certificate is available
-      const data = await getCertificateForRequest(id);
-      const certificate = data.certificate;
+      setDownloadingId(requestId);
+      setDownloadError('');
 
-      if (!certificate || certificate.status !== 'finalized') {
-        throw new Error('Certificate is not finalized or available for download yet.');
+      const response =
+        await getCertificateForRequest(requestId);
+
+      const fileUrl =
+        response?.certificate?.fileUrl;
+
+      if (!fileUrl) {
+        throw new Error(
+          'Certificate file is not available'
+        );
       }
 
-      // 2. Download the actual persisted PDF
-      const safeFileName = `${(certificate.certificateNumber || request.requestNumber || 'Certificate').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
-      await downloadCertificatePdf(id, safeFileName);
+      const downloadUrl = new URL(
+        fileUrl,
+        'http://localhost:3000'
+      ).href;
 
-      setDownloadSuccess(`Downloaded certificate ${certificate.certificateNumber || ''} successfully.`);
-      setTimeout(() => setDownloadSuccess(null), 4000);
+      window.open(
+        downloadUrl,
+        '_blank',
+        'noopener,noreferrer'
+      );
     } catch (err) {
-      setDownloadError(err.response?.data?.message || err.message || 'Unable to download certificate. Please try again.');
-      setTimeout(() => setDownloadError(null), 5000);
+      setDownloadError(
+        err.response?.data?.message ||
+          err.message ||
+          'Unable to download certificate'
+      );
     } finally {
       setDownloadingId(null);
     }
   };
 
   return (
-    <section className="requests-panel" aria-labelledby="my-requests-title">
+    <section
+      className="requests-panel"
+      aria-labelledby="my-requests-title"
+    >
       <div className="requests-panel-heading">
         <div>
-          <p className="request-eyebrow">REQUEST HISTORY</p>
-          <h2 id="my-requests-title">My certificate requests</h2>
+          <p className="request-eyebrow">
+            REQUEST HISTORY
+          </p>
+
+          <h2 id="my-requests-title">
+            My certificate requests
+          </h2>
         </div>
-        <button className="requests-refresh" type="button" onClick={refetch}>Refresh</button>
+
+        <button
+          className="requests-refresh"
+          type="button"
+          onClick={refetch}
+          disabled={loading}
+        >
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
 
-      {downloadSuccess && (
-        <div className="requests-toast-wrap">
-          <Toast type="success" message={downloadSuccess} onClose={() => setDownloadSuccess(null)} />
-        </div>
+      {loading && (
+        <p
+          className="requests-state"
+          role="status"
+          aria-live="polite"
+        >
+          Loading requests…
+        </p>
       )}
 
-      {downloadError && (
-        <div className="requests-toast-wrap">
-          <Toast type="error" message={downloadError} onClose={() => setDownloadError(null)} />
-        </div>
+      {!loading && error && (
+        <p
+          className="requests-state requests-error"
+          role="alert"
+        >
+          {error}
+        </p>
       )}
 
-      {loading && <p className="requests-state">Loading requests…</p>}
-      {!loading && error && <p className="requests-state requests-error" role="alert">{error}</p>}
-      {!loading && !error && !requests.length && <p className="requests-state">No requests yet</p>}
-      {!loading && !error && requests.length > 0 && (
-        <div className="requests-table-wrap">
-          <table className="requests-table">
-            <thead>
-              <tr>
-                <th>Request</th>
-                <th>Certificate</th>
-                <th>Status</th>
-                <th>Requested</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((request) => {
-                const id = request._id || request.id || request.requestNumber;
-                const isCompleted = request.status === 'completed';
-                const isDownloading = downloadingId === (request._id || request.id);
-
-                return (
-                  <tr key={id}>
-                    <td>{request.requestNumber || '—'}</td>
-                    <td>{request.certificateType?.replaceAll('_', ' ') || '—'}</td>
-                    <td><StatusBadge status={request.status} /></td>
-                    <td>{formatDate(request.requestedAt || request.createdAt)}</td>
-                    <td>
-                      {isCompleted ? (
-                        <button
-                          type="button"
-                          className="request-download-btn"
-                          onClick={() => handleDownload(request)}
-                          disabled={isDownloading}
-                          title="Download finalized certificate PDF"
-                        >
-                          {isDownloading ? (
-                            <>
-                              <span className="download-spinner" aria-hidden="true" />
-                              <span>Downloading…</span>
-                            </>
-                          ) : (
-                            <span>📥 Download Certificate</span>
-                          )}
-                        </button>
-                      ) : (
-                        <span className="request-action-disabled" title="Available once finalized by admin">
-                          —
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {!loading && !error && downloadError && (
+        <p
+          className="requests-state requests-error"
+          role="alert"
+        >
+          {downloadError}
+        </p>
       )}
+
+      {!loading &&
+        !error &&
+        !requests.length && (
+          <p className="requests-state">
+            No requests yet
+          </p>
+        )}
+
+      {!loading &&
+        !error &&
+        requests.length > 0 && (
+          <div className="requests-table-wrap">
+            <table className="requests-table">
+              <thead>
+                <tr>
+                  <th>Request</th>
+                  <th>Certificate</th>
+                  <th>Status</th>
+                  <th>Requested</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {requests.map((request) => {
+                  const requestId =
+                    request._id ||
+                    request.id ||
+                    request.requestNumber;
+
+                  const isCompleted =
+                    request.status === 'completed';
+
+                  const isProcessing =
+                    request.status === 'processing' ||
+                    request.status === 'approved';
+
+                  const isRejected =
+                    request.status === 'rejected';
+
+                  const isDownloading =
+                    downloadingId === requestId;
+
+                  return (
+                    <tr key={requestId}>
+                      <td>
+                        {request.requestNumber || '—'}
+                      </td>
+
+                      <td>
+                        {request.certificateType
+                          ?.replaceAll('_', ' ') || '—'}
+                      </td>
+
+                      <td>
+                        <StatusBadge
+                          status={request.status}
+                        />
+                      </td>
+
+                      <td>
+                        {formatDate(
+                          request.requestedAt ||
+                            request.createdAt
+                        )}
+                      </td>
+
+                      <td>
+                        {isCompleted ? (
+                          <button
+                            type="button"
+                            className="requests-refresh"
+                            onClick={() =>
+                              handleDownloadCertificate(
+                                request._id
+                              )
+                            }
+                            disabled={isDownloading}
+                          >
+                            {isDownloading
+                              ? 'Opening…'
+                              : 'Download Certificate'}
+                          </button>
+                        ) : isProcessing ? (
+                          <span
+                            aria-live="polite"
+                          >
+                            Processing certificate…
+                          </span>
+                        ) : isRejected ? (
+                          <span>
+                            Request rejected
+                          </span>
+                        ) : (
+                          <span>
+                            Awaiting review
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
     </section>
   );
-}
+}

@@ -1,0 +1,74 @@
+.templates-section {
+  margin-top: 24px;
+}
+
+.templates-section h2 {
+  margin-bottom: 16px;
+}
+
+.template-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.template-form,
+.template-list {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.template-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.template-form input,
+.template-form select,
+.template-form textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.template-form textarea {
+  min-height: 180px;
+  resize: vertical;
+}
+
+.template-form button {
+  width: fit-content;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.template-item {
+  padding: 14px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.template-item:last-child {
+  border-bottom: none;
+}
+
+.template-item h3 {
+  margin: 0 0 6px;
+}
+
+.template-item p {
+  margin: 4px 0;
+}
+
+.template-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}

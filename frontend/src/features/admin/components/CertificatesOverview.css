@@ -1,233 +1,216 @@
-.certificates-overview-panel {
-  max-width: 1100px;
-  margin: 28px auto 0;
-  padding: 24px;
+.certificates-overview {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 20px;
   background: color-mix(in srgb, var(--card) 94%, transparent);
+  box-shadow: 0 18px 45px var(--shadow);
 }
 
-.certificates-overview-heading {
+.certificates-overview-header {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24px;
-  gap: 16px;
-}
-
-.cert-overview-subtext {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.cert-overview-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.cert-overview-count {
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.cert-overview-refresh {
-  padding: 7px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.cert-overview-refresh:hover:not(:disabled) {
-  color: var(--text);
-  border-color: var(--accent);
-}
-
-.cert-overview-toast {
-  margin-bottom: 16px;
-}
-
-.cert-overview-state,
-.cert-overview-empty {
-  padding: 48px 24px;
-  text-align: center;
-  color: var(--muted);
-}
-
-.cert-overview-spinner {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: cert-spin 0.75s linear infinite;
-  margin-bottom: 12px;
-}
-
-.cert-empty-icon {
-  font-size: 32px;
-  margin-bottom: 10px;
-}
-
-.cert-overview-error {
-  padding: 20px;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 10px;
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-  display: flex;
   justify-content: space-between;
-  align-items: center;
+  gap: 20px;
+  margin-bottom: 26px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
 }
 
-.cert-overview-error button {
-  padding: 6px 12px;
-  border: 1px solid #ef4444;
-  border-radius: 6px;
-  background: transparent;
-  color: #ef4444;
+.certificates-overview-eyebrow {
+  margin: 0 0 7px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.4px;
+}
+
+.certificates-overview-header h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.certificates-overview-header p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.certificates-overview-refresh,
+.certificates-overview-retry {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--input);
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
 }
 
-.cert-overview-table-wrap {
+.certificates-overview-refresh:hover,
+.certificates-overview-retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.certificates-overview-refresh:disabled,
+.certificates-overview-retry:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.certificates-overview-state {
+  padding: 34px 20px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 14px;
+}
+
+.certificates-overview-error {
+  color: var(--error);
+}
+
+.certificates-overview-error p {
+  margin: 0 0 14px;
+}
+
+.certificates-table-wrap {
+  width: 100%;
   overflow-x: auto;
 }
 
-.cert-overview-table {
+.certificates-table {
   width: 100%;
   border-collapse: collapse;
+  min-width: 900px;
+}
+
+.certificates-table th,
+.certificates-table td {
+  padding: 15px 14px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.certificates-table th {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--input) 70%, transparent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.certificates-table td {
+  color: var(--text);
   font-size: 13px;
 }
 
-.cert-overview-table th {
+.certificates-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.certificate-intern,
+.certificate-type {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.certificate-intern strong,
+.certificate-type strong {
+  font-size: 13px;
+}
+
+.certificate-intern span,
+.certificate-type span {
   color: var(--muted);
   font-size: 11px;
-  text-align: left;
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  padding: 12px 10px;
-  border-bottom: 1px solid var(--border);
 }
 
-.cert-overview-table td {
-  padding: 13px 10px;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.cert-num-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-weight: 700;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.cert-intern-code {
+.certificate-request-number {
+  font-family: monospace;
   font-size: 12px;
-  color: var(--muted);
 }
 
-.cert-type-text {
+.certificate-status {
+  display: inline-flex;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 12%, transparent);
+  font-size: 11px;
+  font-weight: 900;
   text-transform: capitalize;
 }
 
-.cert-status-tag {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
+.certificate-status.finalized {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
-.cert-status-tag.is-finalized {
-  background: rgba(34, 197, 94, 0.15);
-  color: #22c55e;
-}
-
-.cert-status-tag.is-draft {
-  background: rgba(234, 179, 8, 0.15);
-  color: #eab308;
-}
-
-.cert-pdf-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+.certificate-status.draft {
   color: var(--accent);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-.cert-pdf-btn:hover:not(:disabled) {
-  background: var(--accent);
-  color: #fff;
+.certificate-status.unknown {
+  color: var(--muted);
 }
 
-.cert-pdf-btn:disabled {
-  opacity: 0.6;
-  cursor: wait;
+.certificate-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
-.cert-review-link-btn {
+.certificate-action {
   display: inline-flex;
   align-items: center;
-  padding: 5px 10px;
+  justify-content: center;
+  padding: 8px 11px;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-  cursor: pointer;
+  border-radius: 9px;
+  color: var(--text);
+  background: var(--input);
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none;
 }
 
-.cert-review-link-btn:hover {
+.certificate-action:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-.cert-pdf-unavailable {
+.certificate-action.view {
+  background: color-mix(in srgb, var(--accent) 8%, var(--input));
+}
+
+.certificate-action.download {
+  background: color-mix(in srgb, var(--success) 8%, var(--input));
+}
+
+.certificate-no-file {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.cert-mini-spinner {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: cert-spin 0.75s linear infinite;
-}
+@media (max-width: 700px) {
+  .certificates-overview {
+    padding: 20px 16px;
+  }
 
-@keyframes cert-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@media (max-width: 768px) {
-  .certificates-overview-heading {
+  .certificates-overview-header {
     flex-direction: column;
+  }
+
+  .certificates-overview-refresh {
+    width: 100%;
   }
 }

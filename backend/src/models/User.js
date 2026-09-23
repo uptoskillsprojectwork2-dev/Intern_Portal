@@ -59,13 +59,7 @@ const userSchema = new mongoose.Schema(
             default: "intern"
         },
         internshipDetails:{
-            teamLeader: { type: mongoose.Schema.Types.ObjectId, ref: 'user', index: true },
             teamleaderEmail: { type: String, trim: true, lowercase: true },
-            mentor: { type: String, trim: true },
-            collegeName: { type: String, trim: true },
-            degree: { type: String, trim: true },
-            internshipTitle: { type: String, trim: true },
-            performanceRemarks: { type: String, trim: true },
             status: {
                 type: String,
                 enum: ["upcoming", "ongoing", "completed", "cancelled"],
