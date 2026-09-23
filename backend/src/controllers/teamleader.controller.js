@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Notification from '../models/Notification.js';
 import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 
@@ -112,5 +114,61 @@ export const reviewRequestAsTL = async (req, res) => {
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+/**
+ * Returns notifications targeted to the authenticated Team Leader.
+ * Strictly isolates results to req.user.id and sorts unread first, newest first.
+ */
+export const getTeamLeaderNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({ userId: req.user.id })
+      .sort({ isRead: 1, createdAt: -1 })
+      .limit(50);
+
+    return res.status(200).json({
+      message: 'Notifications fetched successfully',
+      notifications
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+/**
+ * Marks a notification as read, enforcing strict ownership by the authenticated Team Leader.
+ * Returns 403 Forbidden if another user attempts to mark it as read.
+ */
+export const markTeamLeaderNotificationAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid notification ID' });
+    }
+
+    const notification = await Notification.findById(id);
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    // Ownership check: must belong to the authenticated user
+    if (notification.userId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({
+        message: 'Forbidden: you cannot modify notifications belonging to another user'
+      });
+    }
+
+    notification.isRead = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    return res.status(200).json({
+      message: 'Notification marked as read',
+      notification
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };

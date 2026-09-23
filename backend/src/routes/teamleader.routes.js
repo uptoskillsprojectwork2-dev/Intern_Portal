@@ -1,7 +1,14 @@
 import express from 'express';
 import { registerValidator } from '../validators/auth.validator.js';
 import verifyAuth from '../middlewares/verifyAuth.js';
-import { createIntern, getInternsForTL, getRequestsForReview, reviewRequestAsTL } from '../controllers/teamleader.controller.js';
+import {
+	createIntern,
+	getInternsForTL,
+	getRequestsForReview,
+	reviewRequestAsTL,
+	getTeamLeaderNotifications,
+	markTeamLeaderNotificationAsRead
+} from '../controllers/teamleader.controller.js';
 
 const teamleaderRouter = express.Router();
 
@@ -20,5 +27,9 @@ teamleaderRouter.get('/interns', getInternsForTL);
 teamleaderRouter.get('/requests-for-review', getRequestsForReview);
 
 teamleaderRouter.patch('/requests/:id/review', reviewRequestAsTL);
+
+teamleaderRouter.get('/notifications', getTeamLeaderNotifications);
+
+teamleaderRouter.patch('/notifications/:id/read', markTeamLeaderNotificationAsRead);
 
 export default teamleaderRouter;
