@@ -25,14 +25,6 @@ export const registerValidator = [
     .isEmail()
     .withMessage('Email must be valid')
     .normalizeEmail(),
-
-  body('internCode')
-    .notEmpty()
-    .withMessage('Intern code is required')
-    .isLength({ min: 6 })
-    .withMessage('Intern code must be at least 6 characters long')
-    .matches(/\d/)
-    .withMessage('Intern code must contain at least one number'),
     
   validate,
 ];

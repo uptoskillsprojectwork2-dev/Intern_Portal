@@ -37,10 +37,38 @@ const userSchema = new mongoose.Schema(
                 return !this.internCode;
             }
         },
+<<<<<<< HEAD
+=======
+
+        resetPasswordToken: {
+            type: String
+        },
+
+        resetPasswordExpires: {
+            type: Date
+        },
+
+>>>>>>> origin/main
         role: {
             type: String,
             enum: ["admin", "intern", "teamleader"],
             default: "intern"
+        },
+        internshipDetails:{
+            teamLeader: { type: mongoose.Schema.Types.ObjectId, ref: 'user', index: true },
+            teamleaderEmail: { type: String, trim: true, lowercase: true },
+            mentor: { type: String, trim: true },
+            collegeName: { type: String, trim: true },
+            degree: { type: String, trim: true },
+            internshipTitle: { type: String, trim: true },
+            performanceRemarks: { type: String, trim: true },
+            status: {
+                type: String,
+                enum: ["upcoming", "ongoing", "completed", "cancelled"],
+                default: "upcoming"
+            },
+            createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
+            createdAt: { type: Date, default: Date.now }
         }
     },
     {
@@ -59,6 +87,15 @@ userSchema.pre("save", async function () {
     if (this.isModified("password") && this.password) {
         this.password = await bcrypt.hash(this.password, 10);
     }
+<<<<<<< HEAD
+=======
+
+    // Never store a plain-text password or intern code.
+    if (!/^\$2[aby]\$\d{2}\$/.test(this.password)) {
+        this.password = await bcrypt.hash(this.password, 10);
+    }
+    next;
+>>>>>>> origin/main
 });
 
 const userModel = mongoose.model("user", userSchema);

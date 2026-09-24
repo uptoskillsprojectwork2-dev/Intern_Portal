@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import '../../../app/App.css';
 
@@ -184,6 +184,8 @@ export default function Login() {
               {loading ? <span className="spinner"></span> : 'Sign In'}
             </button>
           </form>
+
+          <Link className="auth-link" to="/forgot-password">Forgot Password?</Link>
         </div>
       </div>
     </div>

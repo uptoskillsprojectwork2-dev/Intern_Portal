@@ -320,6 +320,48 @@ button {
     cursor: wait;
 }
 
+.auth-link {
+    display: block;
+    margin-top: 22px;
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 800;
+    text-align: center;
+    text-decoration: none;
+}
+
+.auth-link:hover {
+    text-decoration: underline;
+}
+
+.auth-status {
+    margin-bottom: 20px;
+    padding: 13px 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.auth-status.success {
+    border-color: var(--success);
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 10%, transparent);
+}
+
+.auth-status.error {
+    border-color: var(--error);
+    color: var(--error);
+    background: color-mix(in srgb, var(--error) 10%, transparent);
+}
+
+.auth-button-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
 .spinner {
     width: 17px;
     height: 17px;
@@ -332,8 +374,8 @@ button {
 .theme-toggle {
     position: fixed;
     z-index: 100;
-    top: 24px;
-    right: 24px;
+    bottom: 24px;
+    left: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -858,8 +900,8 @@ button {
     }
 
     .theme-toggle {
-        top: 18px;
-        right: 18px;
+        bottom: 18px;
+        left: 18px;
     }
 
     .auth-card {

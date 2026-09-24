@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../features/auth/pages/Login';
+import ForgotPasswordPage from '../features/auth/pages/ForgotPasswordPage';
+import ResetPasswordPage from '../features/auth/pages/ResetPasswordPage';
 import ProtectedRoute from '../features/shared/components/ProtectedRoute';
-import InternDashboard from '../features/auth/pages/InternDashboard';
-import HRDashboard from '../features/auth/pages/HRDashboard';
-import AdminDashboard from '../features/auth/pages/AdminDashboard';
+import InternDashboard from '../features/intern/pages/InternDashboard';
+import TLDashboard from '../features/teamleader/pages/TLDashboard';
+import AdminDashboard from '../features/admin/pages/AdminDashboard';
+import CertificateReviewPage from '../features/admin/pages/CertificateReviewPage';
 import ThemeToggle from '../features/shared/components/ThemeToggle';
 import './App.css';
 
@@ -28,6 +31,8 @@ export default function App() {
 
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
 
 
         <Route element={<ProtectedRoute allowedRoles={['intern']} />}>
@@ -35,13 +40,14 @@ export default function App() {
         </Route>
 
 
-        <Route element={<ProtectedRoute allowedRoles={['hr']} />}>
-          <Route path="/hr/dashboard" element={<HRDashboard />} />
+        <Route element={<ProtectedRoute allowedRoles={['teamleader']} />}>
+          <Route path="/teamleader/dashboard" element={<TLDashboard />} />
         </Route>
 
 
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/certificates/:id/review" element={<CertificateReviewPage />} />
         </Route>
 
 

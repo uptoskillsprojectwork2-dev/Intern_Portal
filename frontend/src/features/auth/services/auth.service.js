@@ -50,3 +50,27 @@ export const getMe = async () => {
         throw error.response?.data || error;
     }
 };
+
+export const forgotPassword = async (email) => {
+    try {
+        const response = await apiClient.post('/api/auth/forgot-password', {
+            email,
+        });
+
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+};
+
+export const resetPassword = async (token, newPassword) => {
+    try {
+        const response = await apiClient.post(`/api/auth/reset-password/${token}`, {
+            newPassword,
+        });
+
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error;
+    }
+};
