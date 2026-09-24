@@ -3,6 +3,8 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import Handlebars from 'handlebars';
+
+Handlebars.registerHelper('json', (value) => JSON.stringify(value ?? ''));
 import puppeteer from 'puppeteer';
 import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
@@ -28,6 +30,23 @@ const formatDate = (date) => {
   if (!date) return '';
   const d = new Date(date);
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+const formatDuration = (startDate, endDate) => {
+  if (!startDate || !endDate) return '';
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return '';
+
+  let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  if (end.getDate() < start.getDate()) months -= 1;
+  const anchor = new Date(start);
+  anchor.setMonth(anchor.getMonth() + Math.max(months, 0));
+  const days = Math.max(0, Math.round((end - anchor) / 86400000));
+
+  if (months > 0 && days > 0) return `${months} Months ${days} Days`;
+  if (months > 0) return months === 1 ? '1 Month' : `${months} Months`;
+  return days === 1 ? '1 Day' : `${days} Days`;
 };
 
 /**
@@ -83,6 +102,15 @@ export const createCertificateDraft = async (requestId) => {
 
   const formattedCertType = (request.certificateType || '').replace(/_/g, ' ');
 
+  const issueDate = new Date();
+  const startDate = formatDate(user.startDate);
+  const endDate = formatDate(user.endDate);
+  const duration = formatDuration(user.startDate, user.endDate);
+  const domain = user.domain || '';
+  const teamLeader = user.internshipDetails?.teamleaderEmail || '';
+  const organizationName = 'UptoSkills';
+  const position = domain ? `${domain} Intern` : 'Intern';
+  const verificationURL = `https://uptoskills.com/verify/${encodeURIComponent(verificationCode)}`;
   const templateData = {
     InternName: user.fullName || '',
     internName: user.fullName || '',
@@ -90,22 +118,68 @@ export const createCertificateDraft = async (requestId) => {
     name: user.fullName || '',
     CertificateNumber: certificateNumber,
     certificateNumber: certificateNumber,
-    Department: user.domain || '',
-    department: user.domain || '',
-    domain: user.domain || '',
-    StartDate: formatDate(user.startDate),
-    startDate: formatDate(user.startDate),
-    EndDate: formatDate(user.endDate),
-    endDate: formatDate(user.endDate),
-    IssueDate: formatDate(new Date()),
-    issueDate: formatDate(new Date()),
+    OfferNumber: certificateNumber,
+    ReferenceID: certificateNumber,
+    Department: domain,
+    DepartmentName: domain,
+    department: domain,
+    domain,
+    Domain: domain,
+    ProgramName: domain,
+    AcademicYear: user.startDate && user.endDate ? `${new Date(user.startDate).getFullYear()}-${new Date(user.endDate).getFullYear()}` : '',
+    Purpose: 'Internship / Academic Purpose',
+    Position: position,
+    InternPosition: position,
+    startDate,
+    StartDate: startDate,
+    endDate,
+    EndDate: endDate,
+    Duration: duration,
+    duration,
+    IssueDate: formatDate(issueDate),
+    issueDate: formatDate(issueDate),
     InternCode: user.internCode || '',
     internCode: user.internCode || '',
     CertificateType: formattedCertType,
     certificateType: formattedCertType,
     rawCertificateType: request.certificateType || '',
     VerificationCode: verificationCode,
-    verificationCode: verificationCode
+    verificationCode: verificationCode,
+    VerificationURL: verificationURL,
+    OrganizationName: organizationName,
+    organizationName,
+    Place: '',
+    place: '',
+    MentorName: '',
+    mentorName: '',
+    HRName: '',
+    hrName: '',
+    HRSignature: '',
+    hrSignature: '',
+    ManagerName: teamLeader,
+    ReportingManager: teamLeader,
+    reportingManager: teamLeader,
+    WorkMode: '',
+    Mode: '',
+    Location: '',
+    Stipend: '',
+    AuthorizedName: '',
+    AuthorizedPersonName: '',
+    AuthorizedPerson: '',
+    AuthorizedPosition: '',
+    Designation: '',
+    AuthorizedSignature: '',
+    CompanyEmail: '',
+    CompanyPhone: '',
+    CompanyWebsite: 'uptoskills.com',
+    CompanyAddress: '',
+    LeagueName: '',
+    Organizer: organizationName,
+    Month: issueDate.toLocaleDateString('en-US', { month: 'long' }),
+    Year: String(issueDate.getFullYear()),
+    signatureOrganization: organizationName,
+    termsOrganization: organizationName,
+    closingOrganization: organizationName
   };
 
   const compiledTemplate = Handlebars.compile(template.content);

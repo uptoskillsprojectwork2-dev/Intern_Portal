@@ -6,6 +6,7 @@ const CERTIFICATE_TYPES = [
   "bonafide",
   "ojt_certificate",
   "experience_letter",
+  "experience_letter_detailed",
   "completion_certificate",
   "intern_of_month",
   "league_winner",

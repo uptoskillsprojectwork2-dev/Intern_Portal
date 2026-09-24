@@ -7,7 +7,7 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 
 const ALLOWED_TYPES = [
-  'offer_letter', 'bonafide', 'ojt_certificate', 'experience_letter',
+  'offer_letter', 'bonafide', 'ojt_certificate', 'experience_letter', 'experience_letter_detailed',
   'completion_certificate', 'intern_of_month', 'league_winner', 'custom'
 ];
 
