@@ -1,20 +1,18 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const certificateRequestSchema = new mongoose.Schema(
-{
-    requestNumber: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true
+  {
+    internId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'user', // <--- CHANGED THIS to lowercase 'user'
+      required: true
     },
-
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
-        required: true,
-        index: true
+    type: {
+      type: String,
+      required: true
     },
+<<<<<<< HEAD
+=======
 
     internCode: {
         type: String,
@@ -33,10 +31,13 @@ const certificateRequestSchema = new mongoose.Schema(
         ref: "certificate_template"
     },
 
+>>>>>>> origin/main
     reason: {
-        type: String,
-        trim: true
+      type: String,
+      required: true
     },
+<<<<<<< HEAD
+=======
 
     metadata: {
         type: Map,
@@ -44,43 +45,24 @@ const certificateRequestSchema = new mongoose.Schema(
         default: {}
     },
 
+>>>>>>> origin/main
     status: {
-        type: String,
-        enum: [
-            "pending",
-            "approved",
-            "rejected",
-            "processing",
-            "completed",
-            "cancelled"
-        ],
-        default: "pending",
-        index: true
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending'
     },
-
-    requestedAt: {
-        type: Date,
-        default: Date.now
+    remarks: {
+      type: String,
+      default: ''
     },
-
-    reviewedAt: {
-        type: Date
-    },
-
-    reviewedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user"
-    },
-
-    rejectionReason: {
-        type: String,
-        trim: true
-    },
-
-    certificateId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "certificate"
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'user' // <--- CHANGED THIS to lowercase 'user'
     }
+<<<<<<< HEAD
+  },
+  { timestamps: true }
+=======
 },
 {
     timestamps: true
@@ -113,6 +95,6 @@ certificateRequestSchema.pre("save", async function () {
 const certificateRequestModel = mongoose.model(
     "certificate_request",
     certificateRequestSchema
+>>>>>>> origin/main
 );
-
-export default certificateRequestModel;
+export default mongoose.model('CertificateRequest', certificateRequestSchema);

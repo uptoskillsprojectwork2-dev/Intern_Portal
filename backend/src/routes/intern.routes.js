@@ -1,4 +1,24 @@
 import express from 'express';
+<<<<<<< HEAD
+import { 
+    submitCertificateRequest, 
+    getMyRequests, 
+    getCertificateForRequest 
+} from '../controllers/intern.controller.js';
+import verifyAuth from '../middlewares/verifyAuth.js';
+
+const router = express.Router();
+
+// Apply the existing protected block middleware
+router.use(verifyAuth);
+
+// Intern endpoints
+router.post('/certificates', submitCertificateRequest);
+router.get('/certificates', getMyRequests);
+router.get('/requests/:id/certificate', getCertificateForRequest);
+
+export default router;
+=======
 import verifyAuth from '../middlewares/verifyAuth.js';
 import {
   getMyRequests,
@@ -29,3 +49,4 @@ internRouter.get('/requests/:id/certificate', getCertificateForRequest);
 internRouter.get('/requests/:id/certificate/download', downloadCertificateForRequest);
 
 export default internRouter;
+>>>>>>> origin/main

@@ -7,7 +7,6 @@ const userSchema = new mongoose.Schema(
             type: String,
             required: true
         },
-
         email: {
             type: String,
             required: true,
@@ -15,35 +14,31 @@ const userSchema = new mongoose.Schema(
             lowercase: true,
             trim: true
         },
-
         mobileNo: {
             type: String
         },
-
         internCode: {
             type: String,
             unique: true,
             sparse: true
         },
-
         domain: {
             type: String
         },
-
         startDate: {
             type: Date
         },
-
         endDate: {
             type: Date
         },
-
         password: {
             type: String,
             required: function () {
                 return !this.internCode;
             }
         },
+<<<<<<< HEAD
+=======
 
         resetPasswordToken: {
             type: String
@@ -53,6 +48,7 @@ const userSchema = new mongoose.Schema(
             type: Date
         },
 
+>>>>>>> origin/main
         role: {
             type: String,
             enum: ["admin", "intern", "teamleader"],
@@ -79,35 +75,29 @@ const userSchema = new mongoose.Schema(
         timestamps: true
     });
 
-
 userSchema.methods.comparePassword = async function (candidatePassword) {
-
-    return bcrypt.compare(
-        candidatePassword,
-        this.password
-    );
-
+    return bcrypt.compare(candidatePassword, this.password);
 };
 
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
     if (!this.internCode) {
-        this.internCode = this.email
+        this.internCode = this.email;
     }
 
-    if (!this.isModified("password")) {
-        return;
+    if (this.isModified("password") && this.password) {
+        this.password = await bcrypt.hash(this.password, 10);
     }
+<<<<<<< HEAD
+=======
 
     // Never store a plain-text password or intern code.
     if (!/^\$2[aby]\$\d{2}\$/.test(this.password)) {
         this.password = await bcrypt.hash(this.password, 10);
     }
     next;
+>>>>>>> origin/main
 });
 
-const userModel = mongoose.model(
-    "user",
-    userSchema
-);
+const userModel = mongoose.model("user", userSchema);
 
 export default userModel;
