@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
+import Notification from '../models/Notification.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -112,5 +113,35 @@ export const reviewRequestAsTL = async (req, res) => {
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+export const getMyNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .limit(30);
+
+    return res.status(200).json({ notifications });
+  } catch (error) {
+    return res.status(500).json({ message: 'internal server error' });
+  }
+};
+
+export const markNotificationAsRead = async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
+      { $set: { isRead: true, readAt: new Date() } },
+      { new: true },
+    );
+
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    return res.status(200).json({ notification });
+  } catch (error) {
+    return res.status(500).json({ message: 'internal server error' });
   }
 };

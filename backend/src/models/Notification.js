@@ -39,6 +39,14 @@ const notificationSchema = new mongoose.Schema(
 
     readAt: {
         type: Date
+    },
+
+    // Prevent the same scheduled alert from being created more than once.
+    dedupeKey: {
+        type: String,
+        unique: true,
+        sparse: true,
+        index: true
     }
 },
 {
