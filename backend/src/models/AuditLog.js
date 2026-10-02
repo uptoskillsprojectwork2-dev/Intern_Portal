@@ -41,6 +41,8 @@ const auditLogSchema = new mongoose.Schema(
     timestamps: true
 });
 
+auditLogSchema.index({ action: 1, createdAt: -1 });
+
 auditLogSchema.pre("save", async function () {
     if (this.userId) {
         const userModel = mongoose.model("user");

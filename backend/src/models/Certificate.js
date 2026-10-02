@@ -90,6 +90,9 @@ const certificateSchema = new mongoose.Schema(
     timestamps: true
 });
 
+certificateSchema.index({ issuedDate: -1, status: 1 });
+certificateSchema.index({ certificateType: 1, status: 1 });
+
 certificateSchema.pre("save", async function () {
     const userModel = mongoose.model("user");
     const internshipModel = mongoose.model("internship");

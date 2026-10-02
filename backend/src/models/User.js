@@ -73,6 +73,11 @@ const userSchema = new mongoose.Schema(
         timestamps: true
     });
 
+userSchema.index({ role: 1, createdAt: -1 });
+userSchema.index({ role: 1, 'internshipDetails.status': 1 });
+userSchema.index({ role: 1, domain: 1 });
+userSchema.index({ role: 1, 'internshipDetails.teamleaderEmail': 1, endDate: 1 });
+
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
 

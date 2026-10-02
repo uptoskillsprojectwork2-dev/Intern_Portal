@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
+import { clearAnalyticsCache } from '../services/adminAnalytics.service.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -109,6 +110,7 @@ export const reviewRequestAsTL = async (req, res) => {
     }
 
     await request.save();
+    await clearAnalyticsCache();
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

@@ -1,8 +1,22 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { query, validationResult } from "express-validator";
 import { generateInternCode } from "../utils/generateInternCode.js";
 import CertificateRequest from '../models/CertificateRequest.js';
+import {
+  clearAnalyticsCache,
+  exportAnalytics,
+  getCertificateTypesAnalytics,
+  getDomainsAnalytics,
+  getOverviewAnalytics,
+  getPipelineAnalytics,
+  getRequestsTrendAnalytics,
+  getStuckRequestsAnalytics,
+  getTeamLeaderPerformanceAnalytics,
+  getTurnaroundAnalytics,
+  getUpcomingCompletionsAnalytics,
+} from '../services/adminAnalytics.service.js';
 
 dotenv.config()
 
@@ -200,10 +214,140 @@ export const finalizeRequest = async (req, res) => {
     if (action === 'reject') request.rejectionReason = rejectionReason;
 
     await request.save();
+    await clearAnalyticsCache();
     res.json({ request });
 
     // certificate generation trigger goes here later, once status === 'approved'
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+const validateAnalyticsRequest = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
+export const analyticsQueryValidator = [
+  query('from').optional().isISO8601().withMessage('from must be a valid ISO date'),
+  query('to').optional().isISO8601().withMessage('to must be a valid ISO date'),
+  query('range').optional().isIn(['7d', '30d', '6m']).withMessage('range must be 7d, 30d, or 6m'),
+  query('groupBy').optional().isIn(['day', 'week', 'month']).withMessage('groupBy must be day, week, or month'),
+  query('overdueDays').optional().isInt({ min: 1 }).withMessage('overdueDays must be a positive integer'),
+  query('domain').optional().trim().isString().withMessage('domain must be a string'),
+  query('teamLeader').optional().trim().isString().withMessage('teamLeader must be a string'),
+  validateAnalyticsRequest,
+];
+
+export const getAdminAnalyticsOverview = async (req, res) => {
+  try {
+    const data = await getOverviewAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const getAdminAnalyticsRequestsTrend = async (req, res) => {
+  try {
+    const data = await getRequestsTrendAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const getAdminAnalyticsCertificateTypes = async (req, res) => {
+  try {
+    const data = await getCertificateTypesAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const getAdminAnalyticsTurnaround = async (req, res) => {
+  try {
+    const data = await getTurnaroundAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const getAdminAnalyticsTeamLeaders = async (req, res) => {
+  try {
+    const data = await getTeamLeaderPerformanceAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const getAdminAnalyticsDomains = async (req, res) => {
+  try {
+    const data = await getDomainsAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const getAdminAnalyticsPipeline = async (req, res) => {
+  try {
+    const data = await getPipelineAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const getAdminAnalyticsUpcomingCompletions = async (req, res) => {
+  try {
+    const data = await getUpcomingCompletionsAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const getAdminAnalyticsStuckRequests = async (req, res) => {
+  try {
+    const data = await getStuckRequestsAnalytics(req.query);
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Invalid analytics query' });
+  }
+};
+
+export const exportAdminAnalytics = async (req, res) => {
+  try {
+    const { type = 'overview', format = 'xlsx' } = req.query;
+    const allowedTypes = ['overview', 'requests-trend', 'certificate-types', 'turnaround', 'team-leaders', 'domains', 'pipeline'];
+
+    if (!allowedTypes.includes(String(type))) {
+      return res.status(400).json({ message: 'Unsupported analytics export type' });
+    }
+
+    const allowedFormats = ['csv', 'xlsx'];
+    if (!allowedFormats.includes(String(format).toLowerCase())) {
+      return res.status(400).json({ message: 'Unsupported export format. Use csv or xlsx.' });
+    }
+
+    const result = await exportAnalytics({
+      type: String(type),
+      format: String(format).toLowerCase(),
+      query: req.query,
+      userId: req.user?.id,
+    });
+
+    res.setHeader('Content-Type', result.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
+    return res.send(result.buffer);
+  } catch (error) {
+    return res.status(400).json({ message: error.message || 'Analytics export failed' });
   }
 };
