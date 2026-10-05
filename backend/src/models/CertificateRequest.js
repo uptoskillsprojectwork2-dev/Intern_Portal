@@ -104,6 +104,9 @@ certificateRequestSchema.pre("save", async function () {
     }
 });
 
+certificateRequestSchema.index({ requestedAt: -1, status: 1 });
+certificateRequestSchema.index({ reviewedBy: 1, reviewedAt: -1 });
+
 const certificateRequestModel = mongoose.model(
     "certificate_request",
     certificateRequestSchema

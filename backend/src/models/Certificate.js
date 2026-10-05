@@ -117,6 +117,9 @@ certificateSchema.pre("save", async function () {
     }
 });
 
+certificateSchema.index({ issuedDate: -1, status: 1 });
+certificateSchema.index({ certificateType: 1, domain: 1 });
+
 const certificateModel = mongoose.model(
     "certificate",
     certificateSchema

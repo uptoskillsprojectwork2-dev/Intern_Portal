@@ -23,6 +23,18 @@ import {
 } from "../controllers/admin.controller.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
+import {
+  getAnalyticsOverview,
+  getRequestsTrend,
+  getCertificateTypes,
+  getTurnaround,
+  getTeamLeaderPerformance,
+  getDomainAnalytics,
+  getAnalyticsPipeline,
+  getStuckRequests,
+  getUpcomingCompletions,
+  exportAnalytics,
+} from "../controllers/adminAnalytics.controller.js";
 
 const adminRouter = express.Router();
 
@@ -132,5 +144,18 @@ adminRouter.post(
   requireAdmin,
   retryCertificateGeneration,
 );
+
+
+// Admin Analytics endpoints. Keep these behind both authentication and admin authorization.
+adminRouter.get("/analytics/overview", verifyAuth, requireAdmin, getAnalyticsOverview);
+adminRouter.get("/analytics/requests-trend", verifyAuth, requireAdmin, getRequestsTrend);
+adminRouter.get("/analytics/certificate-types", verifyAuth, requireAdmin, getCertificateTypes);
+adminRouter.get("/analytics/turnaround", verifyAuth, requireAdmin, getTurnaround);
+adminRouter.get("/analytics/team-leaders", verifyAuth, requireAdmin, getTeamLeaderPerformance);
+adminRouter.get("/analytics/domains", verifyAuth, requireAdmin, getDomainAnalytics);
+adminRouter.get("/analytics/pipeline", verifyAuth, requireAdmin, getAnalyticsPipeline);
+adminRouter.get("/analytics/stuck-requests", verifyAuth, requireAdmin, getStuckRequests);
+adminRouter.get("/analytics/upcoming-completions", verifyAuth, requireAdmin, getUpcomingCompletions);
+adminRouter.get("/analytics/export", verifyAuth, requireAdmin, exportAnalytics);
 
 export default adminRouter;

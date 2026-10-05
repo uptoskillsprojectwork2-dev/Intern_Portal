@@ -7,6 +7,7 @@ import ForwardedRequestsList from "../components/ForwardedRequestsList";
 import TeamLeadersSection from "../components/TeamLeadersSection";
 import TemplatesSection from "../components/TemplatesSection";
 import CertificatesOverview from "../components/CertificatesOverview";
+import AdminAnalytics from "./AdminAnalytics";
 
 import "./AdminDashboard.css";
 
@@ -94,6 +95,12 @@ const AdminDashboard = () => {
           </button>
 
           <button
+            className={`admin-nav-item ${activeView === "analytics" ? "active" : ""}`}
+            onClick={() => setActiveView("analytics")}
+          >
+            <span>▥</span> Analytics
+          </button>
+          <button
             className={`admin-nav-item ${
               activeView === "certificate-review" ? "active" : ""
             }`}
@@ -123,7 +130,9 @@ const AdminDashboard = () => {
                       ? "Certificates"
                       : activeView === "templates"
                         ? "Certificate templates"
-                        : "Certificate review"}
+                        : activeView === "analytics"
+                          ? "Admin analytics"
+                          : "Certificate review"}
           </h1>
           <p>
             {activeView === "overview"
@@ -138,7 +147,9 @@ const AdminDashboard = () => {
                       ? "Create a new intern account."
                       : activeView === "teamleader"
                         ? "Create a new team leader account."
-                        : "Review, edit and finalize the certificate before sending it to the intern."}
+                        : activeView === "analytics"
+                          ? "Monitor internship performance, certificate requests, team activity, and operational insights."
+                          : "Review, edit and finalize the certificate before sending it to the intern."}
           </p>
         </header>
 
@@ -204,6 +215,8 @@ const AdminDashboard = () => {
           <TemplatesSection />
         ) : activeView === "certificates" ? (
           <CertificatesOverview />
+        ) : activeView === "analytics" ? (
+          <AdminAnalytics />
         ) : null}
       </main>
     </div>

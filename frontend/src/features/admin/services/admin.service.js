@@ -1,8 +1,8 @@
-import axios from 'axios';
+import axios from "axios";
 
 const adminApi = axios.create({
-  baseURL: 'http://localhost:3000',
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: "http://localhost:3000",
+  headers: { "Content-Type": "application/json" },
   withCredentials: true,
 });
 
@@ -12,61 +12,55 @@ const request = async (method, url, payload) => {
     return response.data;
   } catch (error) {
     const data = error.response?.data;
-    const validationMessage = data?.errors?.map(({ msg }) => msg).join(' ');
+    const validationMessage = data?.errors?.map(({ msg }) => msg).join(" ");
     throw new Error(
-      validationMessage || data?.message || (error.response?.status === 500 ? 'Internal server error.' : 'Request failed.'),
-      { cause: error }
+      validationMessage ||
+        data?.message ||
+        (error.response?.status === 500
+          ? "Internal server error."
+          : "Request failed."),
+      { cause: error },
     );
   }
 };
 
-export const createIntern = (payload) => request('post', '/api/admin/create-intern', payload);
-export const createTeamLeader = (payload) => request('post', '/api/admin/create-tl', payload);
-export const getAllTeamLeaders = () => request('get', '/api/admin/teamleaders');
-export const getInternsByTeamLeader = (id) => request('get', `/api/admin/teamleaders/${id}/interns`);
-export const getForwardedRequests = () => request('get', '/api/admin/forwarded-requests');
-export const finalizeRequest = (id, action, rejectionReason) => request(
-  'patch',
-  `/api/admin/requests/${id}/finalize`,
-  action === 'reject' ? { action, rejectionReason } : { action }
-);
+export const createIntern = (payload) =>
+  request("post", "/api/admin/create-intern", payload);
+export const createTeamLeader = (payload) =>
+  request("post", "/api/admin/create-tl", payload);
+export const getAllTeamLeaders = () => request("get", "/api/admin/teamleaders");
+export const getInternsByTeamLeader = (id) =>
+  request("get", `/api/admin/teamleaders/${id}/interns`);
+export const getForwardedRequests = () =>
+  request("get", "/api/admin/forwarded-requests");
+export const finalizeRequest = (id, action, rejectionReason) =>
+  request(
+    "patch",
+    `/api/admin/requests/${id}/finalize`,
+    action === "reject" ? { action, rejectionReason } : { action },
+  );
 
 // ================================
 // Certificate Template APIs Day 1
 // ================================
 
 export const createTemplate = (payload) =>
-  request(
-    'post',
-    '/api/admin/templates',
-    payload
-  );
+  request("post", "/api/admin/templates", payload);
 
-export const getAllTemplates = () =>
-  request(
-    'get',
-    '/api/admin/templates'
-  );
+export const getAllTemplates = () => request("get", "/api/admin/templates");
 
 export const updateTemplate = (id, payload) =>
-  request(
-    'patch',
-    `/api/admin/templates/${id}`,
-    payload
-  );
+  request("patch", `/api/admin/templates/${id}`, payload);
 
 export const toggleTemplateActive = (id) =>
-  request(
-    'patch',
-    `/api/admin/templates/${id}/toggle`
-  );
+  request("patch", `/api/admin/templates/${id}/toggle`);
 
 // ================================
-// Certificate DRAFT 
+// Certificate DRAFT
 // ================================
 
 export const getCertificateDraft = (id) =>
-  request('get', `/api/admin/certificates/${id}`);
+  request("get", `/api/admin/certificates/${id}`);
 
 export const getAllCertificates = () =>
   request("get", "/api/admin/certificates");
@@ -76,22 +70,46 @@ export const downloadCertificatePdf = async (id) => {
     `/api/admin/certificates/${id}/download`,
     {
       responseType: "blob",
-    }
+    },
   );
 
   return response;
 };
 
 export const updateCertificateDraft = (id, htmlContent) =>
-  request('patch', `/api/admin/certificates/${id}`, {
+  request("patch", `/api/admin/certificates/${id}`, {
     htmlContent,
   });
 
 export const finalizeCertificate = (id) =>
-  request('post', `/api/admin/certificates/${id}/finalize`);
-  
+  request("post", `/api/admin/certificates/${id}/finalize`);
+
 export const retryCertificateGeneration = (id) =>
+  request("post", `/api/admin/requests/${id}/retry-generation`);
+// Admin Analytics
+export const getAdminAnalytics = (endpoint, params = {}) =>
   request(
-    'post',
-    `/api/admin/requests/${id}/retry-generation`
+    "get",
+    `/api/admin/analytics/${endpoint}${Object.keys(params).length ? `?${new URLSearchParams(Object.entries(params).filter(([, value]) => value !== "" && value != null)).toString()}` : ""}`,
   );
+
+export const exportAdminAnalytics = async (
+  type,
+  params = {},
+  format = "csv",
+) => {
+  const query = new URLSearchParams({
+    ...Object.fromEntries(
+      Object.entries(params).filter(
+        ([, value]) => value !== "" && value != null,
+      ),
+    ),
+    type,
+    format,
+  });
+  const response = await adminApi.get(
+    `/api/admin/analytics/export?${query.toString()}`,
+    { responseType: "blob" },
+  );
+  return response.data;
+};
