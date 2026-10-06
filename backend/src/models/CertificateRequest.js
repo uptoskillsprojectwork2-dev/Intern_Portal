@@ -12,8 +12,7 @@ const certificateRequestSchema = new mongoose.Schema(
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user",
-        required: true,
-        index: true
+        required: true
     },
 
     internCode: {
@@ -48,8 +47,7 @@ const certificateRequestSchema = new mongoose.Schema(
             "completed",
             "cancelled"
         ],
-        default: "pending",
-        index: true
+        default: "pending"
     },
 
     requestedAt: {
@@ -64,6 +62,15 @@ const certificateRequestSchema = new mongoose.Schema(
     reviewedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user"
+    },
+
+    forwardedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user"
+    },
+
+    forwardedAt: {
+        type: Date
     },
 
     rejectionReason: {
@@ -104,6 +111,10 @@ certificateRequestSchema.pre("save", async function () {
     }
 });
 
+certificateRequestSchema.index({ status: 1 });
+certificateRequestSchema.index({ requestedAt: 1 });
+certificateRequestSchema.index({ userId: 1 });
+certificateRequestSchema.index({ forwardedBy: 1 });
 certificateRequestSchema.index({ requestedAt: -1, status: 1 });
 certificateRequestSchema.index({ reviewedBy: 1, reviewedAt: -1 });
 
