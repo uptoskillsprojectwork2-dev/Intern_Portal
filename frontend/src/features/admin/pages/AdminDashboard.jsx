@@ -58,29 +58,29 @@ const AdminDashboard = () => {
             {activeView === 'overview'
               ? 'Welcome back'
               : activeView === 'interns'
-              ? 'Intern Management'
-              : activeView === 'teamleaders'
-              ? 'Team Leader Management'
-              : activeView === 'intern'
-              ? 'Create an intern'
-              : activeView === 'teamleader'
-              ? 'Create a team leader'
-              : activeView === 'certificates'
-              ? 'Issued certificates'
-              : 'Certificate requests'}
+                ? 'Intern Management'
+                : activeView === 'teamleaders'
+                  ? 'Team Leader Management'
+                  : activeView === 'intern'
+                    ? 'Create an intern'
+                    : activeView === 'teamleader'
+                      ? 'Create a team leader'
+                      : activeView === 'certificates'
+                        ? 'Issued certificates'
+                        : 'Certificate requests'}
           </h1>
           <p>
             {activeView === 'overview'
               ? 'Manage your portal accounts from one secure workspace.'
               : activeView === 'interns'
-              ? 'View, edit, and assign/reassign all interns across all Team Leaders.'
-              : activeView === 'teamleaders'
-              ? 'View, search, and manage all Team Leaders and their assigned intern teams.'
-              : activeView === 'requests'
-              ? 'Finalize certificate requests forwarded by Team Leaders.'
-              : activeView === 'certificates'
-              ? 'Audit and manage all generated certificates across the portal.'
-              : 'Complete the details below to create a new portal account.'}
+                ? 'View, edit, and assign/reassign all interns across all Team Leaders.'
+                : activeView === 'teamleaders'
+                  ? 'View, search, and manage all Team Leaders and their assigned intern teams.'
+                  : activeView === 'requests'
+                    ? 'Finalize certificate requests forwarded by Team Leaders.'
+                    : activeView === 'certificates'
+                      ? 'Audit and manage all generated certificates across the portal.'
+                      : 'Complete the details below to create a new portal account.'}
           </p>
         </header>
 

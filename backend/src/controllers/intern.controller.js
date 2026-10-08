@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
+import Counter from '../models/Counter.js';
 
 const ALLOWED_TYPES = [
   'offer_letter', 'bonafide', 'ojt_certificate', 'experience_letter',
@@ -13,8 +14,12 @@ const ALLOWED_TYPES = [
 
 const generateRequestNumber = async () => {
   const year = new Date().getFullYear();
-  const count = await CertificateRequest.countDocuments();
-  return `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
+  const counter = await Counter.findOneAndUpdate(
+    { _id: 'certRequest' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return `CERT-${year}-${String(counter.seq).padStart(5, '0')}`;
 };
 
 export const submitCertificateRequest = async (req, res) => {
