@@ -5,16 +5,29 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
+import Counter from '../models/Counter.js';
 
 const ALLOWED_TYPES = [
   'offer_letter', 'bonafide', 'ojt_certificate', 'experience_letter',
   'completion_certificate', 'intern_of_month', 'league_winner', 'custom'
 ];
 
+/**
+ * Atomically generates a unique certificate request number.
+ *
+ * Uses MongoDB findOneAndUpdate with $inc to guarantee that concurrent
+ * requests never produce duplicate numbers (unlike countDocuments + 1).
+ *
+ * Format: CERT-<year>-<5-digit-seq>  e.g. CERT-2026-00001
+ */
 const generateRequestNumber = async () => {
   const year = new Date().getFullYear();
-  const count = await CertificateRequest.countDocuments();
-  return `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
+  const counter = await Counter.findOneAndUpdate(
+    { _id: 'certRequest' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return `CERT-${year}-${String(counter.seq).padStart(5, '0')}`;
 };
 
 export const submitCertificateRequest = async (req, res) => {
