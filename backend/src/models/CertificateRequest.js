@@ -68,9 +68,26 @@ const certificateRequestSchema = new mongoose.Schema(
         type: Date,
     },
 
+    forwardedAt: {
+        type: Date,
+        index: true
+    },
+
+    forwardedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+        index: true
+    },
+
+    completedAt: {
+        type: Date,
+        index: true
+    },
+
     reviewedBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "user"
+        ref: "user",
+        index: true
     },
     forwardedBy: {
         type: mongoose.Schema.Types.ObjectId,
@@ -95,6 +112,10 @@ const certificateRequestSchema = new mongoose.Schema(
 {
     timestamps: true
 });
+
+certificateRequestSchema.index({ userId: 1, requestedAt: -1, status: 1 });
+certificateRequestSchema.index({ forwardedBy: 1, forwardedAt: -1 });
+certificateRequestSchema.index({ reviewedBy: 1, reviewedAt: -1 });
 
 certificateRequestSchema.pre("save", async function () {
     const userModel = mongoose.model("user");

@@ -406,14 +406,18 @@ export const finalizeCertificate = async (certificateId) => {
   }
 
   // 3. Mark Certificate as finalized and save pdfPath
+  const finalizedAt = new Date();
   certificate.status = 'finalized';
   certificate.pdfPath = relativePdfPath;
+  certificate.finalizedAt = finalizedAt;
+  certificate.issuedDate = finalizedAt;
   await certificate.save();
 
   // 4. Update linked CertificateRequest to completed
   const request = await CertificateRequest.findOne({ certificateId: certificate._id });
   if (request) {
     request.status = 'completed';
+    request.completedAt = finalizedAt;
     await request.save();
   }
 

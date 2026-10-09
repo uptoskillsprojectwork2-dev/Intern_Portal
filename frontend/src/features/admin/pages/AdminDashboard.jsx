@@ -7,6 +7,8 @@ import ForwardedRequestsList from '../components/ForwardedRequestsList';
 import TeamLeadersSection from '../components/TeamLeadersSection';
 import CertificatesOverview from '../components/CertificatesOverview';
 import AdminInternsList from '../components/AdminInternsList';
+import AdminUpcomingCompletions from '../components/AdminUpcomingCompletions';
+import AnalyticsView from '../analytics/pages/AnalyticsView';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -41,6 +43,7 @@ const AdminDashboard = () => {
         <p className="admin-sidebar-label">Workspace</p>
         <nav className="admin-sidebar-nav">
           <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}><span>▦</span> Overview</button>
+          <button className={`admin-nav-item ${activeView === 'analytics' ? 'active' : ''}`} onClick={() => setActiveView('analytics')}><span>📊</span> Admin Analytics</button>
           <button className={`admin-nav-item ${activeView === 'interns' ? 'active' : ''}`} onClick={() => setActiveView('interns')}><span>👥</span> Intern Management</button>
           <button className={`admin-nav-item ${activeView === 'teamleaders' ? 'active' : ''}`} onClick={() => setActiveView('teamleaders')}><span>👔</span> Team Leaders</button>
           <button className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`} onClick={() => setActiveView('intern')}><span>＋</span> Create Intern</button>
@@ -55,7 +58,9 @@ const AdminDashboard = () => {
         <header className="admin-page-header">
           <p className="admin-eyebrow">ADMINISTRATION</p>
           <h1>
-            {activeView === 'overview'
+            {activeView === 'analytics'
+              ? 'Admin Analytics'
+              : activeView === 'overview'
               ? 'Welcome back'
               : activeView === 'interns'
               ? 'Intern Management'
@@ -70,7 +75,9 @@ const AdminDashboard = () => {
               : 'Certificate requests'}
           </h1>
           <p>
-            {activeView === 'overview'
+            {activeView === 'analytics'
+              ? 'Comprehensive performance metrics, issuance speed, team leader bottlenecks, and analytics.'
+              : activeView === 'overview'
               ? 'Manage your portal accounts from one secure workspace.'
               : activeView === 'interns'
               ? 'View, edit, and assign/reassign all interns across all Team Leaders.'
@@ -84,7 +91,9 @@ const AdminDashboard = () => {
           </p>
         </header>
 
-        {activeView === 'overview' ? (
+        {activeView === 'analytics' ? (
+          <AnalyticsView onOpenRequests={() => setActiveView('requests')} />
+        ) : activeView === 'overview' ? (
           <>
             <section className="admin-profile-card" aria-label="Administrator profile">
               <div className="admin-profile-heading"><div className="admin-profile-avatar">{initials}</div><div><p className="admin-eyebrow">YOUR PROFILE</p><h2>{user?.fullName || 'Administrator'}</h2><p>{user?.email || 'Loading profile...'}</p></div></div>
@@ -94,13 +103,14 @@ const AdminDashboard = () => {
                 <div><span>Member since</span><strong>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</strong></div>
               </div>
               <div className="admin-quick-actions">
+                <button onClick={() => setActiveView('analytics')}><span>📊</span><strong>Admin Analytics</strong><small>View bottlenecks & metrics</small></button>
                 <button onClick={() => setActiveView('interns')}><span>👥</span><strong>Intern Management</strong><small>Manage interns & TL assignments</small></button>
                 <button onClick={() => setActiveView('teamleaders')}><span>👔</span><strong>Team Leaders</strong><small>Oversee all team leaders</small></button>
                 <button onClick={() => setActiveView('intern')}><span>＋</span><strong>Create Intern</strong><small>Register a new intern account</small></button>
                 <button onClick={() => setActiveView('teamleader')}><span>♙</span><strong>Create Team Leader</strong><small>Add a team leader to the portal</small></button>
               </div>
             </section>
-            <AdminInternsList />
+            <AdminUpcomingCompletions />
           </>
         ) : activeView === 'interns' ? (
           <AdminInternsList />

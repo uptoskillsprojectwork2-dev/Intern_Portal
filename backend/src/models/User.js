@@ -80,6 +80,8 @@ const userSchema = new mongoose.Schema(
     });
 
 
+userSchema.index({ role: 1, domain: 1, 'internshipDetails.teamLeader': 1, createdAt: 1 });
+
 userSchema.methods.comparePassword = async function (candidatePassword) {
 
     return bcrypt.compare(

@@ -16,6 +16,7 @@ import {
   sendCertificateEmail
 } from '../services/certificate.service.js';
 import { logAudit } from '../utils/auditLogger.js';
+import { invalidateAnalyticsCache } from '../utils/redisCache.js';
 
 dotenv.config();
 
@@ -580,6 +581,8 @@ export const finalizeRequest = async (req, res) => {
       certificate = await createCertificateDraft(request._id);
     }
 
+    await invalidateAnalyticsCache();
+
     res.json({ request, certificate });
   } catch (err) {
     const status = err.statusCode || 500;
@@ -614,6 +617,7 @@ export const finalizeCertificate = async (req, res) => {
 
     // 1. Finalize certificate and render PDF
     const { certificate, request, absolutePdfPath } = await finalizeCertificateService(id);
+    await invalidateAnalyticsCache();
 
     // 2. Send email with PDF attachment
     let emailSent = false;
@@ -706,6 +710,7 @@ export const retryCertificateGeneration = async (req, res) => {
 
     // Re-use existing createCertificateDraft service
     const certificate = await createCertificateDraft(request._id);
+    await invalidateAnalyticsCache();
 
     return res.status(200).json({
       message: 'Certificate draft generated successfully',
