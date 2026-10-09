@@ -22,12 +22,22 @@ const ALLOWED_TYPES = [
  */
 const generateRequestNumber = async () => {
   const year = new Date().getFullYear();
-  const counter = await Counter.findOneAndUpdate(
-    { _id: 'certRequest' },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
-  );
-  return `CERT-${year}-${String(counter.seq).padStart(5, '0')}`;
+  if (mongoose.connection.readyState === 1) {
+    try {
+      const counter = await Counter.findOneAndUpdate(
+        { _id: 'certRequest' },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      if (counter && counter.seq) {
+        return `CERT-${year}-${String(counter.seq).padStart(5, '0')}`;
+      }
+    } catch {
+      // Fallback below
+    }
+  }
+  const count = await CertificateRequest.countDocuments();
+  return `CERT-${year}-${String((count || 0) + 1).padStart(5, '0')}`;
 };
 
 export const submitCertificateRequest = async (req, res) => {

@@ -1,0 +1,128 @@
+/* TemplateForm.css */
+
+.template-form-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.template-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--surface-card, #171926);
+  border: 1px solid var(--border-color, #272a38);
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+.template-form-header h2 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #ffffff);
+  margin: 0 0 4px 0;
+}
+
+.template-form-header p {
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0;
+}
+
+.template-type-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.template-type-select-wrap label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.template-type-select-wrap select {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #33384d);
+  background: #0f1118;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.template-type-select-wrap select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.template-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface-card, #171926);
+  border: 1px solid var(--border-color, #272a38);
+  border-radius: 10px;
+  padding: 14px 20px;
+}
+
+.template-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.template-meta-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.template-meta-item input {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #33384d;
+  background: #0f1118;
+  color: #fff;
+  font-size: 12px;
+}
+
+.template-meta-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.template-activate-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: #10b981;
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.template-activate-btn:hover {
+  opacity: 0.9;
+}
+
+.template-loading-box {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #12141f;
+  border-radius: 12px;
+  color: #94a3b8;
+}

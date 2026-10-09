@@ -7,6 +7,7 @@ import ForwardedRequestsList from '../components/ForwardedRequestsList';
 import TeamLeadersSection from '../components/TeamLeadersSection';
 import CertificatesOverview from '../components/CertificatesOverview';
 import AdminInternsList from '../components/AdminInternsList';
+import TemplateForm from '../components/TemplateForm';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -47,6 +48,7 @@ const AdminDashboard = () => {
           <button className={`admin-nav-item ${activeView === 'teamleader' ? 'active' : ''}`} onClick={() => setActiveView('teamleader')}><span>♙</span> Create Team Leader</button>
           <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => setActiveView('requests')}><span>▤</span> Certificate Requests</button>
           <button className={`admin-nav-item ${activeView === 'certificates' ? 'active' : ''}`} onClick={() => setActiveView('certificates')}><span>📜</span> Issued Certificates</button>
+          <button className={`admin-nav-item ${activeView === 'templates' ? 'active' : ''}`} onClick={() => setActiveView('templates')}><span>🎨</span> Certificate Templates</button>
         </nav>
         <div className="admin-sidebar-note"><span>●</span> Admin access enabled</div>
       </aside>
@@ -67,6 +69,8 @@ const AdminDashboard = () => {
               ? 'Create a team leader'
               : activeView === 'certificates'
               ? 'Issued certificates'
+              : activeView === 'templates'
+              ? 'Certificate Templates'
               : 'Certificate requests'}
           </h1>
           <p>
@@ -80,6 +84,8 @@ const AdminDashboard = () => {
               ? 'Finalize certificate requests forwarded by Team Leaders.'
               : activeView === 'certificates'
               ? 'Audit and manage all generated certificates across the portal.'
+              : activeView === 'templates'
+              ? 'Visually edit and manage certificate templates with GrapesJS.'
               : 'Complete the details below to create a new portal account.'}
           </p>
         </header>
@@ -96,8 +102,8 @@ const AdminDashboard = () => {
               <div className="admin-quick-actions">
                 <button onClick={() => setActiveView('interns')}><span>👥</span><strong>Intern Management</strong><small>Manage interns & TL assignments</small></button>
                 <button onClick={() => setActiveView('teamleaders')}><span>👔</span><strong>Team Leaders</strong><small>Oversee all team leaders</small></button>
-                <button onClick={() => setActiveView('intern')}><span>＋</span><strong>Create Intern</strong><small>Register a new intern account</small></button>
-                <button onClick={() => setActiveView('teamleader')}><span>♙</span><strong>Create Team Leader</strong><small>Add a team leader to the portal</small></button>
+                <button onClick={() => setActiveView('templates')}><span>🎨</span><strong>Certificate Templates</strong><small>Edit visual templates</small></button>
+                <button onClick={() => setActiveView('requests')}><span>▤</span><strong>Certificate Requests</strong><small>Review pending drafts</small></button>
               </div>
             </section>
             <AdminInternsList />
@@ -112,6 +118,8 @@ const AdminDashboard = () => {
           <CreateTl />
         ) : activeView === 'certificates' ? (
           <CertificatesOverview />
+        ) : activeView === 'templates' ? (
+          <TemplateForm />
         ) : (
           <ForwardedRequestsList />
         )}
