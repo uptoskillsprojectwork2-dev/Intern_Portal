@@ -177,6 +177,18 @@ export const createCertificateDraft = async (requestId) => {
     ...safeMeta
   };
 
+  const titleMap = {
+    'offer_letter': 'Internship Offer Letter',
+    'bonafide': 'Bonafide Certificate',
+    'ojt_certificate': 'On-the-Job Training Certificate',
+    'experience_letter': 'Internship Experience Letter',
+    'completion_certificate': 'Internship Completion',
+    'intern_of_month': 'Intern of the Month',
+    'league_winner': 'League Winner',
+    'custom': 'Certificate of Achievement'
+  };
+  const mappedTitle = titleMap[request.certificateType] || formattedCertType;
+
   // Protected trusted core fields — cannot be overridden by request metadata
   const trustedCoreData = {
     InternName: user.fullName || '',
@@ -200,7 +212,9 @@ export const createCertificateDraft = async (requestId) => {
     certificateType: formattedCertType,
     rawCertificateType: request.certificateType || '',
     VerificationCode: verificationCode,
-    verificationCode: verificationCode
+    verificationCode: verificationCode,
+    requestNumber: request.requestNumber || '',
+    certificateTitle: mappedTitle
   };
 
   const templateData = {

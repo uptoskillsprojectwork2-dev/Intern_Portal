@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: #fff; }
+    .cert-page {
+      width: 1123px; height: 794px;
+      margin: 0 auto;
+      box-sizing: border-box;
+      padding: 40px;
+      background: #ffffff;
+      position: relative;
+    }
+    .cert-border-outer {
+      width: 100%; height: 100%;
+      border: 12px solid #0f172a;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    .cert-border-inner {
+      width: 100%; height: 100%;
+      border: 3px solid #d97706;
+      box-sizing: border-box;
+      position: relative;
+      padding: 40px;
+      text-align: center;
+    }
+    .header {
+      display: flex; justify-content: center; align-items: center; margin-bottom: 20px;
+    }
+    .logo { width: 50px; height: 50px; background: #0f172a; color: #fff; border-radius: 50%; line-height: 50px; font-weight: bold; font-size: 24px; margin-right: 15px; }
+    .org-name { font-size: 24px; font-weight: 700; color: #0f172a; letter-spacing: 2px; text-transform: uppercase; }
+    
+    .cert-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 52px;
+      color: #0f172a;
+      margin: 20px 0;
+      text-transform: capitalize;
+    }
+    .cert-subtitle {
+      font-size: 18px; color: #475569; margin-bottom: 30px; font-style: italic; font-family: 'Playfair Display', serif;
+    }
+    
+    .intern-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 48px;
+      color: #d97706;
+      border-bottom: 2px solid #0f172a;
+      display: inline-block;
+      padding-bottom: 5px;
+      margin-bottom: 30px;
+    }
+    
+    .body-text {
+      font-size: 18px; line-height: 1.8; color: #334155; max-width: 800px; margin: 0 auto 40px auto;
+    }
+    
+    .footer {
+      position: absolute; bottom: 50px; left: 50px; right: 50px;
+      display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .signature-block { text-align: center; }
+    .signature-line { width: 250px; border-bottom: 1px solid #0f172a; margin-bottom: 10px; }
+    .signature-name { font-weight: 600; color: #0f172a; font-size: 16px; }
+    .signature-title { color: #64748b; font-size: 14px; }
+    
+    .seal-placeholder {
+      width: 100px; height: 100px;
+      border: 2px dashed #cbd5e1;
+      border-radius: 50%;
+      line-height: 100px; color: #cbd5e1; font-size: 12px;
+      text-align: center;
+      position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+    }
+    
+    .qr-placeholder {
+      width: 80px; height: 80px;
+      border: 1px dashed #cbd5e1;
+      position: absolute; top: 40px; right: 40px;
+      display: flex; justify-content: center; align-items: center;
+      font-size: 10px; color: #94a3b8;
+    }
+    
+    .meta-info {
+      position: absolute; bottom: 10px; left: 40px; font-size: 10px; color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="cert-page">
+    <div class="cert-border-outer">
+      <div class="cert-border-inner">
+        <div class="qr-placeholder">{{qrCodeUrl}}</div>
+        
+        <div class="header">
+          <div class="logo">U</div>
+          <div class="org-name">UPTOSKILL</div>
+        </div>
+        
+        <div class="cert-title">{{certificateTitle}}</div>
+        <div class="cert-subtitle">This certificate is proudly presented to</div>
+        
+        <div class="intern-name">{{fullName}}</div>
+        
+        <div class="body-text">
+          In recognition of outstanding performance and contribution to the <strong>{{domain}}</strong> department during the month.
+        </div>
+        
+        <div class="seal-placeholder">SEAL</div>
+        
+        <div class="footer">
+          <div class="signature-block">
+            <div class="signature-line"></div>
+            <div class="signature-name">Authorized Signatory</div>
+            <div class="signature-title">Director</div>
+          </div>
+          <div class="signature-block">
+            <div class="signature-line"></div>
+            <div class="signature-name">{{issuedDate}}</div>
+            <div class="signature-title">Date of Issue</div>
+          </div>
+        </div>
+        
+        <div class="meta-info">Ref: {{requestNumber}} | Intern Code: {{internCode}}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
