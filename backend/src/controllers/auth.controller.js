@@ -18,6 +18,12 @@ export async function login(req, res) {
         });
     }
 
+    if (user.isArchived) {
+        return res.status(403).json({
+            message: "Your internship account has been archived. Contact admin."
+        });
+    }
+
     // Compare the plain-text request password with the stored bcrypt hash.
     const isCredentialValid = await user.comparePassword(password);
 

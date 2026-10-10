@@ -68,4 +68,10 @@ export const downloadAdminCertificate = async (id, fileName) => {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
-};
+};
+
+// Task C
+export const getRetentionPolicy = () => request('get', '/api/admin/retention-policy');
+export const updateRetentionPolicy = (payload) => request('patch', '/api/admin/retention-policy', payload);
+export const getArchivedInterns = () => request('get', '/api/admin/interns/archived');
+export const restoreArchivedIntern = (id) => request('patch', `/api/admin/interns/${id}/restore`);

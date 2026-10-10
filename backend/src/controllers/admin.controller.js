@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import User from "../models/User.js";
 import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
+import RetentionPolicy from '../models/RetentionPolicy.model.js';
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { generateInternCode } from "../utils/generateInternCode.js";
@@ -752,4 +753,76 @@ export const downloadCertificatePdf = async (req, res) => {
   } catch (err) {
     return res.status(500).json({ message: 'Internal server error' });
   }
+};
+
+export const getRetentionPolicy = async (req, res) => {
+    try {
+        let policy = await RetentionPolicy.findOne();
+        if (!policy) {
+            policy = await RetentionPolicy.create({ graceDays: 30, purgeDays: 90, updatedBy: req.user.id });
+        }
+        res.status(200).json({ policy });
+    } catch (err) {
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+export const updateRetentionPolicy = async (req, res) => {
+    try {
+        const { graceDays, purgeDays } = req.body;
+        if (graceDays === undefined || purgeDays === undefined) {
+            return res.status(400).json({ message: "graceDays and purgeDays are required" });
+        }
+        if (purgeDays <= graceDays) {
+            return res.status(400).json({ message: "purgeDays must be greater than graceDays" });
+        }
+        if (graceDays < 1 || purgeDays < 1) {
+            return res.status(400).json({ message: "minimum value is 1" });
+        }
+
+        let policy = await RetentionPolicy.findOne();
+        if (!policy) {
+            policy = new RetentionPolicy();
+        }
+        policy.graceDays = graceDays;
+        policy.purgeDays = purgeDays;
+        policy.updatedBy = req.user.id;
+        await policy.save();
+
+        res.status(200).json({ policy, message: "Policy updated successfully" });
+    } catch (err) {
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+export const getArchivedInterns = async (req, res) => {
+    try {
+        const archivedInterns = await User.find({ role: 'intern', isArchived: true })
+            .select('-password -resetPasswordToken -resetPasswordExpires')
+            .sort({ archivedAt: -1 });
+        res.status(200).json({ interns: archivedInterns });
+    } catch (err) {
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+};
+
+export const restoreArchivedIntern = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid intern ID format' });
+        }
+        const intern = await User.findOne({ _id: id, role: 'intern', isArchived: true });
+        if (!intern) {
+            return res.status(404).json({ message: "Archived intern not found" });
+        }
+        
+        intern.isArchived = false;
+        intern.archivedAt = null;
+        await intern.save();
+
+        res.status(200).json({ message: "Intern restored successfully", intern });
+    } catch (err) {
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
 };

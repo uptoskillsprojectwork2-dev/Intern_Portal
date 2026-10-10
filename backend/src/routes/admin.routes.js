@@ -18,7 +18,11 @@ import {
   finalizeCertificate,
   getAllCertificates,
   retryCertificateGeneration,
-  downloadCertificatePdf
+  downloadCertificatePdf,
+  getRetentionPolicy,
+  updateRetentionPolicy,
+  getArchivedInterns,
+  restoreArchivedIntern
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
@@ -35,9 +39,11 @@ adminRouter.post("/create-tl", verifyAuth, requireAdmin, teamLeaderValidator, cr
 
 // Intern Management routes
 adminRouter.get("/interns", verifyAuth, requireAdmin, getAllInterns);
+adminRouter.get("/interns/archived", verifyAuth, requireAdmin, getArchivedInterns);
 adminRouter.get("/interns/:id", verifyAuth, requireAdmin, getInternById);
 adminRouter.patch("/interns/:id", verifyAuth, requireAdmin, updateInternValidator, updateIntern);
 adminRouter.patch("/interns/:id/assignment", verifyAuth, requireAdmin, assignTeamLeaderValidator, assignInternTeamLeader);
+adminRouter.patch("/interns/:id/restore", verifyAuth, requireAdmin, restoreArchivedIntern);
 
 // Team Leader Management routes
 adminRouter.get("/teamleaders", verifyAuth, requireAdmin, getAllTeamLeaders);
@@ -60,5 +66,9 @@ adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finaliz
 adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
 adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
+
+// Task C routes
+adminRouter.get("/retention-policy", verifyAuth, requireAdmin, getRetentionPolicy);
+adminRouter.patch("/retention-policy", verifyAuth, requireAdmin, updateRetentionPolicy);
 
 export default adminRouter;

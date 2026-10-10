@@ -58,6 +58,13 @@ const userSchema = new mongoose.Schema(
             enum: ["admin", "intern", "teamleader"],
             default: "intern"
         },
+        isArchived: {
+            type: Boolean,
+            default: false
+        },
+        archivedAt: {
+            type: Date
+        },
         internshipDetails:{
             teamLeader: { type: mongoose.Schema.Types.ObjectId, ref: 'user', index: true },
             teamleaderEmail: { type: String, trim: true, lowercase: true },

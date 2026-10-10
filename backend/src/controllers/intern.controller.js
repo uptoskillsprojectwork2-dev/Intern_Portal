@@ -127,13 +127,36 @@ export const getProfile = async (req, res) => {
   try {
     // req.user is set by verifyToken middleware after decoding the JWT — { id, role }
     const user = await User.findById(req.user.id)
-      .select('-password'); // never send password back, even hashed
+      .select('-password -resetPasswordToken -resetPasswordExpires'); // never send password back, even hashed
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ user });
+    let daysUntilArchival = null;
+    if (user.endDate && user.internshipDetails?.status === 'completed' && !user.isArchived) {
+      const { default: RetentionPolicy } = await import('../models/RetentionPolicy.model.js');
+      const policy = await RetentionPolicy.findOne();
+      const graceDays = policy ? policy.graceDays : 30;
+      
+      const endDate = new Date(user.endDate);
+      endDate.setHours(0, 0, 0, 0);
+      const archiveDate = new Date(endDate);
+      archiveDate.setDate(archiveDate.getDate() + graceDays);
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const diffTime = archiveDate - today;
+      daysUntilArchival = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    }
+
+    const userData = user.toObject();
+    if (daysUntilArchival !== null) {
+      userData.daysUntilArchival = daysUntilArchival;
+    }
+
+    res.json({ user: userData });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

@@ -7,6 +7,8 @@ import ForwardedRequestsList from '../components/ForwardedRequestsList';
 import TeamLeadersSection from '../components/TeamLeadersSection';
 import CertificatesOverview from '../components/CertificatesOverview';
 import AdminInternsList from '../components/AdminInternsList';
+import RetentionPolicyForm from '../components/RetentionPolicyForm';
+import ArchivedInternsList from '../components/ArchivedInternsList';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -47,6 +49,8 @@ const AdminDashboard = () => {
           <button className={`admin-nav-item ${activeView === 'teamleader' ? 'active' : ''}`} onClick={() => setActiveView('teamleader')}><span>♙</span> Create Team Leader</button>
           <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => setActiveView('requests')}><span>▤</span> Certificate Requests</button>
           <button className={`admin-nav-item ${activeView === 'certificates' ? 'active' : ''}`} onClick={() => setActiveView('certificates')}><span>📜</span> Issued Certificates</button>
+          <button className={`admin-nav-item ${activeView === 'retention' ? 'active' : ''}`} onClick={() => setActiveView('retention')}><span>⚙️</span> Retention Policy</button>
+          <button className={`admin-nav-item ${activeView === 'archived_interns' ? 'active' : ''}`} onClick={() => setActiveView('archived_interns')}><span>🗑️</span> Archived Interns</button>
         </nav>
         <div className="admin-sidebar-note"><span>●</span> Admin access enabled</div>
       </aside>
@@ -67,6 +71,10 @@ const AdminDashboard = () => {
               ? 'Create a team leader'
               : activeView === 'certificates'
               ? 'Issued certificates'
+              : activeView === 'retention'
+              ? 'Retention Policy'
+              : activeView === 'archived_interns'
+              ? 'Archived Interns'
               : 'Certificate requests'}
           </h1>
           <p>
@@ -80,6 +88,10 @@ const AdminDashboard = () => {
               ? 'Finalize certificate requests forwarded by Team Leaders.'
               : activeView === 'certificates'
               ? 'Audit and manage all generated certificates across the portal.'
+              : activeView === 'retention'
+              ? 'Configure the automated lifecycle and retention for intern accounts.'
+              : activeView === 'archived_interns'
+              ? 'View and restore intern accounts that have been archived.'
               : 'Complete the details below to create a new portal account.'}
           </p>
         </header>
@@ -112,6 +124,10 @@ const AdminDashboard = () => {
           <CreateTl />
         ) : activeView === 'certificates' ? (
           <CertificatesOverview />
+        ) : activeView === 'retention' ? (
+          <RetentionPolicyForm />
+        ) : activeView === 'archived_interns' ? (
+          <ArchivedInternsList />
         ) : (
           <ForwardedRequestsList />
         )}
