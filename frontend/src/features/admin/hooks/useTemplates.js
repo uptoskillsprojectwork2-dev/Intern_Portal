@@ -14,26 +14,24 @@ export default function useTemplates() {
 
   // Fetch all templates
   const loadTemplates = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
     try {
       const data = await getAllTemplates();
 
       setTemplates(data.templates || []);
+      setError(null);
     } catch (requestError) {
-      setError(
-        requestError.message ||
-          "Failed to load templates"
-      );
+      setError(requestError.message || "Failed to load templates");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Load templates when component mounts
   useEffect(() => {
-    loadTemplates();
+    const timeoutId = setTimeout(() => {
+      void loadTemplates();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [loadTemplates]);
 
   // Create template
@@ -42,32 +40,23 @@ export default function useTemplates() {
 
     const newTemplate = data.template;
 
-    setTemplates((currentTemplates) => [
-      newTemplate,
-      ...currentTemplates,
-    ]);
+    setTemplates((currentTemplates) => [newTemplate, ...currentTemplates]);
 
     return newTemplate;
   };
 
   // Update template
   const editTemplate = async (id, payload) => {
-    const data = await updateTemplate(
-      id,
-      payload
-    );
+    const data = await updateTemplate(id, payload);
 
     const updatedTemplate = data.template;
 
     setTemplates((currentTemplates) =>
       currentTemplates.map((template) => {
-        const templateId =
-          template._id || template.id;
+        const templateId = template._id || template.id;
 
-        return templateId === id
-          ? updatedTemplate
-          : template;
-      })
+        return templateId === id ? updatedTemplate : template;
+      }),
     );
 
     return updatedTemplate;
@@ -75,20 +64,16 @@ export default function useTemplates() {
 
   // Activate / deactivate template
   const toggleActive = async (id) => {
-    const data =
-      await toggleTemplateActive(id);
+    const data = await toggleTemplateActive(id);
 
     const updatedTemplate = data.template;
 
     setTemplates((currentTemplates) =>
       currentTemplates.map((template) => {
-        const templateId =
-          template._id || template.id;
+        const templateId = template._id || template.id;
 
-        return templateId === id
-          ? updatedTemplate
-          : template;
-      })
+        return templateId === id ? updatedTemplate : template;
+      }),
     );
 
     return updatedTemplate;

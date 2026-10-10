@@ -13,7 +13,8 @@ import {
   getCertificateDraft as fetchCertificateDraft,
   updateCertificateDraft as modifyCertificateDraft,
   finalizeCertificate as finalizeCertificateService,
-  sendCertificateEmail
+  sendCertificateEmail,
+  renderCertificatePdf
 } from '../services/certificate.service.js';
 
 dotenv.config();
@@ -394,6 +395,32 @@ export const downloadCertificatePdf = async (req, res) => {
     return res.download(absolutePath, safeFileName);
   } catch (err) {
     return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Preview PDF rendering on-the-fly using Puppeteer.
+ * Guarantees high-resolution, full-fidelity PDF matching the visual preview.
+ */
+export const renderPreviewPdf = async (req, res) => {
+  try {
+    const { htmlContent, title } = req.body;
+
+    if (!htmlContent || typeof htmlContent !== 'string' || !htmlContent.trim()) {
+      return res.status(400).json({ message: 'Certificate htmlContent is required for PDF rendering' });
+    }
+
+    const pdfBuffer = await renderCertificatePdf(htmlContent);
+    const safeTitle = ((title || 'certificate-preview').replace(/[^a-zA-Z0-9_-]/g, '_')) || 'certificate';
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+
+    return res.status(200).send(pdfBuffer);
+  } catch (err) {
+    const status = err.statusCode || 500;
+    return res.status(status).json({ message: err.message || 'Failed to generate preview PDF' });
   }
 };
 

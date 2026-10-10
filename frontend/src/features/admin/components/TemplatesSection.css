@@ -1,0 +1,43 @@
+/*
+ * Certificate templates page layout
+ * Stack Create/Edit Template above All Templates.
+ * Keeps both sections at full available width.
+ */
+.templates-section {
+  width: 100%;
+  min-width: 0;
+}
+
+.templates-section .templates-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+  width: 100%;
+  min-width: 0;
+}
+
+.templates-section .templates-layout > * {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* Keep embedded editors/canvases within the available page width. */
+.templates-section iframe,
+.templates-section .template-html-field,
+.templates-section .template-html-field > * {
+  max-width: 100%;
+}
+
+.templates-section iframe {
+  display: block;
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .templates-section .templates-layout {
+    gap: 18px;
+  }
+}

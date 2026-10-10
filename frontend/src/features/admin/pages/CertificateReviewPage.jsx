@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import useCertificateDraft from "../hooks/useCertificateDraft";
 import { finalizeCertificate } from "../services/admin.service";
 import CertificatePreview from "../components/CertificatePreview";
+import CertificateTemplateEditor from "../components/CertificateTemplateEditor";
 import Loading from "../../shared/components/Loading";
 import Toast from "../../shared/components/Toast";
 import "./CertificateReviewPage.css";
@@ -122,12 +123,10 @@ const CertificateReviewPage = () => {
             <h2>Edit Certificate HTML</h2>
           </div>
 
-          <textarea
-            className="certificate-html-editor"
-            value={htmlContent}
-            onChange={(e) => setHtmlContent(e.target.value)}
-            disabled={finalizing}
-            spellCheck={false}
+          <CertificateTemplateEditor
+            key={draft._id || draft.id || id}
+            initialHtml={htmlContent || ""}
+            onChange={setHtmlContent}
           />
 
           <div className="certificate-review-actions">

@@ -1,5 +1,10 @@
 import "./TemplateForm.css";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import CertificateTemplateEditor from "./CertificateTemplateEditor";
+import {
+  DEFAULT_CERTIFICATE_DOCUMENT,
+  getTemplateForCertificateType,
+} from "./certificatePresets";
 
 const CERTIFICATE_TYPES = [
   "offer_letter",
@@ -13,284 +18,125 @@ const CERTIFICATE_TYPES = [
   "custom",
 ];
 
+const DEFAULT_HTML = DEFAULT_CERTIFICATE_DOCUMENT;
+
 const EMPTY_FORM = {
   name: "",
+  templateCode: "",
+  title: "",
   certificateType: "completion_certificate",
-
-  htmlContent: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-
-  <style>
-    @page {
-      size: A4 landscape;
-      margin: 0;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-    }
-
-    body {
-      font-family: Georgia, "Times New Roman", serif;
-      background: white;
-      color: #1f2937;
-    }
-
-    .certificate {
-      width: 297mm;
-      height: 210mm;
-      padding: 5mm;
-      background: #ffffff;
-      border: 7mm solid #0867d8;
-    }
-
-    .certificate-inner {
-      width: 100%;
-      height: 100%;
-      border: 0.7mm solid #d6ad32;
-      padding: 18mm 25mm;
-      position: relative;
-      text-align: center;
-    }
-
-    .brand {
-      font-size: 24px;
-      font-weight: bold;
-      letter-spacing: 2px;
-      color: #0867d8;
-      margin-bottom: 8mm;
-    }
-
-    .title {
-      margin: 0;
-      font-size: 32px;
-      letter-spacing: 5px;
-      font-weight: bold;
-      color: #1f2937;
-    }
-
-    .subtitle {
-      margin-top: 4mm;
-      font-size: 15px;
-      letter-spacing: 3px;
-      color: #6b7280;
-    }
-
-    .intro {
-      margin-top: 4mm;
-      font-size: 15px;
-      color: #4b5563;
-    }
-
-    .intern-name {
-      margin: 5mm 0 3mm;
-      font-size: 34px;
-      font-weight: bold;
-      color: #0867d8;
-    }
-
-    .domain {
-      font-size: 18px;
-      font-weight: bold;
-      color: #1f2937;
-    }
-
-    .dates {
-      margin-top: 3mm;
-      font-size: 13px;
-      color: #6b7280;
-    }
-
-    .details {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      position: absolute;
-      left: 25mm;
-      right: 25mm;
-      bottom: 16mm;
-    }
-
-    .detail-block {
-      text-align: left;
-      font-size: 11px;
-      color: #6b7280;
-    }
-
-    .detail-block.right {
-      text-align: right;
-    }
-
-    .detail-label {
-      font-weight: bold;
-      color: #1f2937;
-    }
-
-    .verification {
-      position: absolute;
-      bottom: 6mm;
-      left: 0;
-      right: 0;
-      font-size: 9px;
-      color: #9ca3af;
-    }
-
-    .signature {
-      position: absolute;
-      bottom: 15mm;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 45mm;
-      border-top: 1px solid #9ca3af;
-      padding-top: 2mm;
-      font-size: 10px;
-      color: #6b7280;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="certificate">
-    <div class="certificate-inner">
-
-      <div class="brand">
-        UPTOSKILLS
-      </div>
-
-      <h1 class="title">
-        CERTIFICATE
-      </h1>
-
-      <div class="subtitle">
-        OF INTERNSHIP COMPLETION
-      </div>
-
-      <div class="intro">
-        This certificate is proudly presented to
-      </div>
-
-      <div class="intern-name">
-        {{fullName}}
-      </div>
-
-      <div class="domain">
-        {{domain}}
-      </div>
-
-      <div class="dates">
-        Internship Period: {{startDate}} — {{endDate}}
-      </div>
-
-      <div class="signature">
-        Authorized Signatory
-      </div>
-
-      <div class="details">
-        <div class="detail-block">
-          <div class="detail-label">Certificate ID</div>
-          {{certificateNumber}}
-        </div>
-
-        <div class="detail-block right">
-          <div class="detail-label">Issued On</div>
-          {{issueDate}}
-        </div>
-      </div>
-
-      <div class="verification">
-        Verification Code: {{verificationCode}}
-      </div>
-
-    </div>
-  </div>
-</body>
-</html>`,
+  htmlContent: DEFAULT_HTML,
 };
 
 const prettyType = (value) => value.replaceAll("_", " ");
 
 export default function TemplateForm({
   editingTemplate,
+  templates = [],
   onSave,
   onCancel,
 }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [prevEditingTemplate, setPrevEditingTemplate] = useState(editingTemplate);
+  const [form, setForm] = useState(() => (
+    editingTemplate
+      ? {
+          name: editingTemplate.name || editingTemplate.templateName || "",
+          templateCode: editingTemplate.templateCode || "",
+          title: editingTemplate.title || editingTemplate.name || "",
+          certificateType:
+            editingTemplate.certificateType || "completion_certificate",
+          htmlContent:
+            editingTemplate.htmlContent ||
+            editingTemplate.content ||
+            DEFAULT_HTML,
+        }
+      : EMPTY_FORM
+  ));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  // When editing, load selected template into form
-  useEffect(() => {
-    if (!editingTemplate) {
-      setForm(EMPTY_FORM);
-      return;
-    }
-
-    setForm({
-      name:
-        editingTemplate.name ||
-        editingTemplate.templateName ||
-        "",
-
-      certificateType:
-        editingTemplate.certificateType ||
-        CERTIFICATE_TYPES[0],
-
-      htmlContent:
-        editingTemplate.htmlContent ||
-        editingTemplate.content ||
-        "",
-    });
-  }, [editingTemplate]);
+  if (editingTemplate !== prevEditingTemplate) {
+    setPrevEditingTemplate(editingTemplate);
+    setForm(
+      editingTemplate
+        ? {
+            name: editingTemplate.name || editingTemplate.templateName || "",
+            templateCode: editingTemplate.templateCode || "",
+            title: editingTemplate.title || editingTemplate.name || "",
+            certificateType:
+              editingTemplate.certificateType || "completion_certificate",
+            htmlContent:
+              editingTemplate.htmlContent ||
+              editingTemplate.content ||
+              DEFAULT_HTML,
+          }
+        : EMPTY_FORM
+    );
+  }
 
   const updateField = (field, value) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleCertificateTypeChange = (newType) => {
+    const matching =
+      templates.find((t) => t.certificateType === newType && t.status === "active") ||
+      templates.find((t) => t.certificateType === newType);
+
+    const newHtml =
+      matching?.content ||
+      matching?.htmlContent ||
+      getTemplateForCertificateType(newType);
+
+    const pretty = prettyType(newType)
+      .split(" ")
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+
+    const defaultTitle = matching?.title || pretty;
+    const defaultName = matching?.templateName || `${pretty} Template`;
+    const defaultCode =
+      matching?.templateCode ||
+      `TPL-${newType.toUpperCase().replace(/_/g, "-")}-01`;
+
     setForm((current) => ({
       ...current,
-      [field]: value,
+      certificateType: newType,
+      htmlContent: newHtml,
+      name: !editingTemplate ? defaultName : current.name,
+      title: !editingTemplate ? defaultTitle : current.title,
+      templateCode: !editingTemplate ? defaultCode : current.templateCode,
     }));
   };
 
   const submit = async (event) => {
-    event.preventDefault();
-
+    if (event?.preventDefault) event.preventDefault();
     setError(null);
 
-    // Basic validation
-    if (
-      !form.name.trim() ||
-      !form.htmlContent.trim()
-    ) {
-      setError(
-        "Template name and HTML content are required."
-      );
+    if (!form.name.trim() || !form.htmlContent.trim()) {
+      setError("Template name and HTML content are required.");
+      return;
+    }
 
+    if (!/\{\{\s*(fullName|internName|studentName)\s*\}\}/i.test(form.htmlContent)) {
+      setError("Certificate HTML must include a recipient name placeholder (such as {{fullName}} or {{InternName}}).");
       return;
     }
 
     setSaving(true);
-
     try {
       await onSave({
         name: form.name.trim(),
+        templateName: form.name.trim(),
+        templateCode: form.templateCode.trim() || undefined,
+        title: form.title.trim() || form.name.trim(),
         certificateType: form.certificateType,
         htmlContent: form.htmlContent,
       });
 
-      // Clear form after creating
-      if (!editingTemplate) {
-        setForm(EMPTY_FORM);
-      }
+      if (!editingTemplate) setForm(EMPTY_FORM);
     } catch (saveError) {
-      setError(saveError.message);
+      setError(saveError?.message || "Unable to save certificate template.");
     } finally {
       setSaving(false);
     }
@@ -301,137 +147,93 @@ export default function TemplateForm({
       className="template-form-panel"
       aria-labelledby="template-form-title"
     >
-      <div className="template-panel-heading">
-
-        <div className="admin-form-icon">
-          HTML
-        </div>
-
-        <div>
-          <p className="admin-eyebrow">
-            TEMPLATE MANAGEMENT
-          </p>
-
-          <h2 id="template-form-title">
-            {editingTemplate
-              ? "Edit template"
-              : "Create a template"}
-          </h2>
-
-          <p>
-            Create the HTML that will be used later
-            to generate certificate drafts.
-          </p>
-        </div>
-
-      </div>
-
       <form onSubmit={submit}>
+        <div className="template-top-fields-card">
+          <div className="template-top-grid">
+            <label className="template-top-field">
+              <span className="template-top-label">TEMPLATE NAME</span>
+              <input
+                type="text"
+                className="template-top-input"
+                value={form.name}
+                onChange={(event) => updateField("name", event.target.value)}
+                placeholder="ojt Template"
+                required
+              />
+            </label>
 
-        <div className="admin-form-grid">
+            <label className="template-top-field">
+              <span className="template-top-label">TEMPLATE CODE</span>
+              <input
+                type="text"
+                className="template-top-input"
+                value={form.templateCode}
+                onChange={(event) =>
+                  updateField("templateCode", event.target.value)
+                }
+                placeholder="TPL-OJT-01"
+              />
+            </label>
 
-          {/* Template Name */}
-          <label className="admin-field">
-            <span>Template name</span>
+            <label className="template-top-field">
+              <span className="template-top-label">CERTIFICATE TITLE</span>
+              <input
+                type="text"
+                className="template-top-input"
+                value={form.title}
+                onChange={(event) => updateField("title", event.target.value)}
+                placeholder="OJT"
+              />
+            </label>
 
-            <input
-              type="text"
-              value={form.name}
-              onChange={(event) =>
-                updateField(
-                  "name",
-                  event.target.value
-                )
-              }
-              placeholder="Internship Completion Certificate"
-              required
-            />
-          </label>
-
-          {/* Certificate Type */}
-          <label className="admin-field">
-            <span>Certificate type</span>
-
-            <select
-              value={form.certificateType}
-              onChange={(event) =>
-                updateField(
-                  "certificateType",
-                  event.target.value
-                )
-              }
-            >
-              {CERTIFICATE_TYPES.map((type) => (
-                <option
-                  key={type}
-                  value={type}
-                >
-                  {prettyType(type)}
-                </option>
-              ))}
-            </select>
-          </label>
-
+            <label className="template-top-field">
+              <span className="template-top-label">CERTIFICATE TYPE</span>
+              <select
+                className="template-top-input template-top-select"
+                value={form.certificateType}
+                onChange={(event) =>
+                  handleCertificateTypeChange(event.target.value)
+                }
+              >
+                {CERTIFICATE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {prettyType(type)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
 
-        {/* HTML Content */}
-        <label className="admin-field template-html-field">
-
-          <span>HTML content</span>
-
-          <textarea
-            value={form.htmlContent}
-            onChange={(event) =>
-              updateField(
-                "htmlContent",
-                event.target.value
-              )
-            }
-            rows={15}
-            placeholder="Write the certificate HTML here..."
-            required
+        <div className="template-editor-wrapper">
+          <CertificateTemplateEditor
+            key={`${editingTemplate?._id || "new"}-${form.certificateType}`}
+            initialHtml={form.htmlContent}
+            onChange={(html) => updateField("htmlContent", html)}
+            onSaveTemplate={submit}
+            saving={saving}
+            templateTitle={form.title || form.name}
           />
+        </div>
 
-        </label>
-
-        {/* Error */}
         {error && (
-          <p
-            className="admin-status error"
-            role="alert"
-          >
+          <p className="admin-status error" role="alert" style={{ marginTop: "12px" }}>
             {error}
           </p>
         )}
 
-        {/* Buttons */}
-        <div className="template-form-actions">
-
-          <button
-            className="admin-submit"
-            type="submit"
-            disabled={saving}
-          >
-            {saving
-              ? "Saving..."
-              : editingTemplate
-                ? "Update template"
-                : "Create template"}
-          </button>
-
-          {editingTemplate && (
+        {editingTemplate && (
+          <div className="template-form-cancel-row">
             <button
               type="button"
               className="template-secondary-button"
               onClick={onCancel}
               disabled={saving}
             >
-              Cancel
+              Cancel Editing
             </button>
-          )}
-
-        </div>
-
+          </div>
+        )}
       </form>
     </section>
   );

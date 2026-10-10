@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getCertificateDraft,
   updateCertificateDraft,
@@ -11,7 +11,7 @@ const useCertificateDraft = (id) => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchDraft = async () => {
+  const fetchDraft = useCallback(async () => {
     if (!id) return;
 
     try {
@@ -19,22 +19,19 @@ const useCertificateDraft = (id) => {
       setError(null);
 
       const data = await getCertificateDraft(id);
-
       const certificate = data.certificate || data;
 
       setDraft(certificate);
       setHtmlContent(certificate.htmlContent || "");
     } catch (err) {
       console.error("Failed to fetch certificate draft:", err);
-
       setError(
-        err.response?.data?.message ||
-        "Failed to load certificate draft"
+        err.response?.data?.message || "Failed to load certificate draft",
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const saveDraft = async () => {
     if (!id) return;
@@ -43,10 +40,7 @@ const useCertificateDraft = (id) => {
       setSaving(true);
       setError(null);
 
-      const data = await updateCertificateDraft(
-        id,
-        htmlContent
-      );
+      const data = await updateCertificateDraft(id, htmlContent);
 
       const updated = data.certificate || data;
 
@@ -58,8 +52,7 @@ const useCertificateDraft = (id) => {
       console.error("Failed to update certificate draft:", err);
 
       setError(
-        err.response?.data?.message ||
-        "Failed to save certificate draft"
+        err.response?.data?.message || "Failed to save certificate draft",
       );
 
       throw err;
@@ -67,10 +60,14 @@ const useCertificateDraft = (id) => {
       setSaving(false);
     }
   };
-
+  
   useEffect(() => {
-    fetchDraft();
-  }, [id]);
+    const timeoutId = setTimeout(() => {
+      void fetchDraft();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchDraft]);
 
   return {
     draft,

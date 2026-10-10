@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getAllCertificates,
   downloadCertificatePdf,
@@ -25,24 +25,31 @@ export default function CertificatesOverview() {
   const [error, setError] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
 
-  const fetchCertificates = async () => {
+  const fetchCertificates = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-
       const response = await getAllCertificates();
 
       setCertificates(response.certificates || []);
+      setError(null);
     } catch (err) {
       setError(err.message || "Failed to load certificates.");
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const handleRefresh = async () => {
+    setLoading(true);
+    await fetchCertificates();
   };
 
   useEffect(() => {
-    fetchCertificates();
-  }, []);
+    const timeoutId = setTimeout(() => {
+      void fetchCertificates();
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
+  }, [fetchCertificates]);
 
   const handleDownload = async (id, certificateNumber) => {
     try {
@@ -94,7 +101,7 @@ export default function CertificatesOverview() {
         <button
           type="button"
           className="certificates-refresh-button"
-          onClick={fetchCertificates}
+          onClick={handleRefresh}
         >
           Refresh
         </button>

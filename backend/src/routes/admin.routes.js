@@ -16,6 +16,7 @@ import {
   getAllCertificates,
   retryCertificateGeneration,
   downloadCertificatePdf,
+  renderPreviewPdf,
   createTemplate,
   getAllTemplates,
   updateTemplate,
@@ -143,6 +144,12 @@ adminRouter.post(
   verifyAuth,
   requireAdmin,
   retryCertificateGeneration,
+);
+adminRouter.post(
+  "/render-preview-pdf",
+  verifyAuth,
+  requireAdmin,
+  renderPreviewPdf,
 );
 
 

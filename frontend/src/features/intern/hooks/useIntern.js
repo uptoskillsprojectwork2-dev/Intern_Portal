@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { InternContext } from "../context/internContext";
+import { InternContext } from "../context/intern-context";
 
 export function useIntern() {
   const context = useContext(InternContext);

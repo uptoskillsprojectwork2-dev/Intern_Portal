@@ -4,6 +4,7 @@ import useTemplates from "../hooks/useTemplates";
 
 import TemplateForm from "./TemplateForm";
 import TemplateList from "./TemplateList";
+import "./TemplatesSection.css";
 
 export default function TemplatesSection() {
 
@@ -93,6 +94,7 @@ export default function TemplatesSection() {
         {/* Create / Edit Form */}
         <TemplateForm
           editingTemplate={editingTemplate}
+          templates={templates}
           onSave={saveTemplate}
           onCancel={() =>
             setEditingTemplate(null)

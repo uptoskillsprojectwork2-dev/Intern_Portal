@@ -76,6 +76,18 @@ export const downloadCertificatePdf = async (id) => {
   return response;
 };
 
+export const renderPreviewPdf = async (htmlContent, title = "certificate") => {
+  const response = await adminApi.post(
+    "/api/admin/render-preview-pdf",
+    { htmlContent, title },
+    {
+      responseType: "blob",
+    },
+  );
+
+  return response;
+};
+
 export const updateCertificateDraft = (id, htmlContent) =>
   request("patch", `/api/admin/certificates/${id}`, {
     htmlContent,
