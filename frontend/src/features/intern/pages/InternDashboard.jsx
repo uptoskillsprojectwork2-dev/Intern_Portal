@@ -50,7 +50,7 @@ const NAV_ITEMS = [
    InternDashboard
    ============================================================ */
 export default function InternDashboard() {
-  const { profile, loading, error, fetchProfile } = useIntern();
+  const { profile, archiveNotice, loading, error, fetchProfile } = useIntern();
   const { handleLogout } = useAuth();
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('dashboard');
@@ -128,6 +128,16 @@ export default function InternDashboard() {
             Here's your internship overview for today.
           </p>
         </header>
+
+        {activeNav === 'dashboard' && archiveNotice && (
+          <div className="id-archive-warning" role="status">
+            <strong>Account archival scheduled</strong>
+            <span>
+              Your account is scheduled to be archived on {formatDate(archiveNotice.archiveDate)}.
+              {' '}You have {archiveNotice.daysUntilArchive} day{archiveNotice.daysUntilArchive === 1 ? '' : 's'} remaining to access your portal account and certificates.
+            </span>
+          </div>
+        )}
 
         {activeNav === 'certificates' && (
           <>

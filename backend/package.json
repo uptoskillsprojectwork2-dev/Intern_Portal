@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "seed:templates": "node scripts/seed_templates.js",
+    "seed:templates": "node seeds/seedTemplates.js",
     "dev": "npx nodemon server.js"
   },
   "keywords": [],
@@ -24,8 +24,10 @@
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.2",
+    "node-cron": "^4.6.0",
     "nodemailer": "^10.0.1",
     "puppeteer": "^25.10.0",
+    "qrcode": "^1.5.4",
     "xlsx": "^0.18.5"
   }
 }

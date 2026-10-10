@@ -27,6 +27,12 @@ export async function login(req, res) {
         });
     }
 
+    if (user.role === "intern" && user.isArchived) {
+        return res.status(403).json({
+            message: "Your internship account has been archived. Contact admin."
+        });
+    }
+
     // The frontend uses the returned role to select the correct dashboard.
     const token = jwt.sign({
         id: user._id,

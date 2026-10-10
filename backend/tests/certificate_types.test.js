@@ -1,3 +1,4 @@
+import Counter from '../src/models/Counter.model.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
@@ -54,6 +55,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     const origFindOne = CertificateRequest.findOne;
     const origCreate = CertificateRequest.create;
     const origCount = CertificateRequest.countDocuments;
+    const origCounterFindOneAndUpdate = Counter.findOneAndUpdate;
 
     User.findById = () => Promise.resolve({
       _id: new mongoose.Types.ObjectId(),
@@ -67,6 +69,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
 
     CertificateRequest.findOne = () => Promise.resolve(null);
     CertificateRequest.countDocuments = () => Promise.resolve(10);
+    Counter.findOneAndUpdate = () => Promise.resolve({ seq: 11 });
     CertificateRequest.create = (doc) => Promise.resolve({ _id: new mongoose.Types.ObjectId(), ...doc });
 
     try {
@@ -108,6 +111,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
       CertificateRequest.findOne = origFindOne;
       CertificateRequest.create = origCreate;
       CertificateRequest.countDocuments = origCount;
+      Counter.findOneAndUpdate = origCounterFindOneAndUpdate;
     }
   });
 

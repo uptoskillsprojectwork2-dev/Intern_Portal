@@ -18,7 +18,15 @@ import {
   finalizeCertificate,
   getAllCertificates,
   retryCertificateGeneration,
-  downloadCertificatePdf
+  downloadCertificatePdf,
+  getTemplatePlaceholders,
+  createCertificateTemplate,
+  updateCertificateTemplate,
+  getCertificateTemplates,
+  getRetentionPolicy,
+  updateRetentionPolicy,
+  getArchivedInterns,
+  restoreArchivedIntern,
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
@@ -26,6 +34,38 @@ import requireAdmin from "../middlewares/requireAdmin.js";
 
 const adminRouter = express.Router();
 
+adminRouter.get(
+  "/templates",
+  verifyAuth,
+  requireAdmin,
+  getCertificateTemplates
+);
+
+adminRouter.get(
+  "/templates/placeholders",
+  verifyAuth,
+  requireAdmin,
+  getTemplatePlaceholders
+);
+
+adminRouter.post(
+  "/templates",
+  verifyAuth,
+  requireAdmin,
+  createCertificateTemplate
+);
+
+adminRouter.patch(
+  "/templates/:id",
+  verifyAuth,
+  requireAdmin,
+  updateCertificateTemplate
+);
+
+adminRouter.get('/retention-policy', verifyAuth, requireAdmin, getRetentionPolicy);
+adminRouter.patch('/retention-policy', verifyAuth, requireAdmin, updateRetentionPolicy);
+adminRouter.get('/interns/archived', verifyAuth, requireAdmin, getArchivedInterns);
+adminRouter.patch('/interns/:id/restore', verifyAuth, requireAdmin, restoreArchivedIntern);
 
 // POST api/auth/register-intern
 adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);
