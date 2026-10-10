@@ -8,6 +8,8 @@ import TeamLeadersSection from '../components/TeamLeadersSection';
 import CertificatesOverview from '../components/CertificatesOverview';
 import AdminInternsList from '../components/AdminInternsList';
 import TemplateForm from '../components/TemplateForm';
+import RetentionPolicyForm from '../components/RetentionPolicyForm';
+import ArchivedInternsList from '../components/ArchivedInternsList';
 import './AdminDashboard.css';
 
 const AdminDashboard = () => {
@@ -43,12 +45,14 @@ const AdminDashboard = () => {
         <nav className="admin-sidebar-nav">
           <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}><span>▦</span> Overview</button>
           <button className={`admin-nav-item ${activeView === 'interns' ? 'active' : ''}`} onClick={() => setActiveView('interns')}><span>👥</span> Intern Management</button>
+          <button className={`admin-nav-item ${activeView === 'archived' ? 'active' : ''}`} onClick={() => setActiveView('archived')}><span>📦</span> Archived Interns</button>
           <button className={`admin-nav-item ${activeView === 'teamleaders' ? 'active' : ''}`} onClick={() => setActiveView('teamleaders')}><span>👔</span> Team Leaders</button>
           <button className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`} onClick={() => setActiveView('intern')}><span>＋</span> Create Intern</button>
           <button className={`admin-nav-item ${activeView === 'teamleader' ? 'active' : ''}`} onClick={() => setActiveView('teamleader')}><span>♙</span> Create Team Leader</button>
           <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => setActiveView('requests')}><span>▤</span> Certificate Requests</button>
           <button className={`admin-nav-item ${activeView === 'certificates' ? 'active' : ''}`} onClick={() => setActiveView('certificates')}><span>📜</span> Issued Certificates</button>
           <button className={`admin-nav-item ${activeView === 'templates' ? 'active' : ''}`} onClick={() => setActiveView('templates')}><span>🎨</span> Certificate Templates</button>
+          <button className={`admin-nav-item ${activeView === 'retention' ? 'active' : ''}`} onClick={() => setActiveView('retention')}><span>⏱</span> Retention Policy</button>
         </nav>
         <div className="admin-sidebar-note"><span>●</span> Admin access enabled</div>
       </aside>
@@ -61,6 +65,8 @@ const AdminDashboard = () => {
               ? 'Welcome back'
               : activeView === 'interns'
               ? 'Intern Management'
+              : activeView === 'archived'
+              ? 'Archived Interns'
               : activeView === 'teamleaders'
               ? 'Team Leader Management'
               : activeView === 'intern'
@@ -71,6 +77,8 @@ const AdminDashboard = () => {
               ? 'Issued certificates'
               : activeView === 'templates'
               ? 'Certificate Templates'
+              : activeView === 'retention'
+              ? 'Data Retention Policy'
               : 'Certificate requests'}
           </h1>
           <p>
@@ -78,6 +86,8 @@ const AdminDashboard = () => {
               ? 'Manage your portal accounts from one secure workspace.'
               : activeView === 'interns'
               ? 'View, edit, and assign/reassign all interns across all Team Leaders.'
+              : activeView === 'archived'
+              ? 'Review, restore, and audit archived intern accounts before their purge date.'
               : activeView === 'teamleaders'
               ? 'View, search, and manage all Team Leaders and their assigned intern teams.'
               : activeView === 'requests'
@@ -86,6 +96,8 @@ const AdminDashboard = () => {
               ? 'Audit and manage all generated certificates across the portal.'
               : activeView === 'templates'
               ? 'Visually edit and manage certificate templates with GrapesJS.'
+              : activeView === 'retention'
+              ? 'Configure lifecycle retention rules for archiving and anonymization.'
               : 'Complete the details below to create a new portal account.'}
           </p>
         </header>
@@ -101,8 +113,8 @@ const AdminDashboard = () => {
               </div>
               <div className="admin-quick-actions">
                 <button onClick={() => setActiveView('interns')}><span>👥</span><strong>Intern Management</strong><small>Manage interns & TL assignments</small></button>
-                <button onClick={() => setActiveView('teamleaders')}><span>👔</span><strong>Team Leaders</strong><small>Oversee all team leaders</small></button>
-                <button onClick={() => setActiveView('templates')}><span>🎨</span><strong>Certificate Templates</strong><small>Edit visual templates</small></button>
+                <button onClick={() => setActiveView('archived')}><span>📦</span><strong>Archived Interns</strong><small>Restore eligible accounts</small></button>
+                <button onClick={() => setActiveView('retention')}><span>⏱</span><strong>Retention Policy</strong><small>Configure grace & purge days</small></button>
                 <button onClick={() => setActiveView('requests')}><span>▤</span><strong>Certificate Requests</strong><small>Review pending drafts</small></button>
               </div>
             </section>
@@ -110,6 +122,8 @@ const AdminDashboard = () => {
           </>
         ) : activeView === 'interns' ? (
           <AdminInternsList />
+        ) : activeView === 'archived' ? (
+          <ArchivedInternsList />
         ) : activeView === 'teamleaders' ? (
           <TeamLeadersSection />
         ) : activeView === 'intern' ? (
@@ -120,12 +134,15 @@ const AdminDashboard = () => {
           <CertificatesOverview />
         ) : activeView === 'templates' ? (
           <TemplateForm />
+        ) : activeView === 'retention' ? (
+          <RetentionPolicyForm />
         ) : (
           <ForwardedRequestsList />
         )}
       </main>
     </div>
   );
+
 };
 
 export default AdminDashboard;

@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.js';
+import RetentionPolicy from '../models/RetentionPolicy.model.js';
 
 const ALLOWED_TYPES = [
   'offer_letter', 'bonafide', 'ojt_certificate', 'experience_letter',
@@ -140,14 +141,48 @@ export const getMyRequests = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     // req.user is set by verifyToken middleware after decoding the JWT — { id, role }
-    const user = await User.findById(req.user.id)
+    const userDoc = await User.findById(req.user.id)
       .select('-password'); // never send password back, even hashed
 
-    if (!user) {
+    if (!userDoc) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ user });
+    if (userDoc.isArchived === true) {
+      return res.status(403).json({ message: 'Your internship account has been archived. Contact admin.' });
+    }
+
+    const user = userDoc.toObject();
+
+    let archiveWarning = null;
+    if (user.endDate && !user.isArchived && !user.purgedAt) {
+      try {
+        const policy = await RetentionPolicy.getOrCreatePolicy();
+        const graceDays = policy.graceDays || 30;
+        const scheduledArchivalDate = new Date(user.endDate);
+        scheduledArchivalDate.setDate(scheduledArchivalDate.getDate() + graceDays);
+
+        const now = new Date();
+        const warningWindowStart = new Date(scheduledArchivalDate);
+        warningWindowStart.setDate(warningWindowStart.getDate() - 7);
+
+        const daysRemaining = Math.max(0, Math.ceil((scheduledArchivalDate.getTime() - now.getTime()) / 86400000));
+        const showWarning = now >= warningWindowStart && now < scheduledArchivalDate;
+
+        archiveWarning = {
+          showWarning,
+          scheduledArchivalDate: scheduledArchivalDate.toISOString(),
+          daysRemaining,
+          graceDays
+        };
+      } catch {
+        // Fallback gracefully if policy collection lookup fails
+      }
+    }
+
+    user.archiveWarning = archiveWarning;
+
+    res.json({ user, archiveWarning });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }

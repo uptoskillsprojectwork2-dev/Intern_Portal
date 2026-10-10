@@ -129,6 +129,28 @@ export default function InternDashboard() {
           </p>
         </header>
 
+        {/* Task C: Warning banner when scheduled to be archived within 7 days */}
+        {profile?.archiveWarning?.showWarning && (
+          <div
+            id="archive-warning-banner"
+            className="id-archive-warning-banner"
+            role="alert"
+          >
+            <div className="id-archive-warning-icon">⚠️</div>
+            <div className="id-archive-warning-content">
+              <strong>Account Archival Notice</strong>
+              <p>
+                Your internship has ended and your account is scheduled to be archived on{' '}
+                <strong>{formatDate(profile.archiveWarning.scheduledArchivalDate)}</strong>
+                {profile.archiveWarning.daysRemaining !== undefined ? (
+                  <span> ({profile.archiveWarning.daysRemaining} days remaining)</span>
+                ) : null}.
+                Please ensure you have requested and downloaded any required certificates before this date.
+              </p>
+            </div>
+          </div>
+        )}
+
         {activeNav === 'certificates' && (
           <>
             <section className="certificate-actions" aria-label="Certificate requests">

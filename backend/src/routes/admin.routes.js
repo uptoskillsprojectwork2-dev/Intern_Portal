@@ -32,11 +32,20 @@ import {
 } from "../controllers/template.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import { createTemplateValidator, updateTemplateValidator } from "../validators/template.validator.js";
+import {
+  getRetentionPolicy,
+  updateRetentionPolicy,
+  getArchivedInterns,
+  restoreArchivedIntern
+} from "../controllers/retention.controller.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
 
 const adminRouter = express.Router();
 
+// Task C — Retention Policy management routes
+adminRouter.get("/retention-policy", verifyAuth, requireAdmin, getRetentionPolicy);
+adminRouter.patch("/retention-policy", verifyAuth, requireAdmin, updateRetentionPolicy);
 
 // POST api/auth/register-intern
 adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);
@@ -45,6 +54,9 @@ adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, 
 adminRouter.post("/create-tl", verifyAuth, requireAdmin, teamLeaderValidator, createTeamLeader);
 
 // Intern Management routes
+// Task C — Archived interns route (must precede parameterized /interns/:id)
+adminRouter.get("/interns/archived", verifyAuth, requireAdmin, getArchivedInterns);
+adminRouter.patch("/interns/:id/restore", verifyAuth, requireAdmin, restoreArchivedIntern);
 adminRouter.get("/interns", verifyAuth, requireAdmin, getAllInterns);
 adminRouter.get("/interns/:id", verifyAuth, requireAdmin, getInternById);
 adminRouter.patch("/interns/:id", verifyAuth, requireAdmin, updateInternValidator, updateIntern);

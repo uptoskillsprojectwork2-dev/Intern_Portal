@@ -81,4 +81,11 @@ export const getTemplateByType = (certificateType) => request('get', `/api/admin
 export const getTemplateById = (id) => request('get', `/api/admin/templates/${id}`);
 export const createTemplate = (payload) => request('post', '/api/admin/templates', payload);
 export const updateTemplate = (id, payload) => request('patch', `/api/admin/templates/${id}`, payload);
-export const activateTemplate = (id) => request('patch', `/api/admin/templates/${id}/activate`);
+export const activateTemplate = (id) => request('patch', `/api/admin/templates/${id}/activate`);
+
+// Task C Retention Policy & Intern Lifecycle API
+export const getRetentionPolicy = () => request('get', '/api/admin/retention-policy');
+export const updateRetentionPolicy = (payload) => request('patch', '/api/admin/retention-policy', payload);
+export const getArchivedInterns = () => request('get', '/api/admin/interns/archived');
+export const restoreArchivedIntern = (id) => request('patch', `/api/admin/interns/${id}/restore`);
+
