@@ -5,6 +5,8 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
+import Counter from '../models/Counter.model.js';
+import RetentionPolicy from '../models/RetentionPolicy.js';
 
 const ALLOWED_TYPES = [
   'offer_letter', 'bonafide', 'ojt_certificate', 'experience_letter',
@@ -13,8 +15,17 @@ const ALLOWED_TYPES = [
 
 const generateRequestNumber = async () => {
   const year = new Date().getFullYear();
-  const count = await CertificateRequest.countDocuments();
-  return `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
+
+  const counter = await Counter.findOneAndUpdate(
+    { _id: 'certRequest' },
+    { $inc: { seq: 1 } },
+    {
+      new: true,
+      upsert: true
+    }
+  );
+
+  return `CERT-${year}-${String(counter.seq).padStart(5, '0')}`;
 };
 
 export const submitCertificateRequest = async (req, res) => {
@@ -124,7 +135,22 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ user });
+    const policy = await RetentionPolicy.findOne({ policyKey: 'intern' }).lean();
+    const graceDays = policy?.graceDays ?? 30;
+    let archiveNotice = null;
+    if (user.endDate && user.role === 'intern' && !user.isArchived) {
+      const archiveDate = new Date(user.endDate);
+      archiveDate.setUTCDate(archiveDate.getUTCDate() + graceDays);
+      archiveDate.setUTCHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const daysUntilArchive = Math.ceil((archiveDate.getTime() - today.getTime()) / 86400000);
+      if (daysUntilArchive >= 0 && daysUntilArchive <= 7) {
+        archiveNotice = { archiveDate, daysUntilArchive };
+      }
+    }
+
+    res.json({ user, archiveNotice });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
