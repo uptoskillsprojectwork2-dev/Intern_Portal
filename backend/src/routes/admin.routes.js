@@ -21,6 +21,7 @@ import {
   getAllTemplates,
   updateTemplate,
   toggleTemplateActive,
+  getTemplatePlaceholders,
 } from "../controllers/admin.controller.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
@@ -93,6 +94,13 @@ adminRouter.get(
   verifyAuth,
   requireAdmin,
   getAllTemplates
+);
+
+adminRouter.get(
+  "/templates/placeholders",
+  verifyAuth,
+  requireAdmin,
+  getTemplatePlaceholders
 );
 
 adminRouter.patch(

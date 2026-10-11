@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import useCertificateDraft from "../hooks/useCertificateDraft";
 import { finalizeCertificate } from "../services/admin.service";
-import CertificatePreview from "../components/CertificatePreview";
 import CertificateTemplateEditor from "../components/CertificateTemplateEditor";
 import Loading from "../../shared/components/Loading";
 import Toast from "../../shared/components/Toast";
@@ -79,7 +78,7 @@ const CertificateReviewPage = () => {
   }
 
   if (!draft) {
-    return <div>Certificate draft not found.</div>;
+    return <div className="certificate-not-found">Certificate draft not found.</div>;
   }
 
   return (
@@ -99,8 +98,7 @@ const CertificateReviewPage = () => {
         <h1>Certificate Review</h1>
 
         <p>
-          Review, edit and finalize the certificate before sending it to the
-          intern.
+          Visually review, customize, and finalize the certificate draft before delivering it to the intern.
         </p>
       </div>
 
@@ -116,46 +114,64 @@ const CertificateReviewPage = () => {
         onClose={() => setSuccessMessage(null)}
       />
 
-      <div className="certificate-review-layout">
-        <section className="certificate-editor-panel">
-          <div className="certificate-editor-header">
-            <p className="admin-eyebrow">EDITOR</p>
-            <h2>Edit Certificate HTML</h2>
-          </div>
+      {/* Review Action Bar */}
+      <div className="certificate-review-action-bar">
+        <div className="draft-meta-info">
+          <span className="draft-badge">Active Draft</span>
+          <span className="draft-cert-num">{draft.certificateNumber}</span>
+          <span className="draft-intern-name">
+            Recipient: <strong>{draft.userId?.fullName || draft.internCode}</strong> ({draft.userId?.email || ""})
+          </span>
+        </div>
 
-          <CertificateTemplateEditor
-            key={draft._id || draft.id || id}
-            initialHtml={htmlContent || ""}
-            onChange={setHtmlContent}
-          />
+        <div className="draft-action-buttons">
+          <button
+            type="button"
+            className="btn-review-save"
+            onClick={handleSave}
+            disabled={saving || finalizing}
+          >
+            {saving ? "Saving Draft..." : "Save Draft"}
+          </button>
 
-          <div className="certificate-review-actions">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || finalizing}
-            >
-              {saving ? "Saving..." : "Save Draft"}
-            </button>
+          <button
+            type="button"
+            className="btn-review-finalize"
+            onClick={handleFinalize}
+            disabled={saving || finalizing}
+          >
+            {finalizing ? "Finalizing & Sending..." : "Finalize & Send"}
+          </button>
+        </div>
+      </div>
 
-            <button
-              type="button"
-              onClick={handleFinalize}
-              disabled={saving || finalizing}
-            >
-              {finalizing ? "Finalizing & Sending..." : "Finalize & Send"}
-            </button>
-          </div>
-        </section>
+      {actionError && (
+        <div className="review-error-banner" role="alert">
+          <span>{actionError}</span>
+          <button
+            type="button"
+            className="btn-retry-action"
+            onClick={() => {
+              setActionError(null);
+              handleSave();
+            }}
+          >
+            Retry Save
+          </button>
+        </div>
+      )}
 
-        <section className="certificate-preview-panel">
-          <div className="certificate-editor-header">
-            <p className="admin-eyebrow">PREVIEW</p>
-            <h2>Certificate Preview</h2>
-          </div>
-
-          <CertificatePreview htmlContent={htmlContent} />
-        </section>
+      {/* Visual Editor Workspace */}
+      <div className="certificate-review-editor-container">
+        <CertificateTemplateEditor
+          key={draft._id}
+          initialHtml={htmlContent}
+          onChange={setHtmlContent}
+          onSave={handleSave}
+          onSaveTemplate={handleSave}
+          saving={saving}
+          templateTitle={`${draft.certificateNumber || "Draft"} - ${draft.userId?.fullName || "Certificate"}`}
+        />
       </div>
     </div>
   );

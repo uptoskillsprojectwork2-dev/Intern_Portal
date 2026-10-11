@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
+import Handlebars from 'handlebars';
 import User from "../models/User.js";
 import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
@@ -424,6 +425,48 @@ export const renderPreviewPdf = async (req, res) => {
   }
 };
 
+const validateTemplateHtml = (html) => {
+  if (!html || typeof html !== 'string' || !html.trim()) {
+    const error = new Error('HTML content is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (!/\{\{\s*fullName\s*\}\}/.test(html)) {
+    const error = new Error('Template HTML must include the {{fullName}} placeholder.');
+    error.statusCode = 400;
+    throw error;
+  }
+  try {
+    Handlebars.compile(html);
+  } catch (hbErr) {
+    const error = new Error(`Template has invalid Handlebars syntax or unbalanced brackets: ${hbErr.message}`);
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
+/**
+ * Returns the list of standard certificate placeholders
+ */
+export const getTemplatePlaceholders = async (req, res) => {
+  try {
+    const placeholders = [
+      { token: "{{fullName}}", key: "fullName", source: "User.fullName", description: "Intern full name", example: "Aditya Sharma", category: "candidate" },
+      { token: "{{internCode}}", key: "internCode", source: "User.internCode", description: "Intern unique code", example: "INT-2026-0042", category: "candidate" },
+      { token: "{{domain}}", key: "domain", source: "User.domain", description: "Internship domain", example: "Full Stack Web Development", category: "internship" },
+      { token: "{{startDate}}", key: "startDate", source: "User.startDate (e.g. 12 Jan 2026)", description: "Internship start date", example: "12 Jan 2026", category: "internship" },
+      { token: "{{endDate}}", key: "endDate", source: "User.endDate (e.g. 12 Jul 2026)", description: "Internship end date", example: "12 Jul 2026", category: "internship" },
+      { token: "{{issueDate}}", key: "issueDate", source: "Date of finalization", description: "Certificate issue date", example: "15 Jul 2026", category: "certificate" },
+      { token: "{{requestNumber}}", key: "requestNumber", source: "CertificateRequest.requestNumber", description: "Certificate request reference", example: "REQ-2026-00001", category: "certificate" },
+      { token: "{{certificateTitle}}", key: "certificateTitle", source: "Mapped from certificateType", description: "Certificate title", example: "Internship Completion", category: "certificate" },
+      { token: "{{qrCodeUrl}}", key: "qrCodeUrl", source: "QR verification link URL", description: "QR code verification URL placeholder", example: "https://uptoskills.com/verify/sample", category: "certificate" }
+    ];
+    return res.status(200).json({ placeholders });
+  } catch (err) {
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 export const createTemplate = async (req, res) => {
   try {
     const CertificateTemplate = (await import("../models/CertificateTemplate.js")).default;
@@ -446,6 +489,9 @@ export const createTemplate = async (req, res) => {
       });
     }
 
+    // Validation: enforce {{fullName}} and balanced brackets
+    validateTemplateHtml(finalContent);
+
     const generatedCode =
       templateCode ||
       `${certificateType}-${Date.now()}`.toLowerCase();
@@ -465,7 +511,7 @@ export const createTemplate = async (req, res) => {
       template,
     });
   } catch (err) {
-    return res.status(400).json({
+    return res.status(err.statusCode || 400).json({
       message: err.message || "Failed to create template.",
     });
   }
@@ -512,7 +558,10 @@ export const updateTemplate = async (req, res) => {
     }
 
     if (htmlContent || content) {
-      updateData.content = htmlContent || content;
+      const finalContent = htmlContent || content;
+      // Validation: enforce {{fullName}} and balanced brackets
+      validateTemplateHtml(finalContent);
+      updateData.content = finalContent;
     }
 
     const template = await CertificateTemplate.findByIdAndUpdate(
@@ -535,7 +584,7 @@ export const updateTemplate = async (req, res) => {
       template,
     });
   } catch (err) {
-    return res.status(400).json({
+    return res.status(err.statusCode || 400).json({
       message: err.message || "Failed to update template.",
     });
   }

@@ -13,7 +13,7 @@ import {
   splitTemplateDocument,
   buildTemplateDocument,
 } from "./certificatePresets";
-import { renderPreviewPdf } from "../services/admin.service";
+import { renderPreviewPdf, getTemplatePlaceholders } from "../services/admin.service";
 
 // ============================================================================
 // MAIN COMPONENT: CertificateTemplateEditor
@@ -21,6 +21,7 @@ import { renderPreviewPdf } from "../services/admin.service";
 const CertificateTemplateEditor = ({
   initialHtml = "",
   onChange,
+  onSave,
   onSaveTemplate,
   saving = false,
   templateTitle = "",
@@ -44,6 +45,8 @@ const CertificateTemplateEditor = ({
   const [toast, setToast] = useState(null);
   const [canvasFormat, setCanvasFormat] = useState("a4-landscape");
   const [zoomPercent, setZoomPercent] = useState(100);
+  const [isEditorLoading, setIsEditorLoading] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
 
   // Undo / Redo
   const [canUndo, setCanUndo] = useState(false);
@@ -59,8 +62,42 @@ const CertificateTemplateEditor = ({
   const [editableCode, setEditableCode] = useState("");
 
   // Placeholders sidebar state
+  const [placeholdersList, setPlaceholdersList] = useState(PLACEHOLDERS);
   const [searchToken, setSearchToken] = useState("");
   const [tokenCategory, setTokenCategory] = useState("all");
+
+  // Fetch placeholders from backend API on mount
+  useEffect(() => {
+    let mounted = true;
+    getTemplatePlaceholders()
+      .then((data) => {
+        if (!mounted) return;
+        const list = Array.isArray(data) ? data : data?.placeholders;
+        if (Array.isArray(list) && list.length > 0) {
+          setPlaceholdersList(list);
+        }
+      })
+      .catch(() => {
+        // Fallback to presets list
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Unsaved-changes warning before navigating away or closing window
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      if (isDirty) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isDirty]);
 
   // Sample data live preview interactive state
   const [sampleData, setSampleData] = useState({
@@ -331,12 +368,14 @@ const CertificateTemplateEditor = ({
         editor.refresh();
         fitCanvas();
         updateUndoRedo(editor);
+        setIsEditorLoading(false);
       }
     });
 
     const emitHtml = () => {
       const html = buildTemplateDocument(editor.getHtml(), editor.getCss());
       lastEmittedHtmlRef.current = html;
+      setIsDirty(true);
       onChangeRef.current?.(html);
       updateUndoRedo(editor);
     };
@@ -504,15 +543,17 @@ const CertificateTemplateEditor = ({
 
   // Filtered Placeholders
   const filteredPlaceholders = useMemo(() => {
-    return PLACEHOLDERS.filter((item) => {
+    return placeholdersList.filter((item) => {
+      const tokenStr = item.token || `{{${item.key}}}`;
+      const descStr = item.description || "";
       const matchesSearch =
-        item.token.toLowerCase().includes(searchToken.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchToken.toLowerCase());
+        tokenStr.toLowerCase().includes(searchToken.toLowerCase()) ||
+        descStr.toLowerCase().includes(searchToken.toLowerCase());
       const matchesCategory =
         tokenCategory === "all" || item.category === tokenCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchToken, tokenCategory]);
+  }, [placeholdersList, searchToken, tokenCategory]);
 
   // --------------------------------------------------------------------------
   // CANVAS ACTIONS (Undo, Redo, Delete, Clone, Zoom, Presets)
@@ -932,7 +973,14 @@ const CertificateTemplateEditor = ({
           <button
             type="button"
             className="visual-btn-save"
-            onClick={onSaveTemplate}
+            onClick={() => {
+              setIsDirty(false);
+              if (onSave) {
+                onSave(lastEmittedHtmlRef.current || initialHtml);
+              } else if (onSaveTemplate) {
+                onSaveTemplate();
+              }
+            }}
             disabled={saving}
           >
             <svg
@@ -1228,6 +1276,21 @@ const CertificateTemplateEditor = ({
           {/* Canvas Main Stage */}
           <div className="canvas-main-stage">
             <div className="canvas-frame-container">
+              {isEditorLoading && (
+                <div className="editor-skeleton-overlay" role="status" aria-label="Loading template editor">
+                  <div className="editor-skeleton-paper">
+                    <div className="skeleton-item title-shimmer" />
+                    <div className="skeleton-item name-shimmer" />
+                    <div className="skeleton-item body-shimmer" />
+                    <div className="skeleton-item body-shimmer short" />
+                    <div className="skeleton-footer-shimmer">
+                      <div className="skeleton-item sig-shimmer" />
+                      <div className="skeleton-item seal-shimmer" />
+                      <div className="skeleton-item sig-shimmer" />
+                    </div>
+                  </div>
+                </div>
+              )}
               <div ref={editorContainerRef} className="gjs-canvas-host" />
 
               {/* Floating Bottom-Right Zoom & Fit Controls */}

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Great+Vibes&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4 landscape; margin: 0; }
+    *, *::before, *::after { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body {
+      margin: 0; padding: 0; width: 1123px; height: 794px; overflow: hidden;
+      background: #081a36; font-family: 'Inter', sans-serif;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .cert-page {
+      width: 1123px; height: 794px; background: #081a36; padding: 20px;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .cert-outer-border {
+      width: 100%; height: 100%; border: 3px solid #d4af37; padding: 8px; background: #0c234b;
+    }
+    .cert-inner-border {
+      width: 100%; height: 100%; border: 2px double #d4af37; background: #ffffff;
+      padding: 32px 48px; display: flex; flex-direction: column; justify-content: space-between;
+      text-align: center; position: relative;
+    }
+    .cert-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;
+    }
+    .brand-logo-wrap { display: flex; align-items: center; gap: 10px; text-align: left; }
+    .brand-logo-mark {
+      width: 38px; height: 38px; border-radius: 8px; background: linear-gradient(135deg, #081a36, #1e3a8a);
+      border: 2px solid #d4af37; color: #d4af37; display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 18px;
+    }
+    .brand-title { font-family: 'Cinzel', serif; font-size: 20px; font-weight: 700; letter-spacing: 3px; color: #081a36; margin: 0; }
+    .brand-subtitle { font-size: 10px; letter-spacing: 2px; color: #b45309; font-weight: 600; margin: 0; }
+    .cert-ref-number { font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: 1px; }
+    .cert-title-section { margin-top: 8px; }
+    .cert-title {
+      font-family: 'Playfair Display', serif; font-size: 34px; font-weight: 800; letter-spacing: 2px;
+      color: #081a36; margin: 0; text-transform: uppercase;
+    }
+    .cert-presentation { font-size: 12px; letter-spacing: 3px; color: #b45309; font-weight: 600; margin: 6px 0 0; }
+    .recipient-section { margin: 10px 0; }
+    .recipient-name {
+      font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 700; color: #081a36;
+      margin: 0 auto; display: inline-block; padding-bottom: 4px; border-bottom: 2px solid #d4af37; min-width: 320px;
+    }
+    .body-section { max-width: 860px; margin: 0 auto; }
+    .body-text { font-size: 14.5px; line-height: 1.65; color: #334155; margin: 0; }
+    .meta-grid {
+      display: flex; justify-content: space-around; max-width: 720px; margin: 10px auto 0;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 16px;
+    }
+    .meta-cell { text-align: center; }
+    .meta-k { font-size: 9px; font-weight: 700; color: #b45309; letter-spacing: 1px; }
+    .meta-v { font-size: 12.5px; font-weight: 600; color: #081a36; margin-top: 2px; }
+    .cert-lower-row { display: flex; justify-content: space-between; align-items: flex-end; padding-top: 14px; }
+    .signatory-box { width: 220px; text-align: center; }
+    .sig-script { font-family: 'Great Vibes', cursive; font-size: 28px; color: #081a36; min-height: 32px; }
+    .sig-line { height: 1px; background: #94a3b8; margin: 4px 0 6px; }
+    .sig-name { font-size: 12px; font-weight: 700; color: #081a36; }
+    .sig-role { font-size: 10px; color: #64748b; }
+    .center-seal-qr-group { display: flex; align-items: center; gap: 24px; }
+    .seal-badge {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: radial-gradient(circle, #fde047 0%, #d4af37 70%, #996515 100%);
+      border: 3px double #fef08a; box-shadow: 0 4px 10px rgba(180, 83, 9, 0.25);
+      color: #451a03; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 8px; letter-spacing: 0.5px; text-align: center;
+    }
+    .qr-placeholder-box {
+      width: 68px; height: 68px; border: 1px dashed #d4af37; border-radius: 4px; background: #fafaf9;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 4px; font-size: 7.5px; color: #081a36; text-align: center;
+    }
+    .qr-icon { font-size: 16px; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+  <div class="cert-page">
+    <div class="cert-outer-border">
+      <div class="cert-inner-border">
+        <header class="cert-header">
+          <div class="brand-logo-wrap">
+            <div class="brand-logo-mark">U</div>
+            <div>
+              <h2 class="brand-title">UPTOSKILL</h2>
+              <p class="brand-subtitle">INDUSTRIAL SKILLS & MENTORSHIP</p>
+            </div>
+          </div>
+          <div class="cert-ref-number">
+            OJT NO: {{certificateNumber}} | REQ: {{requestNumber}}
+          </div>
+        </header>
+
+        <section class="cert-title-section">
+          <h1 class="cert-title">ON-THE-JOB TRAINING CERTIFICATE</h1>
+          <p class="cert-presentation">THIS IS ACCREDITED TO</p>
+        </section>
+
+        <section class="recipient-section">
+          <h2 class="recipient-name">{{fullName}}</h2>
+        </section>
+
+        <section class="body-section">
+          <p class="body-text">
+            For dedicated completion of the comprehensive On-The-Job Training (OJT) curriculum in <strong>{{domain}}</strong>. The participant successfully engaged in hands-on production environments, applied modern architectural standards, and delivered mission-critical tasks under industry mentorship.
+          </p>
+          <div class="meta-grid">
+            <div class="meta-cell">
+              <div class="meta-k">TRAINEE CODE</div>
+              <div class="meta-v">{{internCode}}</div>
+            </div>
+            <div class="meta-cell">
+              <div class="meta-k">OJT TENURE</div>
+              <div class="meta-v">{{startDate}} – {{endDate}}</div>
+            </div>
+            <div class="meta-cell">
+              <div class="meta-k">DATE OF ISSUE</div>
+              <div class="meta-v">{{issueDate}}</div>
+            </div>
+          </div>
+        </section>
+
+        <footer class="cert-lower-row">
+          <div class="signatory-box">
+            <div class="sig-script">Dr. Rajesh Kumar</div>
+            <div class="sig-line"></div>
+            <div class="sig-name">Dr. Rajesh Kumar</div>
+            <div class="sig-role">Industry Mentor & Director</div>
+          </div>
+
+          <div class="center-seal-qr-group">
+            <div class="seal-badge">
+              <span>★</span>
+              <span>OJT</span>
+              <span>CERTIFIED</span>
+            </div>
+            <div class="qr-placeholder-box" title="Verification: {{qrCodeUrl}}">
+              <span class="qr-icon">▦</span>
+              <span>QR VERIFY</span>
+            </div>
+          </div>
+
+          <div class="signatory-box">
+            <div class="sig-script">Technical Lead</div>
+            <div class="sig-line"></div>
+            <div class="sig-name">Head of Technical Training</div>
+            <div class="sig-role">UPTOSKILL Engineering</div>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

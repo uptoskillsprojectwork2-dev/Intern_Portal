@@ -1235,3 +1235,85 @@
     border-top: 1px solid #1e293b;
   }
 }
+
+/* ============================================================================
+   Loading Skeleton Overlay
+   ============================================================================ */
+.editor-skeleton-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 19, 34, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  backdrop-filter: blur(4px);
+}
+
+.editor-skeleton-paper {
+  width: min(850px, 90%);
+  height: min(550px, 85%);
+  background: #ffffff;
+  border: 4px double #d4af37;
+  border-radius: 8px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.skeleton-item {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+  animation: shimmerSkeleton 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes shimmerSkeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.title-shimmer {
+  width: 50%;
+  height: 28px;
+  margin-top: 20px;
+}
+
+.name-shimmer {
+  width: 65%;
+  height: 40px;
+  margin: 30px 0 20px;
+}
+
+.body-shimmer {
+  width: 80%;
+  height: 16px;
+  margin: 8px 0;
+}
+
+.body-shimmer.short {
+  width: 60%;
+}
+
+.skeleton-footer-shimmer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 40px;
+}
+
+.sig-shimmer {
+  width: 120px;
+  height: 36px;
+}
+
+.seal-shimmer {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+}
+

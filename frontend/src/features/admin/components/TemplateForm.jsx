@@ -118,8 +118,8 @@ export default function TemplateForm({
       return;
     }
 
-    if (!/\{\{\s*(fullName|internName|studentName)\s*\}\}/i.test(form.htmlContent)) {
-      setError("Certificate HTML must include a recipient name placeholder (such as {{fullName}} or {{InternName}}).");
+    if (!/\{\{\s*fullName\s*\}\}/.test(form.htmlContent)) {
+      setError("Certificate HTML must include the {{fullName}} placeholder.");
       return;
     }
 
@@ -217,9 +217,29 @@ export default function TemplateForm({
         </div>
 
         {error && (
-          <p className="admin-status error" role="alert" style={{ marginTop: "12px" }}>
-            {error}
-          </p>
+          <div className="template-form-error-row" style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px" }}>
+            <p className="admin-status error" role="alert" style={{ margin: 0 }}>
+              {error}
+            </p>
+            <button
+              type="button"
+              className="template-retry-button"
+              onClick={submit}
+              disabled={saving}
+              style={{
+                padding: "4px 12px",
+                borderRadius: "6px",
+                border: "1px solid #ef4444",
+                background: "transparent",
+                color: "#ef4444",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: "600",
+              }}
+            >
+              Retry
+            </button>
+          </div>
         )}
 
         {editingTemplate && (

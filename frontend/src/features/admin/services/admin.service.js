@@ -55,6 +55,9 @@ export const updateTemplate = (id, payload) =>
 export const toggleTemplateActive = (id) =>
   request("patch", `/api/admin/templates/${id}/toggle`);
 
+export const getTemplatePlaceholders = () =>
+  request("get", "/api/admin/templates/placeholders");
+
 // ================================
 // Certificate DRAFT
 // ================================

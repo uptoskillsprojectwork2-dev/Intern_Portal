@@ -29,7 +29,34 @@ const generateVerificationCode = () => {
 const formatDate = (date) => {
   if (!date) return '';
   const d = new Date(date);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  if (Number.isNaN(d.getTime())) return '';
+  const day = d.getDate();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  return `${day} ${month} ${year}`;
+};
+
+/**
+ * Maps certificateType to human-readable Certificate Title
+ * e.g. completion_certificate -> "Internship Completion"
+ *
+ * @param {string} certificateType
+ * @returns {string}
+ */
+export const mapCertificateTitle = (certificateType) => {
+  const map = {
+    offer_letter: 'Internship Offer Letter',
+    bonafide: 'Bonafide Certificate',
+    ojt_certificate: 'On-the-Job Training Certificate',
+    experience_letter: 'Experience Letter',
+    experience_letter_detailed: 'Detailed Experience Letter',
+    completion_certificate: 'Internship Completion',
+    intern_of_month: 'Intern of the Month',
+    league_winner: 'League Winner Certificate',
+    custom: 'Certificate of Achievement'
+  };
+  return map[certificateType] || (certificateType || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
 const formatDuration = (startDate, endDate) => {
@@ -101,6 +128,7 @@ export const createCertificateDraft = async (requestId) => {
   const verificationCode = generateVerificationCode();
 
   const formattedCertType = (request.certificateType || '').replace(/_/g, ' ');
+  const certificateTitle = mapCertificateTitle(request.certificateType);
 
   const issueDate = new Date();
   const startDate = formatDate(user.startDate);
@@ -120,6 +148,10 @@ export const createCertificateDraft = async (requestId) => {
     certificateNumber: certificateNumber,
     OfferNumber: certificateNumber,
     ReferenceID: certificateNumber,
+    requestNumber: request.requestNumber || certificateNumber,
+    RequestNumber: request.requestNumber || certificateNumber,
+    certificateTitle,
+    CertificateTitle: certificateTitle,
     Department: domain,
     DepartmentName: domain,
     department: domain,
@@ -146,6 +178,7 @@ export const createCertificateDraft = async (requestId) => {
     VerificationCode: verificationCode,
     verificationCode: verificationCode,
     VerificationURL: verificationURL,
+    qrCodeUrl: verificationURL,
     OrganizationName: organizationName,
     organizationName,
     Place: '',
@@ -270,9 +303,23 @@ export const updateCertificateDraft = async (id, htmlContent) => {
   return certificate;
 };
 
+// Singleton shared Puppeteer browser instance for reuse
+let sharedBrowser = null;
+
+const getSharedBrowser = async () => {
+  if (!sharedBrowser || !sharedBrowser.connected) {
+    sharedBrowser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+  }
+  return sharedBrowser;
+};
+
 /**
  * Renders HTML to a high-quality PDF buffer using Puppeteer.
- * Guarantees browser closure in a finally block.
+ * Settings: format: 'A4', landscape: true, printBackground: true, zero margins.
+ * Waits for fonts (document.fonts.ready) and reuses a single browser instance.
  *
  * @param {string} htmlContent - Full HTML markup to render
  * @returns {Promise<Buffer>}
@@ -284,17 +331,20 @@ export const renderCertificatePdf = async (htmlContent) => {
     throw error;
   }
 
-  let browser = null;
+  let page = null;
   try {
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
-
-    const page = await browser.newPage();
+    const browser = await getSharedBrowser();
+    page = await browser.newPage();
     await page.setContent(htmlContent, {
       waitUntil: ['load', 'networkidle0']
     });
+
+    // Wait for fonts to finish loading before rendering PDF
+    try {
+      await page.evaluateHandle('document.fonts.ready');
+    } catch {
+      // Safe fallback if document.fonts is not supported
+    }
 
     const pdfBytes = await page.pdf({
       format: 'A4',
@@ -310,11 +360,11 @@ export const renderCertificatePdf = async (htmlContent) => {
     error.statusCode = 500;
     throw error;
   } finally {
-    if (browser) {
+    if (page) {
       try {
-        await browser.close();
+        await page.close();
       } catch {
-        // Safe disposal
+        // Safe disposal of page
       }
     }
   }
