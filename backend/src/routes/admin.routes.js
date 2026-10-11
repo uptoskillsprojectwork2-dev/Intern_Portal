@@ -22,6 +22,10 @@ import {
   updateTemplate,
   toggleTemplateActive,
   getTemplatePlaceholders,
+  getRetentionPolicy,
+  updateRetentionPolicy,
+  getArchivedInterns,
+  restoreArchivedIntern,
 } from "../controllers/admin.controller.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
@@ -159,6 +163,12 @@ adminRouter.post(
   requireAdmin,
   renderPreviewPdf,
 );
+
+// Task C: Intern Account Lifecycle & Retention routes
+adminRouter.get("/retention-policy", verifyAuth, requireAdmin, getRetentionPolicy);
+adminRouter.patch("/retention-policy", verifyAuth, requireAdmin, updateRetentionPolicy);
+adminRouter.get("/interns/archived", verifyAuth, requireAdmin, getArchivedInterns);
+adminRouter.patch("/interns/:id/restore", verifyAuth, requireAdmin, restoreArchivedIntern);
 
 
 // Admin Analytics endpoints. Keep these behind both authentication and admin authorization.

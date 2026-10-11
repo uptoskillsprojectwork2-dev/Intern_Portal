@@ -1,6 +1,7 @@
 import app from "./src/app.js";
 import connectToDB from "./src/config/database.js";
 import { startInternshipCompletionAlertScheduler } from "./src/services/internshipCompletionAlert.service.js";
+import { initCronJobs } from "./src/jobs/index.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -8,6 +9,7 @@ const startServer = async () => {
     try {
         await connectToDB();
         startInternshipCompletionAlertScheduler();
+        initCronJobs();
 
         app.listen(PORT, () => {
             console.log(`server is listening on port ${PORT}`);

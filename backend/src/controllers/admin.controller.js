@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import Handlebars from 'handlebars';
 import User from "../models/User.js";
+import RetentionPolicy from "../models/RetentionPolicy.model.js";
 import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import jwt from "jsonwebtoken";
@@ -617,3 +618,132 @@ export const toggleTemplateActive = async (req, res) => {
     });
   }
 };
+
+/**
+ * Task C: Retention Policy Endpoints
+ */
+
+export const getRetentionPolicy = async (req, res) => {
+  try {
+    const policy = await RetentionPolicy.getOrCreatePolicy();
+    return res.status(200).json({ policy });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to retrieve retention policy", error: err.message });
+  }
+};
+
+export const updateRetentionPolicy = async (req, res) => {
+  try {
+    let { graceDays, purgeDays } = req.body;
+    graceDays = parseInt(graceDays, 10);
+    purgeDays = parseInt(purgeDays, 10);
+
+    if (isNaN(graceDays) || graceDays < 1) {
+      return res.status(400).json({ message: "graceDays must be an integer of at least 1." });
+    }
+    if (isNaN(purgeDays) || purgeDays < 1) {
+      return res.status(400).json({ message: "purgeDays must be an integer of at least 1." });
+    }
+    if (purgeDays <= graceDays) {
+      return res.status(400).json({ message: "purgeDays must be strictly greater than graceDays." });
+    }
+
+    const policy = await RetentionPolicy.getOrCreatePolicy();
+    policy.graceDays = graceDays;
+    policy.purgeDays = purgeDays;
+    policy.updatedBy = req.user.id;
+    await policy.save();
+
+    // TODO: logAction at each action
+    console.log(`[RetentionPolicy] Policy updated by admin ${req.user.id}: graceDays=${graceDays}, purgeDays=${purgeDays}`);
+
+    return res.status(200).json({
+      message: "Retention policy updated successfully",
+      policy,
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to update retention policy", error: err.message });
+  }
+};
+
+export const getArchivedInterns = async (req, res) => {
+  try {
+    const policy = await RetentionPolicy.getOrCreatePolicy();
+    const interns = await User.find({
+      role: "intern",
+      isArchived: true,
+    })
+      .select("fullName email internCode domain startDate endDate archivedAt internshipDetails")
+      .sort({ archivedAt: -1 });
+
+    const now = Date.now();
+    const formatted = interns.map((intern) => {
+      const archivedTime = intern.archivedAt ? new Date(intern.archivedAt).getTime() : now;
+      const daysSinceArchived = Math.max(0, Math.floor((now - archivedTime) / (1000 * 60 * 60 * 24)));
+      const daysLeftBeforePurge = Math.max(0, policy.purgeDays - daysSinceArchived);
+
+      return {
+        _id: intern._id,
+        id: intern._id,
+        fullName: intern.fullName,
+        email: intern.email,
+        internCode: intern.internCode,
+        domain: intern.domain,
+        startDate: intern.startDate,
+        endDate: intern.endDate,
+        archivedAt: intern.archivedAt,
+        daysSinceArchived,
+        daysLeftBeforePurge,
+        status: intern.internshipDetails?.status || "completed",
+      };
+    });
+
+    return res.status(200).json({ interns: formatted, policy });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to fetch archived interns", error: err.message });
+  }
+};
+
+export const restoreArchivedIntern = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid intern ID." });
+    }
+
+    const intern = await User.findOne({
+      _id: id,
+      role: "intern",
+    });
+
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found." });
+    }
+
+    if (!intern.isArchived) {
+      return res.status(400).json({ message: "Intern account is not archived." });
+    }
+
+    intern.isArchived = false;
+    intern.archivedAt = null;
+    intern.archiveWarningSentAt = null;
+    await intern.save();
+
+    // TODO: logAction at each action
+    console.log(`[Retention] Restored archived intern: ${intern.fullName} (${intern.internCode || intern._id})`);
+
+    return res.status(200).json({
+      message: "Intern account restored successfully.",
+      user: {
+        id: intern._id,
+        fullName: intern.fullName,
+        email: intern.email,
+        internCode: intern.internCode,
+        isArchived: intern.isArchived,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to restore intern account", error: err.message });
+  }
+};

@@ -9,6 +9,9 @@ import TemplatesSection from "../components/TemplatesSection";
 import CertificatesOverview from "../components/CertificatesOverview";
 import AdminAnalytics from "./AdminAnalytics";
 
+import RetentionPolicyForm from "../components/RetentionPolicyForm";
+import ArchivedInternsList from "../components/ArchivedInternsList";
+
 import "./AdminDashboard.css";
 
 const AdminDashboard = () => {
@@ -101,6 +104,12 @@ const AdminDashboard = () => {
             <span>▥</span> Analytics
           </button>
           <button
+            className={`admin-nav-item ${activeView === "retention" ? "active" : ""}`}
+            onClick={() => setActiveView("retention")}
+          >
+            <span>⏱</span> Retention & Archival
+          </button>
+          <button
             className={`admin-nav-item ${
               activeView === "certificate-review" ? "active" : ""
             }`}
@@ -132,7 +141,9 @@ const AdminDashboard = () => {
                         ? "Certificate templates"
                         : activeView === "analytics"
                           ? "Admin analytics"
-                          : "Certificate review"}
+                          : activeView === "retention"
+                            ? "Intern Retention & Archival"
+                            : "Certificate review"}
           </h1>
           <p>
             {activeView === "overview"
@@ -149,7 +160,9 @@ const AdminDashboard = () => {
                         ? "Create a new team leader account."
                         : activeView === "analytics"
                           ? "Monitor internship performance, certificate requests, team activity, and operational insights."
-                          : "Review, edit and finalize the certificate before sending it to the intern."}
+                          : activeView === "retention"
+                            ? "Configure automated retention policies and manage archived intern accounts."
+                            : "Review, edit and finalize the certificate before sending it to the intern."}
           </p>
         </header>
 
@@ -217,6 +230,11 @@ const AdminDashboard = () => {
           <CertificatesOverview />
         ) : activeView === "analytics" ? (
           <AdminAnalytics />
+        ) : activeView === "retention" ? (
+          <div className="admin-retention-container" style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+            <RetentionPolicyForm />
+            <ArchivedInternsList />
+          </div>
         ) : null}
       </main>
     </div>

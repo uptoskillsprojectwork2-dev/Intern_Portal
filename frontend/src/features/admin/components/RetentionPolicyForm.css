@@ -1,0 +1,234 @@
+/* ============================================================================
+   Retention Policy Form - Modern Studio Aesthetics
+   ============================================================================ */
+
+.retention-policy-card {
+  background: var(--card, #111827);
+  border: 1px solid var(--border, #1f2937);
+  border-radius: 16px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  color: var(--text, #f9fafb);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.retention-policy-card:hover {
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.retention-policy-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border, #1f2937);
+  padding-bottom: 16px;
+}
+
+.header-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.2));
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.policy-icon {
+  font-size: 22px;
+}
+
+.retention-policy-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text, #f9fafb);
+  letter-spacing: -0.3px;
+}
+
+.policy-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted, #9ca3af);
+  line-height: 1.4;
+}
+
+/* Alert Boxes */
+.policy-alert {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.policy-alert.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+
+.policy-alert.success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.btn-alert-retry {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Inputs Grid */
+.policy-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 22px;
+  margin-bottom: 24px;
+}
+
+.policy-field-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.policy-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--muted, #9ca3af);
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.field-hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: #64748b;
+  text-transform: none;
+}
+
+.input-with-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.policy-input {
+  width: 100%;
+  padding: 12px 60px 12px 14px;
+  background: var(--input, #1e293b);
+  border: 1px solid var(--border, #334155);
+  border-radius: 10px;
+  color: var(--text, #f9fafb);
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.policy-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.input-unit {
+  position: absolute;
+  right: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted, #64748b);
+  pointer-events: none;
+}
+
+.field-explainer {
+  font-size: 12px;
+  color: var(--muted, #64748b);
+  margin: 6px 0 0;
+  line-height: 1.4;
+}
+
+/* Footer */
+.policy-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  border-top: 1px solid var(--border, #1f2937);
+  padding-top: 18px;
+}
+
+.last-updated-text {
+  font-size: 12px;
+  color: var(--muted, #64748b);
+}
+
+.btn-save-policy {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #ffffff;
+  border: none;
+  padding: 11px 24px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-save-policy:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-save-policy:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Loading skeleton */
+.retention-policy-card.loading-state {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.policy-skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmerPolicy 1.4s infinite;
+  border-radius: 8px;
+}
+
+.policy-skeleton.title-sk {
+  width: 40%;
+  height: 28px;
+}
+
+.policy-skeleton.input-sk {
+  width: 100%;
+  height: 48px;
+}
+
+@keyframes shimmerPolicy {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

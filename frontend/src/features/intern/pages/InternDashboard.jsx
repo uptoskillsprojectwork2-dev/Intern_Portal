@@ -129,6 +129,24 @@ export default function InternDashboard() {
           </p>
         </header>
 
+        {/* ── Archival Warning Banner (7 days before archival) ── */}
+        {profile?.isArchivalWarning && (
+          <aside className="intern-archival-warning-banner" role="alert" aria-live="polite">
+            <div className="id-warning-banner-icon">⚠️</div>
+            <div className="id-warning-banner-content">
+              <h4>Account Archival Notice</h4>
+              <p>
+                Your internship has ended and your account is scheduled to be archived in{' '}
+                <strong>
+                  {profile.daysUntilArchival} {profile.daysUntilArchival === 1 ? 'day' : 'days'}
+                </strong>{' '}
+                (on {formatDate(profile.archivalDate)}). Once archived, login access will be restricted.
+                Please ensure you have requested and downloaded all necessary certificates.
+              </p>
+            </div>
+          </aside>
+        )}
+
         {activeNav === 'certificates' && (
           <>
             <section className="certificate-actions" aria-label="Certificate requests">

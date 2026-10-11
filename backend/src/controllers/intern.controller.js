@@ -117,7 +117,27 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ user });
+    // Task C: Compute archival warning days if internship has completed
+    let daysUntilArchival = null;
+    let isArchivalWarning = false;
+    if (user.endDate && user.internshipDetails?.status === 'completed' && !user.isArchived) {
+      const RetentionPolicy = (await import('../models/RetentionPolicy.model.js')).default;
+      const policy = await RetentionPolicy.getOrCreatePolicy();
+      const graceDays = policy.graceDays || 30;
+      const endMs = new Date(user.endDate).getTime();
+      const targetArchivalMs = endMs + graceDays * 24 * 60 * 60 * 1000;
+      const diffDays = Math.ceil((targetArchivalMs - Date.now()) / (24 * 60 * 60 * 1000));
+      if (diffDays <= 7 && diffDays > 0) {
+        daysUntilArchival = diffDays;
+        isArchivalWarning = true;
+      }
+    }
+
+    const userObj = user.toObject();
+    userObj.daysUntilArchival = daysUntilArchival;
+    userObj.isArchivalWarning = isArchivalWarning;
+
+    res.json({ user: userObj });
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

@@ -652,3 +652,47 @@
         justify-content: center;
     }
 }
+
+/* ---------- Archival Warning Banner ---------- */
+.intern-archival-warning-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.12));
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-left: 5px solid #f59e0b;
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    animation: fadeSlideUp 0.4s ease both;
+    backdrop-filter: blur(8px);
+}
+
+.id-warning-banner-icon {
+    font-size: 24px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.id-warning-banner-content h4 {
+    margin: 0 0 6px 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #f59e0b;
+    letter-spacing: -0.2px;
+}
+
+.id-warning-banner-content p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text);
+    opacity: 0.9;
+}
+
+.id-warning-banner-content strong {
+    color: #ef4444;
+    font-weight: 700;
+}
+
