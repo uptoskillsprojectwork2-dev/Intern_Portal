@@ -1,92 +1,107 @@
 .admin-retention-container {
-    background: #fff;
-    padding: 24px;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    max-width: 600px;
+    background: var(--card);
+    padding: 26px 28px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    max-width: 640px;
 }
 
 .admin-retention-title {
-    font-size: 18px;
-    font-weight: 600;
-    color: #111827;
+    font-size: 19px;
+    font-weight: 800;
+    color: var(--text-strong);
     margin-top: 0;
     margin-bottom: 16px;
+    letter-spacing: -0.4px;
 }
 
 .admin-retention-error {
-    background-color: #fee2e2;
-    color: #b91c1c;
-    padding: 12px;
-    border-radius: 6px;
+    background-color: var(--coral-light);
+    color: var(--coral);
+    padding: 12px 14px;
+    border-radius: 10px;
     margin-bottom: 16px;
     font-size: 14px;
+    font-weight: 700;
 }
 
 .admin-retention-success {
-    background-color: #dcfce7;
-    color: #15803d;
-    padding: 12px;
-    border-radius: 6px;
+    background-color: var(--success-light);
+    color: var(--success);
+    padding: 12px 14px;
+    border-radius: 10px;
     margin-bottom: 16px;
     font-size: 14px;
+    font-weight: 700;
 }
 
 .admin-retention-form {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 18px;
 }
 
 .admin-retention-field label {
     display: block;
     font-size: 14px;
-    font-weight: 500;
-    color: #374151;
+    font-weight: 700;
+    color: var(--text-strong);
 }
 
 .admin-retention-desc {
     font-size: 13px;
-    color: #6b7280;
+    color: var(--muted);
     margin: 4px 0 8px 0;
+    line-height: 1.4;
 }
 
 .admin-retention-field input {
     width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    background: var(--input);
+    color: var(--text);
+    border-radius: 10px;
     font-size: 14px;
     box-sizing: border-box;
 }
 
 .admin-retention-field input:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+    border-color: var(--cobalt);
+    box-shadow: 0 0 0 3px var(--cobalt-light);
 }
 
 .admin-retention-submit {
-    background-color: #2563eb;
+    background-color: var(--cobalt);
     color: #fff;
     border: none;
-    padding: 10px 16px;
+    padding: 12px 18px;
     font-size: 14px;
-    font-weight: 500;
-    border-radius: 6px;
+    font-weight: 800;
+    border-radius: 10px;
     cursor: pointer;
     text-align: center;
+    box-shadow: var(--shadow-cobalt);
+    transition: all 0.2s ease;
+}
+
+.admin-retention-submit:hover:not(:disabled) {
+    background-color: var(--cobalt-deep);
+    transform: translateY(-1px);
 }
 
 .admin-retention-submit:disabled {
-    background-color: #93c5fd;
+    opacity: 0.6;
     cursor: not-allowed;
 }
 
 .admin-archived-container {
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
     overflow: hidden;
 }
 
@@ -96,41 +111,41 @@
 }
 
 .admin-archived-table th, .admin-archived-table td {
-    padding: 12px 24px;
+    padding: 13px 22px;
     text-align: left;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
 }
 
 .admin-archived-table th {
-    background-color: #f9fafb;
+    background-color: var(--input);
     font-size: 12px;
     text-transform: uppercase;
-    font-weight: 500;
-    color: #6b7280;
+    font-weight: 800;
+    color: var(--muted);
     letter-spacing: 0.05em;
 }
 
 .admin-archived-table td {
     font-size: 14px;
-    color: #374151;
+    color: var(--text);
 }
 
 .admin-archived-table td.fw-medium {
-    font-weight: 500;
-    color: #111827;
+    font-weight: 700;
+    color: var(--text-strong);
 }
 
 .admin-archived-badge {
     display: inline-block;
-    padding: 2px 8px;
+    padding: 3px 10px;
     border-radius: 9999px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 800;
 }
 
 .admin-archived-badge.danger {
-    background-color: #fee2e2;
-    color: #991b1b;
+    background-color: var(--coral-light);
+    color: var(--coral);
 }
 
 .admin-archived-badge.warning {
@@ -141,14 +156,16 @@
 .admin-archived-btn {
     background: none;
     border: none;
-    color: #4f46e5;
-    font-weight: 500;
+    color: var(--cobalt);
+    font-weight: 800;
     cursor: pointer;
     padding: 0;
+    transition: all 0.15s ease;
 }
 
 .admin-archived-btn:hover {
-    color: #312e81;
+    color: var(--cobalt-deep);
+    text-decoration: underline;
 }
 
 .admin-archived-btn:disabled {
@@ -159,9 +176,10 @@
 .admin-archived-empty {
     padding: 48px;
     text-align: center;
-    color: #6b7280;
-    background: #fff;
-    border: 2px dashed #d1d5db;
-    border-radius: 8px;
-    font-size: 16px;
+    color: var(--muted);
+    background: var(--card);
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    font-size: 15px;
+    font-weight: 600;
 }

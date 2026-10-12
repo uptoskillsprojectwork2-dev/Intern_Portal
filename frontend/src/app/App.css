@@ -1,35 +1,88 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=Nunito+Sans:wght@400;600;700;800;900&display=swap');
 
 :root {
-    --page: #080a12;
-    --panel: #101020;
-    --card: #121321;
-    --input: #131421;
-    --text: #f7f7fb;
-    --muted: #a9acbe;
-    --border: #2b2c3e;
-    --line: #292a39;
-    --accent-1: #6d72ea;
-    --accent-2: #8c57e8;
-    --accent: #8276f1;
-    --error: #fb7185;
-    --success: #34d399;
-    --shadow: #0008;
+    /* Base Backgrounds: Crisp Off-White & Soft Silver */
+    --page: #F4F6F9;
+    --panel: #E8ECF2;
+    --card: #FFFFFF;
+    --input: #F8FAFC;
+    --surface-hover: #EEF2F6;
+
+    /* Typography: Deep Slate - Strictly NO pure black (#000000) */
+    --text: #1E293B;
+    --text-strong: #0F172A;
+    --muted: #64748B;
+
+    /* Borders & Lines: Soft Silver */
+    --border: #E2E8F0;
+    --line: #CBD5E1;
+
+    /* Accents: Bold Cobalt Blue & Bright Coral - Strictly NO purple */
+    --cobalt: #0047AB;
+    --cobalt-deep: #003380;
+    --cobalt-light: #E0ECFB;
+    --coral: #FF6F61;
+    --coral-hover: #FA5252;
+    --coral-light: #FFEBE9;
+
+    --accent-1: #0047AB;
+    --accent-2: #1D4ED8;
+    --accent: #0047AB;
+    --accent-hover: #1D4ED8;
+
+    /* System Feedback */
+    --error: #EF4444;
+    --error-light: #FEE2E2;
+    --success: #10B981;
+    --success-light: #D1FAE5;
+    --warning: #F59E0B;
+
+    /* Neomorphic Depth & Soft Shadows */
+    --shadow-sm: 0 2px 4px rgba(30, 41, 59, 0.04);
+    --shadow: 0 10px 25px -5px rgba(0, 71, 171, 0.06), 0 8px 10px -6px rgba(30, 41, 59, 0.04);
+    --shadow-lg: 0 20px 35px -5px rgba(0, 71, 171, 0.09), 0 10px 15px -5px rgba(30, 41, 59, 0.05);
+    --shadow-coral: 0 10px 25px -5px rgba(255, 111, 97, 0.28);
+    --shadow-cobalt: 0 10px 25px -5px rgba(0, 71, 171, 0.28);
 }
 
-:root[data-theme='light'] {
-    --page: #f5f6fc;
-    --panel: #e9eaf7;
-    --card: #ffffff;
-    --input: #fafaff;
-    --text: #1b1c2d;
-    --muted: #606379;
-    --border: #dcddec;
-    --line: #e4e5f0;
-    --accent-1: #5c61d9;
-    --accent-2: hsl(262, 66%, 55%);
-    --accent: #6056cf;
-    --shadow: #565a861c;
+:root[data-theme='dark'] {
+    /* Dark Slate Mode: Deep Navy Slate - Strictly NO pure black (#000000) and NO purple */
+    --page: #0B132B;
+    --panel: #1C2541;
+    --card: #1E293B;
+    --input: #0F172A;
+    --surface-hover: #27354E;
+
+    --text: #F8FAFC;
+    --text-strong: #FFFFFF;
+    --muted: #94A3B8;
+
+    --border: #334155;
+    --line: #334155;
+
+    --cobalt: #2563EB;
+    --cobalt-deep: #1D4ED8;
+    --cobalt-light: rgba(37, 99, 235, 0.15);
+    --coral: #FF6F61;
+    --coral-hover: #FA5252;
+    --coral-light: rgba(255, 111, 97, 0.15);
+
+    --accent-1: #2563EB;
+    --accent-2: #3B82F6;
+    --accent: #3B82F6;
+    --accent-hover: #60A5FA;
+
+    --error: #EF4444;
+    --error-light: rgba(239, 68, 68, 0.15);
+    --success: #10B981;
+    --success-light: rgba(16, 185, 129, 0.15);
+    --warning: #F59E0B;
+
+    --shadow-sm: 0 2px 4px rgba(11, 19, 43, 0.4);
+    --shadow: 0 10px 25px -5px rgba(0, 71, 171, 0.16), 0 8px 10px -6px rgba(11, 19, 43, 0.3);
+    --shadow-lg: 0 20px 35px -5px rgba(0, 71, 171, 0.22);
+    --shadow-coral: 0 10px 25px -5px rgba(255, 111, 97, 0.3);
+    --shadow-cobalt: 0 10px 25px -5px rgba(37, 99, 235, 0.3);
 }
 
 *,
@@ -44,8 +97,10 @@ html {
 
 body,
 button,
-input {
-    font-family: 'Nunito Sans', system-ui, sans-serif;
+input,
+select,
+textarea {
+    font-family: 'Plus Jakarta Sans', 'Inter', 'Nunito Sans', system-ui, sans-serif;
     font: inherit;
 }
 
@@ -66,7 +121,7 @@ button {
 .auth-page {
     min-height: 100vh;
     display: grid;
-    grid-template-columns: 55% 45%;
+    grid-template-columns: 52% 48%;
     background: var(--page);
     color: var(--text);
 }
@@ -77,8 +132,12 @@ button {
     flex-direction: column;
     min-height: 100vh;
     background-color: var(--panel);
-    background-image: linear-gradient(rgba(125, 105, 255, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(125, 105, 255, .05) 1px, transparent 1px), radial-gradient(circle at 78% 45%, rgba(87, 74, 202, .22), transparent 35%);
-    background-size: 32px 32px, 32px 32px, 100% 100%;
+    background-image: 
+        linear-gradient(rgba(0, 71, 171, .04) 1px, transparent 1px), 
+        linear-gradient(90deg, rgba(0, 71, 171, .04) 1px, transparent 1px), 
+        radial-gradient(circle at 85% 30%, rgba(0, 71, 171, .14), transparent 45%),
+        radial-gradient(circle at 15% 85%, rgba(255, 111, 97, .09), transparent 40%);
+    background-size: 32px 32px, 32px 32px, 100% 100%, 100% 100%;
     border-right: 1px solid var(--border);
 }
 
@@ -86,19 +145,19 @@ button {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 34px;
-    letter-spacing: -1.5px;
+    font-size: 32px;
+    letter-spacing: -1.2px;
 }
 
 .brand-icon {
     display: grid;
     place-items: center;
-    width: 58px;
-    height: 48px;
+    width: 48px;
+    height: 44px;
     border-radius: 12px;
-    font-size: 25px;
+    color: #ffffff;
     background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-    box-shadow: 0 8px 20px #6d52e95c;
+    box-shadow: 0 8px 20px rgba(0, 71, 171, 0.28);
 }
 
 .brand-content {
@@ -306,8 +365,8 @@ button {
     font-weight: 800;
     border: 0;
     border-radius: 14px;
-    background: linear-gradient(100deg, var(--accent-1), var(--accent-2));
-    box-shadow: 0 10px 22px #755ae15c;
+    background: linear-gradient(135deg, var(--cobalt), var(--accent-2));
+    box-shadow: var(--shadow-cobalt);
 }
 
 .primary:hover:not(:disabled) {

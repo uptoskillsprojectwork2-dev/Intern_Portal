@@ -8,12 +8,12 @@ import InternDashboard from '../features/intern/pages/InternDashboard';
 import TLDashboard from '../features/teamleader/pages/TLDashboard';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
 import CertificateReviewPage from '../features/admin/pages/CertificateReviewPage';
+import SplitViewPresentation from '../features/shared/pages/SplitViewPresentation';
 import ThemeToggle from '../features/shared/components/ThemeToggle';
 import './App.css';
 
 export default function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
-
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -26,30 +26,27 @@ export default function App() {
 
   return (
     <>
-
       <ThemeToggle theme={theme} onToggle={toggleTheme} />
 
       <Routes>
+        <Route path="/split-view" element={<SplitViewPresentation />} />
+        <Route path="/presentation" element={<SplitViewPresentation />} />
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
-
 
         <Route element={<ProtectedRoute allowedRoles={['intern']} />}>
           <Route path="/intern/dashboard" element={<InternDashboard />} />
         </Route>
 
-
         <Route element={<ProtectedRoute allowedRoles={['teamleader']} />}>
           <Route path="/teamleader/dashboard" element={<TLDashboard />} />
         </Route>
-
 
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/certificates/:id/review" element={<CertificateReviewPage />} />
         </Route>
-
 
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
