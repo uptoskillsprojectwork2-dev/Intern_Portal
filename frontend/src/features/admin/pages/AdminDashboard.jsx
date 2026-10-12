@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import CreateIntern from '../components/CreateIntern';
 import CreateTl from '../components/CreateTl';
@@ -59,14 +59,6 @@ const AdminDashboard = () => {
             <strong>{user?.fullName || 'Administrator'}</strong>
             <small>{user?.email || 'Loading profile...'}</small>
           </div>
-          <Link
-            to="/split-view"
-            className="admin-logout"
-            style={{ textDecoration: 'none', color: 'var(--cobalt)', borderColor: 'rgba(0, 71, 171, 0.25)', background: 'var(--cobalt-light)' }}
-            title="View split screen presentation"
-          >
-            <span>Split View</span>
-          </Link>
           <button className="admin-logout" onClick={logout} title="Sign out">
             <IconLogout size={16} />
             <span>Logout</span>

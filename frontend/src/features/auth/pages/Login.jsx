@@ -137,13 +137,9 @@ export default function Login() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '24px' }}>
-          <small style={{ color: 'var(--muted)', fontSize: '13px' }}>Copyright © 2026 UptoSkills</small>
-          <Link to="/split-view" style={{ fontSize: '13px', fontWeight: '800', color: 'var(--cobalt)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>Split View Presentation</span>
-            <span style={{ fontSize: '14px' }}>→</span>
-          </Link>
-        </div>
+        <small style={{ marginTop: 'auto', paddingTop: '24px', color: 'var(--muted)', fontSize: '13px' }}>
+          Copyright © 2026 UptoSkills
+        </small>
       </div>
 
       <div className="form-side">
@@ -224,12 +220,7 @@ export default function Login() {
             </button>
           </form>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '22px' }}>
-            <Link className="auth-link" to="/forgot-password" style={{ margin: 0 }}>Forgot Password?</Link>
-            <Link to="/split-view" style={{ fontSize: '13px', fontWeight: '700', color: 'var(--muted)', textDecoration: 'none' }}>
-              Preview UI Showcase
-            </Link>
-          </div>
+          <Link className="auth-link" to="/forgot-password">Forgot Password?</Link>
         </div>
       </div>
     </div>
