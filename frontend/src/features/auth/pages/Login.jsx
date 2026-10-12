@@ -22,45 +22,25 @@ export default function Login() {
 
   const notify = (type, message) => {
     setNotification({ type, message });
-    setTimeout(() => {
-      setNotification(null);
-    }, 4000);
+    setTimeout(() => setNotification(null), 4000);
   };
 
-  const isEmailValid = touched.email && !errors.email && values.email.trim() && validateEmail(values.email);
-  const isEmailInvalid = touched.email && errors.email;
-
-  const isPasswordValid = touched.password && !errors.password && values.password.trim().length > 0;
+  const isEmailValid   = touched.email    && !errors.email    && values.email.trim()    && validateEmail(values.email);
+  const isEmailInvalid = touched.email    && errors.email;
+  const isPasswordValid   = touched.password && !errors.password && values.password.trim().length > 0;
   const isPasswordInvalid = touched.password && errors.password;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setValues((prev) => ({ ...prev, [name]: value }));
-
     if (name === 'email') {
-      if (!value.trim()) {
-        setErrors((prev) => ({ ...prev, email: 'Email is required.' }));
-      } else if (!validateEmail(value)) {
-        setErrors((prev) => ({ ...prev, email: 'Please enter a valid email address.' }));
-      } else {
-        setErrors((prev) => {
-          const next = { ...prev };
-          delete next.email;
-          return next;
-        });
-      }
+      if (!value.trim())            setErrors((p) => ({ ...p, email: 'Email is required.' }));
+      else if (!validateEmail(value)) setErrors((p) => ({ ...p, email: 'Please enter a valid email address.' }));
+      else                            setErrors((p) => { const n = { ...p }; delete n.email; return n; });
     }
-
     if (name === 'password') {
-      if (!value) {
-        setErrors((prev) => ({ ...prev, password: 'Password is required.' }));
-      } else {
-        setErrors((prev) => {
-          const next = { ...prev };
-          delete next.password;
-          return next;
-        });
-      }
+      if (!value) setErrors((p) => ({ ...p, password: 'Password is required.' }));
+      else        setErrors((p) => { const n = { ...p }; delete n.password; return n; });
     }
   };
 
@@ -71,15 +51,11 @@ export default function Login() {
 
   const submit = async (event) => {
     event.preventDefault();
-
     setLoading(true);
-
     try {
       const data = await handleLogin(values.email.trim().toLowerCase(), values.password);
-
       setLoading(false);
       notify('success', 'Logged in successfully!');
-
       const userData = data.user || data;
       navigate(`/${userData.role}/dashboard`);
     } catch (error) {
@@ -94,7 +70,7 @@ export default function Login() {
       {notification && (
         <div className={`notification ${notification.type}`}>
           <span className="notification-icon">
-            {notification.type === 'error' ? <IconClose size={14} /> : <IconCheck size={14} />}
+            {notification.type === 'error' ? <IconClose size={13} /> : <IconCheck size={13} />}
           </span>
           <span>{notification.message}</span>
           <button className="close-btn" onClick={() => setNotification(null)} aria-label="Close notification">
@@ -103,88 +79,154 @@ export default function Login() {
         </div>
       )}
 
+      {/* ── LEFT HERO ── */}
       <div className="brand-panel">
+        {/* Grid texture overlay */}
+        <div className="brand-panel-grid" aria-hidden="true" />
+
+        {/* Brand */}
         <div className="brand">
           <span className="brand-icon">
-            <IconBrandLogo size={22} color="#ffffff" />
+            <IconBrandLogo size={20} color="#fff" />
           </span>
-          <strong>uptoskills</strong>
+          uptoskills
         </div>
 
+        {/* Hero content */}
         <div className="brand-content">
-          <div className="brand-badge-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '20px', background: 'rgba(0, 71, 171, 0.08)', color: 'var(--cobalt)', fontSize: '13px', fontWeight: '800', marginBottom: '20px', border: '1px solid rgba(0, 71, 171, 0.15)' }}>
-            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--coral)' }}></span>
-            ENTERPRISE TALENT PLATFORM
+          <div className="login-badge-pill">
+            <span className="login-badge-dot" />
+            Enterprise Talent Platform
           </div>
 
-          <h1 style={{ fontWeight: '900', letterSpacing: '-1.5px', color: 'var(--text-strong)' }}>
-            Step up your career
+          <h1>
+            Step up your{' '}
+            <span className="grad-word">career</span>
           </h1>
-          <p style={{ color: 'var(--muted)', fontSize: '18px', lineHeight: '1.5', marginTop: '12px' }}>
+
+          <p>
             Sign in to manage your professional journey, oversee interns, and accelerate verified certifications.
           </p>
 
-          <div className="feature-card" style={{ marginTop: '36px', border: '1px solid var(--border)', borderRadius: '18px', padding: '24px', background: 'var(--card)', boxShadow: 'var(--shadow)' }}>
-            <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '12px', color: '#ffffff', background: 'linear-gradient(135deg, var(--coral), var(--coral-hover))', fontWeight: '800', fontSize: '11px', letterSpacing: '0.8px' }}>
-              HIGH PERFORMANCE
-            </span>
-            <h2 style={{ fontSize: '19px', margin: '16px 0 8px', color: 'var(--text-strong)', fontWeight: '800' }}>
-              Precision Analytics & Lifecycle
-            </h2>
-            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '14px', lineHeight: '1.45' }}>
-              Streamlined administrative workflows with automated retention policies, archived account auditing, and verified credential management.
-            </p>
+          {/* Floating glass preview card */}
+          <div className="login-preview-card" aria-hidden="true">
+            <div className="login-preview-stats">
+              <div className="login-preview-stat">
+                <div className="login-preview-stat-val">—</div>
+                <div className="login-preview-stat-label">Interns</div>
+              </div>
+              <div className="login-preview-stat">
+                <div className="login-preview-stat-val">—</div>
+                <div className="login-preview-stat-label">Certs</div>
+              </div>
+              <div className="login-preview-stat">
+                <div className="login-preview-stat-val">—%</div>
+                <div className="login-preview-stat-label">Rate</div>
+              </div>
+            </div>
+            <div className="login-preview-ring">
+              <svg className="ring-svg" width="44" height="44" viewBox="0 0 44 44">
+                <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="4" />
+                <circle cx="22" cy="22" r="18" fill="none" stroke="url(#rg)" strokeWidth="4"
+                  strokeDasharray="113" strokeDashoffset="28" strokeLinecap="round"
+                  transform="rotate(-90 22 22)" />
+                <defs>
+                  <linearGradient id="rg" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#6366F1" />
+                    <stop offset="100%" stopColor="#06B6D4" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="login-preview-ring-info">
+                <strong>Lifecycle Engine</strong>
+                <span>Auto-retention & archiving active</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Feature chips */}
+          <div className="login-chips" style={{ marginTop: '28px' }}>
+            <div className="login-chip">
+              <div className="login-chip-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
+              <div className="login-chip-text">
+                <strong>Verified Certificates</strong>
+                <span>Auto-generated & PDF-rendered</span>
+              </div>
+            </div>
+            <div className="login-chip">
+              <div className="login-chip-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div className="login-chip-text">
+                <strong>Team Management</strong>
+                <span>Assign interns to Team Leaders</span>
+              </div>
+            </div>
+            <div className="login-chip">
+              <div className="login-chip-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+              </div>
+              <div className="login-chip-text">
+                <strong>Live Analytics</strong>
+                <span>Telemetry & retention policies</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <small style={{ marginTop: 'auto', paddingTop: '24px', color: 'var(--muted)', fontSize: '13px' }}>
-          Copyright © 2026 UptoSkills
-        </small>
+        <small>Copyright © 2026 UptoSkills · All rights reserved</small>
       </div>
 
+      {/* ── RIGHT FORM ── */}
       <div className="form-side">
         <div className="auth-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <h2 style={{ color: 'var(--text-strong)', fontWeight: '800', letterSpacing: '-0.8px', margin: 0 }}>
-              Welcome Back
-            </h2>
-            <span style={{ padding: '4px 10px', borderRadius: '12px', background: 'rgba(255, 111, 97, 0.1)', color: 'var(--coral)', fontSize: '11px', fontWeight: '800' }}>
-              SECURE ACCESS
+          <div className="auth-card-header">
+            <span className="auth-secure-badge">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Secure Access
             </span>
+            <h2>Welcome back</h2>
+            <p className="sub">Sign in to access your administration dashboard.</p>
           </div>
-          <p className="sub">Sign in to access your assigned administration dashboard.</p>
 
           <form onSubmit={submit} noValidate>
             <label className="field">
               <b>Email Address</b>
-              <div
-                className={`input-wrap ${isEmailInvalid ? 'invalid' : isEmailValid ? 'valid' : ''}`}
-              >
-                <span className="input-icon" style={{ display: 'flex', alignItems: 'center', color: 'var(--muted)' }}>
-                  <IconMail size={18} />
+              <div className={`input-wrap ${isEmailInvalid ? 'invalid' : isEmailValid ? 'valid' : ''}`}>
+                <span className="input-icon">
+                  <IconMail size={16} />
                 </span>
                 <input
                   type="email"
                   name="email"
-                  placeholder="e.g. admin@uptoskills.com"
+                  placeholder="admin@uptoskills.com"
                   value={values.email}
                   onChange={handleChange}
                   onBlur={handleBlur}
                   autoComplete="email"
                 />
               </div>
-              {isEmailInvalid && (
-                <span className="field-error">{errors.email}</span>
-              )}
+              {isEmailInvalid && <span className="field-error">{errors.email}</span>}
             </label>
 
             <label className="field">
               <b>Password</b>
-              <div
-                className={`input-wrap ${isPasswordInvalid ? 'invalid' : isPasswordValid ? 'valid' : ''}`}
-              >
-                <span className="input-icon" style={{ display: 'flex', alignItems: 'center', color: 'var(--muted)' }}>
-                  <IconLock size={18} />
+              <div className={`input-wrap ${isPasswordInvalid ? 'invalid' : isPasswordValid ? 'valid' : ''}`}>
+                <span className="input-icon">
+                  <IconLock size={16} />
                 </span>
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -200,27 +242,26 @@ export default function Login() {
                   className="eye"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  {showPassword ? <IconEyeOff size={18} color="var(--muted)" /> : <IconEye size={18} color="var(--muted)" />}
+                  {showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
                 </button>
               </div>
-              {isPasswordInvalid && (
-                <span className="field-error">{errors.password}</span>
-              )}
+              {isPasswordInvalid && <span className="field-error">{errors.password}</span>}
             </label>
+
+            <div className="auth-forgot-row">
+              <Link className="auth-forgot-link" to="/forgot-password">Forgot password?</Link>
+            </div>
 
             <button
               type="submit"
               className="primary"
               disabled={loading}
-              style={{ marginTop: '18px' }}
+              style={{ marginTop: '6px' }}
             >
-              {loading ? <span className="spinner"></span> : 'Log In'}
+              {loading ? <span className="spinner" /> : 'Sign in to Dashboard'}
             </button>
           </form>
-
-          <Link className="auth-link" to="/forgot-password">Forgot Password?</Link>
         </div>
       </div>
     </div>

@@ -10,6 +10,7 @@ import AdminInternsList from '../components/AdminInternsList';
 import RetentionPolicyForm from '../components/RetentionPolicyForm';
 import ArchivedInternsList from '../components/ArchivedInternsList';
 import { getOverviewStats } from '../services/admin.service';
+import ThemeToggle from '../../shared/components/ThemeToggle';
 import {
   IconBrandLogo,
   IconLogout,
@@ -28,7 +29,7 @@ import {
 } from '../../shared/components/Icons';
 import './AdminDashboard.css';
 
-const AdminDashboard = () => {
+const AdminDashboard = ({ theme, onToggleTheme }) => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState('overview');
@@ -75,124 +76,152 @@ const AdminDashboard = () => {
     navigate('/login');
   };
 
+  const viewTitle = {
+    overview: 'Administration Overview',
+    interns: 'Intern Management',
+    teamleaders: 'Team Leader Management',
+    intern: 'Create an Intern Account',
+    teamleader: 'Create a Team Leader Account',
+    certificates: 'Issued Certificates',
+    retention: 'Retention & Lifecycle Policy',
+    archived_interns: 'Archived Interns Audit',
+    requests: 'Certificate Requests',
+  };
+
+  const viewDesc = {
+    overview: 'Comprehensive governance, candidate telemetry, and automated lifecycle compliance.',
+    interns: 'View, edit, and assign/reassign all interns across all Team Leaders.',
+    teamleaders: 'View, search, and manage all Team Leaders and their assigned intern teams.',
+    requests: 'Finalize certificate requests forwarded by Team Leaders.',
+    certificates: 'Audit and manage all generated certificates across the portal.',
+    retention: 'Configure the automated lifecycle and retention for intern accounts.',
+    archived_interns: 'View and restore intern accounts that have been archived.',
+    intern: 'Complete the details below to create a new intern portal account.',
+    teamleader: 'Complete the details below to create a new Team Leader account.',
+  };
+
   return (
     <div className="admin-dashboard-shell">
+      {/* ── TOP BAR ── */}
       <header className="admin-topbar">
         <div className="admin-brand">
           <span className="admin-brand-icon">
-            <IconBrandLogo size={20} color="#fff" />
+            <IconBrandLogo size={18} color="#fff" />
           </span>
-          <strong>uptoskills</strong>
+          uptoskills
         </div>
-        <div className="admin-topbar-user">
-          <div className="admin-avatar">{initials}</div>
-          <div>
-            <strong>{user?.fullName || 'Administrator'}</strong>
-            <small>{user?.email || 'Loading profile...'}</small>
+
+        <div className="admin-topbar-right">
+          <div className="admin-search-hint" role="button" tabIndex={0} aria-label="Search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            Search...
+            <span className="admin-search-kbd">⌘K</span>
           </div>
+
+          {/* Theme toggle embedded in topbar */}
+          {onToggleTheme && (
+            <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+          )}
+
+          <div className="admin-topbar-divider" />
+
+          <div className="admin-topbar-user">
+            <div className="admin-user-info">
+              <strong>{user?.fullName || 'Administrator'}</strong>
+              <small>{user?.email || ''}</small>
+            </div>
+            <div className="admin-avatar"><span>{initials}</span></div>
+          </div>
+
           <button className="admin-logout" onClick={logout} title="Sign out">
-            <IconLogout size={16} />
+            <IconLogout size={14} />
             <span>Logout</span>
           </button>
         </div>
       </header>
 
+      {/* ── SIDEBAR ── */}
       <aside className="admin-sidebar" aria-label="Admin navigation">
-        <p className="admin-sidebar-label">Administration</p>
+        <p className="admin-sidebar-label">Overview</p>
         <nav className="admin-sidebar-nav">
           <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}>
-            <span className="admin-nav-icon"><IconGrid size={18} /></span>
-            Overview
+            <span className="admin-nav-icon"><IconGrid size={16} /></span>
+            Dashboard
           </button>
+        </nav>
+
+        <p className="admin-sidebar-label">People</p>
+        <nav className="admin-sidebar-nav">
           <button className={`admin-nav-item ${activeView === 'interns' ? 'active' : ''}`} onClick={() => setActiveView('interns')}>
-            <span className="admin-nav-icon"><IconUsers size={18} /></span>
+            <span className="admin-nav-icon"><IconUsers size={16} /></span>
             Intern Management
           </button>
           <button className={`admin-nav-item ${activeView === 'teamleaders' ? 'active' : ''}`} onClick={() => setActiveView('teamleaders')}>
-            <span className="admin-nav-icon"><IconBriefcase size={18} /></span>
+            <span className="admin-nav-icon"><IconBriefcase size={16} /></span>
             Team Leaders
           </button>
           <button className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`} onClick={() => setActiveView('intern')}>
-            <span className="admin-nav-icon"><IconUserPlus size={18} /></span>
+            <span className="admin-nav-icon"><IconUserPlus size={16} /></span>
             Create Intern
           </button>
           <button className={`admin-nav-item ${activeView === 'teamleader' ? 'active' : ''}`} onClick={() => setActiveView('teamleader')}>
-            <span className="admin-nav-icon"><IconUserCheck size={18} /></span>
+            <span className="admin-nav-icon"><IconUserCheck size={16} /></span>
             Create Team Leader
           </button>
+        </nav>
+
+        <p className="admin-sidebar-label">Certificates</p>
+        <nav className="admin-sidebar-nav">
           <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => setActiveView('requests')}>
-            <span className="admin-nav-icon"><IconFileText size={18} /></span>
-            Certificate Requests
+            <span className="admin-nav-icon"><IconFileText size={16} /></span>
+            Cert Requests
           </button>
           <button className={`admin-nav-item ${activeView === 'certificates' ? 'active' : ''}`} onClick={() => setActiveView('certificates')}>
-            <span className="admin-nav-icon"><IconAward size={18} /></span>
-            Issued Certificates
+            <span className="admin-nav-icon"><IconAward size={16} /></span>
+            Issued Certs
           </button>
+        </nav>
+
+        <p className="admin-sidebar-label">Settings</p>
+        <nav className="admin-sidebar-nav">
           <button className={`admin-nav-item ${activeView === 'retention' ? 'active' : ''}`} onClick={() => setActiveView('retention')}>
-            <span className="admin-nav-icon"><IconSettings size={18} /></span>
+            <span className="admin-nav-icon"><IconSettings size={16} /></span>
             Retention Policy
           </button>
           <button className={`admin-nav-item ${activeView === 'archived_interns' ? 'active' : ''}`} onClick={() => setActiveView('archived_interns')}>
-            <span className="admin-nav-icon"><IconArchive size={18} /></span>
+            <span className="admin-nav-icon"><IconArchive size={16} /></span>
             Archived Interns
           </button>
         </nav>
+
         <div className="admin-sidebar-note">
           <span></span>
           Admin access active
         </div>
       </aside>
 
+      {/* ── MAIN ── */}
       <main className="admin-dashboard-main">
         <header className="admin-page-header">
-          <p className="admin-eyebrow">Enterprise Administration</p>
-          <h1>
-            {activeView === 'overview'
-              ? 'Administration Overview'
-              : activeView === 'interns'
-              ? 'Intern Management'
-              : activeView === 'teamleaders'
-              ? 'Team Leader Management'
-              : activeView === 'intern'
-              ? 'Create an Intern Account'
-              : activeView === 'teamleader'
-              ? 'Create a Team Leader Account'
-              : activeView === 'certificates'
-              ? 'Issued Certificates'
-              : activeView === 'retention'
-              ? 'Retention & Lifecycle Policy'
-              : activeView === 'archived_interns'
-              ? 'Archived Interns Audit'
-              : 'Certificate Requests'}
-          </h1>
-          <p>
-            {activeView === 'overview'
-              ? 'Comprehensive governance, candidate telemetry, and automated lifecycle compliance.'
-              : activeView === 'interns'
-              ? 'View, edit, and assign/reassign all interns across all Team Leaders.'
-              : activeView === 'teamleaders'
-              ? 'View, search, and manage all Team Leaders and their assigned intern teams.'
-              : activeView === 'requests'
-              ? 'Finalize certificate requests forwarded by Team Leaders.'
-              : activeView === 'certificates'
-              ? 'Audit and manage all generated certificates across the portal.'
-              : activeView === 'retention'
-              ? 'Configure the automated lifecycle and retention for intern accounts.'
-              : activeView === 'archived_interns'
-              ? 'View and restore intern accounts that have been archived.'
-              : 'Complete the details below to create a new portal account.'}
+          <p className="admin-eyebrow">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+            Enterprise Administration
           </p>
+          <h1>{viewTitle[activeView] || 'Administration'}</h1>
+          <p>{viewDesc[activeView] || ''}</p>
         </header>
 
         {activeView === 'overview' ? (
           <>
-            {/* --- METRICS TELEMETRY GRID --- */}
+            {/* METRICS GRID */}
             <section className="admin-stats-grid" aria-label="Key Performance Indicators">
               <div className="admin-stat-card">
                 <div className="admin-stat-top">
                   <span className="admin-stat-label">Total Interns</span>
                   <span className="admin-stat-badge cobalt">
-                    <IconTrendingUp size={12} /> {stats.ongoingInterns} active
+                    <IconTrendingUp size={11} /> {stats.ongoingInterns} active
                   </span>
                 </div>
                 <div className="admin-stat-value">
@@ -208,7 +237,7 @@ const AdminDashboard = () => {
                     <small>Done</small>
                   </div>
                   <div className="admin-bar-group">
-                    <div className="admin-bar cobalt" style={{ height: stats.archivedInterns > 0 ? `${Math.min(100, Math.max(15, (stats.archivedInterns / (stats.totalInterns || 1)) * 100))}%` : '15%' }}></div>
+                    <div className="admin-bar cobalt" style={{ height: stats.archivedInterns > 0 ? `${Math.min(100, Math.max(10, (stats.archivedInterns / (stats.totalInterns || 1)) * 100))}%` : '10%' }}></div>
                     <small>Arch</small>
                   </div>
                 </div>
@@ -218,7 +247,7 @@ const AdminDashboard = () => {
                 <div className="admin-stat-top">
                   <span className="admin-stat-label">Completion Rate</span>
                   <span className="admin-stat-badge coral">
-                    <IconActivity size={12} /> {stats.completedInterns} finished
+                    <IconActivity size={11} /> {stats.completedInterns} finished
                   </span>
                 </div>
                 <div className="admin-stat-value">
@@ -227,7 +256,7 @@ const AdminDashboard = () => {
                 <div className="admin-stat-chart">
                   <div className="admin-bar-group">
                     <div className="admin-bar coral" style={{ height: `${Math.max(15, stats.completionRate)}%` }}></div>
-                    <small>Cohort Rate</small>
+                    <small>Rate</small>
                   </div>
                 </div>
               </div>
@@ -236,7 +265,7 @@ const AdminDashboard = () => {
                 <div className="admin-stat-top">
                   <span className="admin-stat-label">Team Leaders</span>
                   <span className="admin-stat-badge cobalt">
-                    <IconBriefcase size={12} /> Leads
+                    <IconBriefcase size={11} /> Leads
                   </span>
                 </div>
                 <div className="admin-stat-value">
@@ -244,7 +273,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className="admin-stat-chart" style={{ alignItems: 'center' }}>
                   <svg width="100%" height="32" viewBox="0 0 160 32" fill="none">
-                    <path d="M0 24C30 20 45 6 80 18C115 30 130 8 160 12" stroke="var(--cobalt)" strokeWidth="3" strokeLinecap="round" />
+                    <path d="M0 24C30 20 45 6 80 18C115 30 130 8 160 12" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
                   </svg>
                 </div>
               </div>
@@ -253,7 +282,7 @@ const AdminDashboard = () => {
                 <div className="admin-stat-top">
                   <span className="admin-stat-label">Issued Certs</span>
                   <span className="admin-stat-badge coral">
-                    <IconAward size={12} /> {stats.pendingRequestsCount} req
+                    <IconAward size={11} /> {stats.pendingRequestsCount} pending
                   </span>
                 </div>
                 <div className="admin-stat-value">
@@ -261,23 +290,23 @@ const AdminDashboard = () => {
                 </div>
                 <div className="admin-stat-chart" style={{ alignItems: 'center' }}>
                   <svg width="100%" height="32" viewBox="0 0 160 32" fill="none">
-                    <path d="M0 26C25 18 55 24 90 12C125 0 140 18 160 8" stroke="var(--coral)" strokeWidth="3" strokeLinecap="round" />
+                    <path d="M0 26C25 18 55 24 90 12C125 0 140 18 160 8" stroke="var(--coral)" strokeWidth="2.5" strokeLinecap="round" opacity="0.6" />
                   </svg>
                 </div>
               </div>
             </section>
 
-            {/* --- QUICK ACTIONS CARDS --- */}
+            {/* QUICK ACTIONS */}
             <div className="admin-section-title">
               <span>Quick Actions</span>
-              <small style={{ color: 'var(--muted)', fontSize: '13px', fontWeight: '600' }}>Instant administrative workflows</small>
+              <small style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: '500' }}>Instant administrative workflows</small>
             </div>
 
             <section className="admin-quick-cards-grid" aria-label="Quick Administrative Actions">
               <button className="admin-action-card primary-cobalt" onClick={() => setActiveView('intern')}>
                 <div className="action-card-header">
-                  <span className="action-icon-wrap"><IconUserPlus size={18} /></span>
-                  <IconChevronRight size={16} />
+                  <span className="action-icon-wrap"><IconUserPlus size={16} /></span>
+                  <IconChevronRight size={14} />
                 </div>
                 <div>
                   <h3>Add New Intern</h3>
@@ -287,8 +316,8 @@ const AdminDashboard = () => {
 
               <button className="admin-action-card primary-coral" onClick={() => setActiveView('teamleader')}>
                 <div className="action-card-header">
-                  <span className="action-icon-wrap"><IconUserCheck size={18} /></span>
-                  <IconChevronRight size={16} />
+                  <span className="action-icon-wrap"><IconUserCheck size={16} /></span>
+                  <IconChevronRight size={14} />
                 </div>
                 <div>
                   <h3>Create Team Leader</h3>
@@ -298,8 +327,8 @@ const AdminDashboard = () => {
 
               <button className="admin-action-card outline-cobalt" onClick={() => setActiveView('retention')}>
                 <div className="action-card-header">
-                  <span className="action-icon-wrap"><IconSettings size={18} /></span>
-                  <IconChevronRight size={16} color="var(--muted)" />
+                  <span className="action-icon-wrap"><IconSettings size={16} /></span>
+                  <IconChevronRight size={14} color="var(--text-muted)" />
                 </div>
                 <div>
                   <h3>Retention Policy</h3>
@@ -309,8 +338,8 @@ const AdminDashboard = () => {
 
               <button className="admin-action-card outline-coral" onClick={() => setActiveView('archived_interns')}>
                 <div className="action-card-header">
-                  <span className="action-icon-wrap coral"><IconArchive size={18} /></span>
-                  <IconChevronRight size={16} color="var(--muted)" />
+                  <span className="action-icon-wrap coral"><IconArchive size={16} /></span>
+                  <IconChevronRight size={14} color="var(--text-muted)" />
                 </div>
                 <div>
                   <h3>Archived Interns</h3>
@@ -319,12 +348,12 @@ const AdminDashboard = () => {
               </button>
             </section>
 
-            {/* --- PROFILE SUMMARY PANEL --- */}
+            {/* PROFILE SUMMARY */}
             <section className="admin-profile-card" aria-label="Administrator profile">
               <div className="admin-profile-heading">
-                <div className="admin-profile-avatar">{initials}</div>
+                <div className="admin-profile-avatar"><span>{initials}</span></div>
                 <div>
-                  <p className="admin-eyebrow">ACTIVE ADMINISTRATOR</p>
+                  <p className="admin-eyebrow">Active Administrator</p>
                   <h2>{user?.fullName || 'Administrator'}</h2>
                   <p>{user?.email || 'Loading profile...'}</p>
                 </div>
@@ -336,7 +365,7 @@ const AdminDashboard = () => {
                 </div>
                 <div>
                   <span>Contact Mobile</span>
-                  <strong>{user?.mobileNo || 'Not provided'}</strong>
+                  <strong className="mono">{user?.mobileNo || 'Not provided'}</strong>
                 </div>
                 <div>
                   <span>Governance Active Since</span>
@@ -345,7 +374,6 @@ const AdminDashboard = () => {
               </div>
             </section>
 
-            {/* --- ACTIVE INTERNS TABLE --- */}
             <AdminInternsList />
           </>
         ) : activeView === 'interns' ? (

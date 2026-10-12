@@ -92,7 +92,7 @@ export default function CertificatesOverview() {
             onClick={fetchCertificates}
             disabled={loading}
           >
-            {loading ? 'Refreshing…' : '↻ Refresh'}
+            {loading ? 'Refreshing…' : <><i className="bi bi-arrow-clockwise"></i> Refresh</>}
           </button>
         </div>
       </div>
@@ -112,14 +112,16 @@ export default function CertificatesOverview() {
 
       {!loading && error && (
         <div className="cert-overview-error" role="alert">
-          <p>⚠ {error}</p>
+          <p><i className="bi bi-exclamation-triangle" style={{ marginRight: 6 }}></i>{error}</p>
           <button type="button" onClick={fetchCertificates}>Retry</button>
         </div>
       )}
 
       {!loading && !error && certificates.length === 0 && (
         <div className="cert-overview-empty">
-          <div className="cert-empty-icon" aria-hidden="true">📜</div>
+          <div className="cert-empty-icon" aria-hidden="true">
+            <i className="bi bi-award"></i>
+          </div>
           <h3>No Certificates Generated Yet</h3>
           <p>When certificate drafts are approved and finalized, their official records will appear here.</p>
         </div>

@@ -12,7 +12,7 @@ import ThemeToggle from '../features/shared/components/ThemeToggle';
 import './App.css';
 
 export default function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -25,24 +25,55 @@ export default function App() {
 
   return (
     <>
-      <ThemeToggle theme={theme} onToggle={toggleTheme} />
-
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        {/* Auth pages get a floating theme toggle in the corner */}
+        <Route path="/login" element={
+          <>
+            <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999 }}>
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            </div>
+            <Login />
+          </>
+        } />
+        <Route path="/forgot-password" element={
+          <>
+            <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999 }}>
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            </div>
+            <ForgotPasswordPage />
+          </>
+        } />
+        <Route path="/reset-password/:token" element={
+          <>
+            <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999 }}>
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            </div>
+            <ResetPasswordPage />
+          </>
+        } />
 
+        {/* Intern dashboard */}
         <Route element={<ProtectedRoute allowedRoles={['intern']} />}>
-          <Route path="/intern/dashboard" element={<InternDashboard />} />
+          <Route path="/intern/dashboard" element={
+            <InternDashboard theme={theme} onToggleTheme={toggleTheme} />
+          } />
         </Route>
 
+        {/* Team Leader dashboard */}
         <Route element={<ProtectedRoute allowedRoles={['teamleader']} />}>
-          <Route path="/teamleader/dashboard" element={<TLDashboard />} />
+          <Route path="/teamleader/dashboard" element={
+            <TLDashboard theme={theme} onToggleTheme={toggleTheme} />
+          } />
         </Route>
 
+        {/* Admin dashboard — ThemeToggle lives in AdminDashboard's topbar */}
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/certificates/:id/review" element={<CertificateReviewPage />} />
+          <Route path="/admin/dashboard" element={
+            <AdminDashboard theme={theme} onToggleTheme={toggleTheme} />
+          } />
+          <Route path="/admin/certificates/:id/review" element={
+            <CertificateReviewPage theme={theme} onToggleTheme={toggleTheme} />
+          } />
         </Route>
 
         <Route path="/" element={<Navigate to="/login" replace />} />
