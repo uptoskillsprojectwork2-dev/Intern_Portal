@@ -826,3 +826,48 @@ export const restoreArchivedIntern = async (req, res) => {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 };
+
+/**
+ * Admin Overview Stats: Real metrics queried directly from database.
+ */
+export const getOverviewStats = async (req, res) => {
+    try {
+        const [
+            totalInterns,
+            ongoingInterns,
+            completedInterns,
+            archivedInterns,
+            teamLeadersCount,
+            issuedCertificatesCount,
+            pendingRequestsCount
+        ] = await Promise.all([
+            User.countDocuments({ role: 'intern' }),
+            User.countDocuments({ role: 'intern', isArchived: { $ne: true }, 'internshipDetails.status': 'ongoing' }),
+            User.countDocuments({ role: 'intern', 'internshipDetails.status': 'completed' }),
+            User.countDocuments({ role: 'intern', isArchived: true }),
+            User.countDocuments({ role: 'teamleader' }),
+            Certificate.countDocuments({ status: { $in: ['finalized', 'issued', 'generated'] } }),
+            CertificateRequest.countDocuments({ status: 'pending' })
+        ]);
+
+        const completionRate = totalInterns > 0
+            ? Math.round((completedInterns / totalInterns) * 100)
+            : 0;
+
+        return res.status(200).json({
+            success: true,
+            stats: {
+                totalInterns,
+                ongoingInterns,
+                completedInterns,
+                archivedInterns,
+                teamLeadersCount,
+                issuedCertificatesCount,
+                pendingRequestsCount,
+                completionRate
+            }
+        });
+    } catch (err) {
+        return res.status(500).json({ message: "Failed to fetch overview stats", error: err.message });
+    }
+};

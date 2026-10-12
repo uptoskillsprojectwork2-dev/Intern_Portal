@@ -6,6 +6,14 @@ const internApi = axios.create({
   withCredentials: true,
 });
 
+internApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const getProfile = async () => {
   const response = await internApi.get('/profile');
   return response.data;

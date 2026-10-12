@@ -6,6 +6,14 @@ const adminApi = axios.create({
   withCredentials: true,
 });
 
+adminApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 const request = async (method, url, payload) => {
   try {
     const response = await adminApi({ method, url, data: payload });
@@ -74,4 +82,7 @@ export const downloadAdminCertificate = async (id, fileName) => {
 export const getRetentionPolicy = () => request('get', '/api/admin/retention-policy');
 export const updateRetentionPolicy = (payload) => request('patch', '/api/admin/retention-policy', payload);
 export const getArchivedInterns = () => request('get', '/api/admin/interns/archived');
-export const restoreArchivedIntern = (id) => request('patch', `/api/admin/interns/${id}/restore`);
+export const restoreArchivedIntern = (id) => request('patch', `/api/admin/interns/${id}/restore`);
+
+// Overview Analytics
+export const getOverviewStats = () => request('get', '/api/admin/overview-stats');

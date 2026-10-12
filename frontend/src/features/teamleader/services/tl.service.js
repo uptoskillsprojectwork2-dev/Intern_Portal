@@ -6,6 +6,14 @@ const tlApi = axios.create({
   withCredentials: true,
 });
 
+tlApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const getRequestsForReview = async () => {
   const response = await tlApi.get('/requests-for-review');
   return response.data;

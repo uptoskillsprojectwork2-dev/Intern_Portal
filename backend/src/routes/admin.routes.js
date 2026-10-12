@@ -22,7 +22,8 @@ import {
   getRetentionPolicy,
   updateRetentionPolicy,
   getArchivedInterns,
-  restoreArchivedIntern
+  restoreArchivedIntern,
+  getOverviewStats
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
@@ -30,6 +31,8 @@ import requireAdmin from "../middlewares/requireAdmin.js";
 
 const adminRouter = express.Router();
 
+// Admin Overview Analytics Stats
+adminRouter.get("/overview-stats", verifyAuth, requireAdmin, getOverviewStats);
 
 // POST api/auth/register-intern
 adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);

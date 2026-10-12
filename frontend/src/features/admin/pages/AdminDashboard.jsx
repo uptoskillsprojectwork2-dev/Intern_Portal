@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import CreateIntern from '../components/CreateIntern';
@@ -9,6 +9,7 @@ import CertificatesOverview from '../components/CertificatesOverview';
 import AdminInternsList from '../components/AdminInternsList';
 import RetentionPolicyForm from '../components/RetentionPolicyForm';
 import ArchivedInternsList from '../components/ArchivedInternsList';
+import { getOverviewStats } from '../services/admin.service';
 import {
   IconBrandLogo,
   IconLogout,
@@ -31,6 +32,36 @@ const AdminDashboard = () => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState('overview');
+
+  const [stats, setStats] = useState({
+    totalInterns: 0,
+    ongoingInterns: 0,
+    completedInterns: 0,
+    archivedInterns: 0,
+    teamLeadersCount: 0,
+    issuedCertificatesCount: 0,
+    pendingRequestsCount: 0,
+    completionRate: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchStats = async () => {
+      try {
+        const res = await getOverviewStats();
+        if (isMounted && res?.stats) {
+          setStats(res.stats);
+        }
+      } catch (err) {
+        console.error('Failed to load overview stats:', err);
+      } finally {
+        if (isMounted) setStatsLoading(false);
+      }
+    };
+    fetchStats();
+    return () => { isMounted = false; };
+  }, [activeView]);
 
   const initials = (user?.fullName || 'Admin')
     .split(' ')
@@ -161,44 +192,56 @@ const AdminDashboard = () => {
                 <div className="admin-stat-top">
                   <span className="admin-stat-label">Total Interns</span>
                   <span className="admin-stat-badge cobalt">
-                    <IconTrendingUp size={12} /> +12%
+                    <IconTrendingUp size={12} /> {stats.ongoingInterns} active
                   </span>
                 </div>
-                <div className="admin-stat-value">1,248</div>
+                <div className="admin-stat-value">
+                  {statsLoading ? '—' : stats.totalInterns}
+                </div>
                 <div className="admin-stat-chart">
-                  <div className="admin-bar-group"><div className="admin-bar cobalt" style={{ height: '38%' }}></div><small>M</small></div>
-                  <div className="admin-bar-group"><div className="admin-bar cobalt" style={{ height: '58%' }}></div><small>T</small></div>
-                  <div className="admin-bar-group"><div className="admin-bar cobalt" style={{ height: '42%' }}></div><small>W</small></div>
-                  <div className="admin-bar-group"><div className="admin-bar cobalt" style={{ height: '82%' }}></div><small>T</small></div>
-                  <div className="admin-bar-group"><div className="admin-bar cobalt" style={{ height: '65%' }}></div><small>F</small></div>
+                  <div className="admin-bar-group">
+                    <div className="admin-bar cobalt" style={{ height: stats.totalInterns > 0 ? `${Math.min(100, Math.max(15, (stats.ongoingInterns / stats.totalInterns) * 100))}%` : '15%' }}></div>
+                    <small>Active</small>
+                  </div>
+                  <div className="admin-bar-group">
+                    <div className="admin-bar cobalt" style={{ height: stats.totalInterns > 0 ? `${Math.min(100, Math.max(15, (stats.completedInterns / stats.totalInterns) * 100))}%` : '15%' }}></div>
+                    <small>Done</small>
+                  </div>
+                  <div className="admin-bar-group">
+                    <div className="admin-bar cobalt" style={{ height: stats.archivedInterns > 0 ? `${Math.min(100, Math.max(15, (stats.archivedInterns / (stats.totalInterns || 1)) * 100))}%` : '15%' }}></div>
+                    <small>Arch</small>
+                  </div>
                 </div>
               </div>
 
               <div className="admin-stat-card">
                 <div className="admin-stat-top">
-                  <span className="admin-stat-label">Performance Score</span>
+                  <span className="admin-stat-label">Completion Rate</span>
                   <span className="admin-stat-badge coral">
-                    <IconActivity size={12} /> +5%
+                    <IconActivity size={12} /> {stats.completedInterns} finished
                   </span>
                 </div>
-                <div className="admin-stat-value">94%</div>
+                <div className="admin-stat-value">
+                  {statsLoading ? '—' : `${stats.completionRate}%`}
+                </div>
                 <div className="admin-stat-chart">
-                  <div className="admin-bar-group"><div className="admin-bar coral" style={{ height: '45%' }}></div><small>W1</small></div>
-                  <div className="admin-bar-group"><div className="admin-bar coral" style={{ height: '68%' }}></div><small>W2</small></div>
-                  <div className="admin-bar-group"><div className="admin-bar coral" style={{ height: '84%' }}></div><small>W3</small></div>
-                  <div className="admin-bar-group"><div className="admin-bar coral" style={{ height: '72%' }}></div><small>W4</small></div>
-                  <div className="admin-bar-group"><div className="admin-bar coral" style={{ height: '94%' }}></div><small>Avg</small></div>
+                  <div className="admin-bar-group">
+                    <div className="admin-bar coral" style={{ height: `${Math.max(15, stats.completionRate)}%` }}></div>
+                    <small>Cohort Rate</small>
+                  </div>
                 </div>
               </div>
 
               <div className="admin-stat-card">
                 <div className="admin-stat-top">
-                  <span className="admin-stat-label">Active Placements</span>
+                  <span className="admin-stat-label">Team Leaders</span>
                   <span className="admin-stat-badge cobalt">
-                    <IconTrendingUp size={12} /> +8%
+                    <IconBriefcase size={12} /> Leads
                   </span>
                 </div>
-                <div className="admin-stat-value">35</div>
+                <div className="admin-stat-value">
+                  {statsLoading ? '—' : stats.teamLeadersCount}
+                </div>
                 <div className="admin-stat-chart" style={{ alignItems: 'center' }}>
                   <svg width="100%" height="32" viewBox="0 0 160 32" fill="none">
                     <path d="M0 24C30 20 45 6 80 18C115 30 130 8 160 12" stroke="var(--cobalt)" strokeWidth="3" strokeLinecap="round" />
@@ -210,10 +253,12 @@ const AdminDashboard = () => {
                 <div className="admin-stat-top">
                   <span className="admin-stat-label">Issued Certs</span>
                   <span className="admin-stat-badge coral">
-                    <IconAward size={12} /> +15%
+                    <IconAward size={12} /> {stats.pendingRequestsCount} req
                   </span>
                 </div>
-                <div className="admin-stat-value">112</div>
+                <div className="admin-stat-value">
+                  {statsLoading ? '—' : stats.issuedCertificatesCount}
+                </div>
                 <div className="admin-stat-chart" style={{ alignItems: 'center' }}>
                   <svg width="100%" height="32" viewBox="0 0 160 32" fill="none">
                     <path d="M0 26C25 18 55 24 90 12C125 0 140 18 160 8" stroke="var(--coral)" strokeWidth="3" strokeLinecap="round" />
