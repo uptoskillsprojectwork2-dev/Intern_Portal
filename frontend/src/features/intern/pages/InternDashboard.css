@@ -652,3 +652,43 @@
         justify-content: center;
     }
 }
+
+/* ---------- Archival Warning Banner (Task C) ---------- */
+.id-archive-warning-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    color: var(--text);
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.08);
+}
+
+.id-archive-warning-icon {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.id-archive-warning-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.id-archive-warning-content strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f87171;
+}
+
+.id-archive-warning-content p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary, #cbd5e1);
+    margin: 0;
+}
+

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=1123"/>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+@page{size:A4 landscape;margin:0}
+html,body{width:1123px;height:794px;background:#fff;overflow:hidden}
+
+.cert{
+  position:relative;width:1123px;height:794px;
+  background:#fff;border:10px solid #14162e;
+  overflow:hidden;display:flex;flex-direction:column;align-items:center;
+}
+.cert::before{
+  content:'';position:absolute;inset:18px;
+  border:1.5px solid #1e7e4a;pointer-events:none;z-index:0;
+}
+.c{position:absolute;width:28px;height:28px;border:2px solid #1e7e4a;z-index:2}
+.tl{top:22px;left:22px;border-right:none;border-bottom:none}
+.tr{top:22px;right:22px;border-left:none;border-bottom:none}
+.bl{bottom:22px;left:22px;border-right:none;border-top:none}
+.br{bottom:22px;right:22px;border-left:none;border-top:none}
+.wm{
+  position:absolute;inset:0;z-index:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Playfair Display',serif;font-size:155px;font-weight:800;
+  color:rgba(20,22,46,0.025);letter-spacing:8px;text-transform:uppercase;
+  user-select:none;pointer-events:none;
+}
+.body{
+  position:relative;z-index:1;width:100%;flex:1;
+  display:flex;flex-direction:column;align-items:center;
+  padding:22px 72px 16px;
+}
+.hdr{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+.logo{
+  width:46px;height:46px;
+  background:linear-gradient(135deg,#14162e 0%,#0f4028 100%);
+  border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.logo-t{font-family:'Playfair Display',serif;font-size:15px;font-weight:800;color:#4ecb82;letter-spacing:1px}
+.brand-name{
+  font-family:'Playfair Display',serif;
+  font-size:23px;font-weight:800;color:#14162e;letter-spacing:5px;
+  text-transform:uppercase;line-height:1;
+}
+.brand-name em{color:#1e7e4a;font-style:normal}
+.brand-tag{
+  font-family:'Inter',sans-serif;font-size:8px;font-weight:600;
+  color:#999;letter-spacing:3px;text-transform:uppercase;margin-top:3px;
+}
+.divl{width:100%;height:1px;background:linear-gradient(to right,transparent,#1e7e4a 15%,#1e7e4a 85%,transparent);margin:5px 0}
+.cert-title{
+  font-family:'Playfair Display',serif;
+  font-size:30px;font-weight:700;color:#14162e;
+  text-align:center;letter-spacing:0.5px;margin-bottom:3px;line-height:1.15;
+}
+.presented{
+  font-family:'Inter',sans-serif;font-size:9.5px;font-weight:500;
+  color:#aaa;letter-spacing:3px;text-transform:uppercase;
+  text-align:center;margin-bottom:3px;
+}
+.recip-wrap{text-align:center;margin-bottom:6px}
+.recip{
+  font-family:'Playfair Display',serif;
+  font-size:38px;font-weight:700;color:#14162e;
+  border-bottom:1.5px solid #1e7e4a;
+  display:inline-block;padding-bottom:3px;min-width:340px;
+}
+.body-txt{
+  font-family:'Inter',sans-serif;font-size:12px;line-height:1.75;
+  color:#3a3a3a;text-align:center;max-width:840px;margin-bottom:5px;
+}
+.meta{
+  font-family:'Inter',sans-serif;font-size:9px;color:#888;
+  letter-spacing:0.5px;text-align:center;margin-bottom:6px;
+}
+.meta span{margin:0 6px}
+.ftr{
+  width:100%;display:flex;justify-content:space-between;align-items:flex-end;
+  padding:0 30px;margin-top:auto;
+}
+.sig{text-align:center;min-width:150px}
+.sig-line{border-top:1px solid #bbb;padding-top:5px;margin-top:26px}
+.sig-name{font-family:'Playfair Display',serif;font-size:12px;font-weight:600;color:#14162e}
+.sig-role{font-family:'Inter',sans-serif;font-size:8.5px;color:#777;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.seal{display:flex;flex-direction:column;align-items:center;gap:4px}
+.seal-c{
+  width:76px;height:76px;border:2px solid #1e7e4a;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#1e7e4a;font-family:'Inter',sans-serif;
+  font-size:7px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;line-height:1.4;
+  background:radial-gradient(circle,rgba(30,126,74,0.07),transparent 70%);
+}
+.seal-date{font-family:'Inter',sans-serif;font-size:8.5px;color:#1e7e4a;font-weight:600}
+.qr-blk{display:flex;flex-direction:column;align-items:center;gap:3px}
+.qr-img{width:58px;height:58px;border:1px solid #ddd}
+.qr-ph{
+  width:58px;height:58px;border:1px solid #e5e5e5;
+  display:flex;align-items:center;justify-content:center;
+  font-size:8px;color:#ccc;font-family:monospace;letter-spacing:1px;
+}
+.qr-lbl{font-family:'Inter',sans-serif;font-size:7.5px;color:#bbb;letter-spacing:0.5px}
+.id-bar{
+  position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+  font-family:'Inter',sans-serif;font-size:8px;color:#ccc;
+  letter-spacing:0.3px;white-space:nowrap;
+}
+</style>
+</head>
+<body>
+<div class="cert">
+  <div class="c tl"></div><div class="c tr"></div>
+  <div class="c bl"></div><div class="c br"></div>
+  <div class="wm">UPTOSKILLS</div>
+
+  <div class="body">
+    <div class="hdr">
+      <div class="logo"><span class="logo-t">US</span></div>
+      <div>
+        <div class="brand-name">UPTO<em>SKILLS</em></div>
+        <div class="brand-tag">Professional Internship Programmes</div>
+      </div>
+    </div>
+
+    <div class="divl"></div>
+
+    <div class="cert-title">{{certificateTitle}}</div>
+    <div class="presented">We are pleased to extend this official appointment offer to</div>
+    <div class="recip-wrap">
+      <div class="recip">{{fullName}}</div>
+    </div>
+
+    <div class="body-txt">
+      as <strong>{{#if internshipRole}}{{internshipRole}}{{else}}Intern{{/if}}</strong>
+      in the <strong>{{domain}}</strong> department at <strong>UptoSkills</strong>.
+      The internship tenure commences on <strong>{{startDate}}</strong> and extends through
+      <strong>{{endDate}}</strong>.
+      {{#if reportingManager}}You will report directly to <strong>{{reportingManager}}</strong>.{{/if}}
+      {{#if stipend}}Monthly remuneration: <strong>{{stipend}}</strong>.{{/if}}
+      We warmly welcome you to our professional team.
+    </div>
+
+    <div class="meta">
+      <span>Intern Code: <strong>{{internCode}}</strong></span>
+      <span>&middot;</span>
+      <span>Domain: <strong>{{domain}}</strong></span>
+      <span>&middot;</span>
+      <span>Ref: <strong>{{requestNumber}}</strong></span>
+    </div>
+
+    <div class="ftr">
+      <div class="sig">
+        <div class="sig-line">
+          <div class="sig-name">Head of Human Resources</div>
+          <div class="sig-role">UptoSkills Academy</div>
+        </div>
+      </div>
+
+      <div class="seal">
+        <div class="seal-c">
+          <span>&#9733;</span>
+          <span>UPTO</span>
+          <span>SKILLS</span>
+          <span>VERIFIED</span>
+        </div>
+        <div class="seal-date">{{issueDate}}</div>
+      </div>
+
+      <div class="qr-blk">
+        {{#if qrCodeUrl}}
+        <img class="qr-img" src="{{qrCodeUrl}}" alt="Verify certificate"/>
+        {{else}}
+        <div class="qr-ph">QR</div>
+        {{/if}}
+        <div class="qr-lbl">Scan to verify</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="id-bar">
+    Offer Ref: {{requestNumber}} &nbsp;|&nbsp; Date: {{issueDate}} &nbsp;|&nbsp; UptoSkills Official
+  </div>
+</div>
+</body>
+</html>

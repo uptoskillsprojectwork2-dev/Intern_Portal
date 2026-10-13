@@ -68,4 +68,24 @@ export const downloadAdminCertificate = async (id, fileName) => {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
-};
+};
+
+// Task B Template Management & Visual Editor API
+export const getPlaceholders = () => request('get', '/api/admin/templates/placeholders');
+export const getAllTemplates = (params = {}) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return request('get', `/api/admin/templates${qs}`);
+};
+export const getTemplateByType = (certificateType) => request('get', `/api/admin/templates/by-type/${certificateType}`);
+export const getTemplateById = (id) => request('get', `/api/admin/templates/${id}`);
+export const createTemplate = (payload) => request('post', '/api/admin/templates', payload);
+export const updateTemplate = (id, payload) => request('patch', `/api/admin/templates/${id}`, payload);
+export const activateTemplate = (id) => request('patch', `/api/admin/templates/${id}/activate`);
+
+// Task C Retention Policy & Intern Lifecycle API
+export const getRetentionPolicy = () => request('get', '/api/admin/retention-policy');
+export const updateRetentionPolicy = (payload) => request('patch', '/api/admin/retention-policy', payload);
+export const getArchivedInterns = () => request('get', '/api/admin/interns/archived');
+export const restoreArchivedIntern = (id) => request('patch', `/api/admin/interns/${id}/restore`);
+

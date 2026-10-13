@@ -73,6 +73,28 @@ const userSchema = new mongoose.Schema(
             },
             createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
             createdAt: { type: Date, default: Date.now }
+        },
+
+        // Task C — Intern Account Lifecycle and Retention tracking fields
+        isArchived: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+
+        archivedAt: {
+            type: Date,
+            default: null
+        },
+
+        purgedAt: {
+            type: Date,
+            default: null
+        },
+
+        archiveWarningSentAt: {
+            type: Date,
+            default: null
         }
     },
     {

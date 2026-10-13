@@ -27,6 +27,13 @@ export async function login(req, res) {
         });
     }
 
+    // Check if account has been archived per retention policy
+    if (user.isArchived === true) {
+        return res.status(403).json({
+            message: "Your internship account has been archived. Contact admin."
+        });
+    }
+
     // The frontend uses the returned role to select the correct dashboard.
     const token = jwt.sign({
         id: user._id,
@@ -53,12 +60,18 @@ export async function getMe(req, res) {
     try {
         const userId = req.user.id;
 
-        const user = await User.findById(userId).select('fullName email mobileNo role createdAt');
+        const user = await User.findById(userId).select('fullName email mobileNo role isArchived createdAt');
 
         if (!user) {
             return res.status(404).json({
                 message: "user not found"
-            })
+            });
+        }
+
+        if (user.isArchived === true) {
+            return res.status(403).json({
+                message: "Your internship account has been archived. Contact admin."
+            });
         }
 
         res.status(200).json({

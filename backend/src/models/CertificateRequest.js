@@ -87,6 +87,17 @@ const certificateRequestSchema = new mongoose.Schema(
         trim: true
     },
 
+    // A1: Track who forwarded the request and when
+    forwardedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+        index: true
+    },
+
+    forwardedAt: {
+        type: Date
+    },
+
     certificateId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "certificate"
@@ -111,6 +122,11 @@ certificateRequestSchema.pre("save", async function () {
     if (this.reviewedBy) {
         const reviewer = await userModel.findById(this.reviewedBy);
         if (!reviewer) throw new Error("reviewedBy does not reference an existing user");
+    }
+
+    if (this.forwardedBy) {
+        const forwarder = await userModel.findById(this.forwardedBy);
+        if (!forwarder) throw new Error("forwardedBy does not reference an existing user");
     }
 
     if (this.certificateId) {

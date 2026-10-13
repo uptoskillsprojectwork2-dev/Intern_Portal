@@ -24,11 +24,76 @@ const generateVerificationCode = () => {
   return `VER-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 };
 
+// Date format per Task B spec: "12 Jan 2026"
 const formatDate = (date) => {
   if (!date) return '';
   const d = new Date(date);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  const day   = d.getDate();
+  const month = d.toLocaleString('en-US', { month: 'short' });
+  const year  = d.getFullYear();
+  return `${day} ${month} ${year}`;
 };
+
+// ─── Certificate type → human-readable title mapping (Task B) ─────────────────
+export const CERTIFICATE_TITLE_MAP = {
+  completion_certificate:            'Internship Completion Certificate',
+  internship_completion_certificate: 'Internship Completion Certificate',
+  bonafide:                          'Bonafide Certificate',
+  offer_letter:                      'Internship Offer Letter',
+  ojt_certificate:                   'On-the-Job Training Certificate',
+  experience_letter:                 'Experience Letter',
+  intern_of_month:                   'Intern of the Month Award',
+  intern_of_the_month:               'Intern of the Month Award',
+  league_winner:                     'League Winner Certificate',
+  custom:                            'Certificate of Recognition',
+};
+
+/**
+ * Maps a certificateType string to its human-readable title.
+ * Used during certificate draft generation and visual preview.
+ *
+ * @param {string} certificateType
+ * @returns {string}
+ */
+export const getCertificateTitle = (certificateType) => {
+  if (!certificateType) return '';
+  return CERTIFICATE_TITLE_MAP[certificateType] || certificateType.replace(/_/g, ' ');
+};
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ─── Puppeteer Browser Singleton (Task B — reuse one browser per process) ────
+// Avoids the per-certificate launch/close overhead and keeps font sessions alive.
+let _browser = null;
+
+const getBrowser = async () => {
+  if (_browser) {
+    try {
+      await _browser.version(); // Throws if the browser has crashed / disconnected
+      return _browser;
+    } catch {
+      _browser = null; // Reset so we launch a fresh one below
+    }
+  }
+  _browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+  });
+  // Clear the reference when the browser exits unexpectedly
+  _browser.on('disconnected', () => { _browser = null; });
+  return _browser;
+};
+
+// Gracefully close the shared browser on normal and signal-based process exit
+const _closeBrowser = async () => {
+  if (_browser) {
+    try { await _browser.close(); } catch { /* safe disposal */ }
+    _browser = null;
+  }
+};
+process.on('exit',   () => { if (_browser) _browser.close().catch(() => {}); });
+process.on('SIGINT',  async () => { await _closeBrowser(); process.exit(0); });
+process.on('SIGTERM', async () => { await _closeBrowser(); process.exit(0); });
+// ──────────────────────────────────────────────────────────────────────────────
 
 /**
  * Creates a certificate draft for an approved CertificateRequest.
@@ -179,28 +244,33 @@ export const createCertificateDraft = async (requestId) => {
 
   // Protected trusted core fields — cannot be overridden by request metadata
   const trustedCoreData = {
-    InternName: user.fullName || '',
-    internName: user.fullName || '',
-    fullName: user.fullName || '',
-    name: user.fullName || '',
-    CertificateNumber: certificateNumber,
-    certificateNumber: certificateNumber,
-    Department: user.domain || '',
-    department: user.domain || '',
-    domain: user.domain || '',
-    StartDate: formatDate(user.startDate),
-    startDate: formatDate(user.startDate),
-    EndDate: formatDate(user.endDate),
-    endDate: formatDate(user.endDate),
-    IssueDate: formatDate(new Date()),
-    issueDate: formatDate(new Date()),
-    InternCode: user.internCode || '',
-    internCode: user.internCode || '',
-    CertificateType: formattedCertType,
-    certificateType: formattedCertType,
+    // ── Spec-defined camelCase placeholders (Task B) ──────────────────────────
+    fullName:         user.fullName || '',
+    internCode:       user.internCode || '',
+    domain:           user.domain || '',
+    startDate:        formatDate(user.startDate),
+    endDate:          formatDate(user.endDate),
+    issueDate:        formatDate(new Date()),
+    requestNumber:    request.requestNumber || '',
+    certificateTitle: getCertificateTitle(request.certificateType),
+    qrCodeUrl:        '', // Reserved — populated when QR generation task is implemented
+    // ── Backward-compatible PascalCase / legacy aliases ───────────────────────
+    InternName:         user.fullName || '',
+    internName:         user.fullName || '',
+    name:               user.fullName || '',
+    CertificateNumber:  certificateNumber,
+    certificateNumber:  certificateNumber,
+    Department:         user.domain || '',
+    department:         user.domain || '',
+    StartDate:          formatDate(user.startDate),
+    EndDate:            formatDate(user.endDate),
+    IssueDate:          formatDate(new Date()),
+    InternCode:         user.internCode || '',
+    CertificateType:    formattedCertType,
+    certificateType:    formattedCertType,
     rawCertificateType: request.certificateType || '',
-    VerificationCode: verificationCode,
-    verificationCode: verificationCode
+    VerificationCode:   verificationCode,
+    verificationCode:   verificationCode
   };
 
   const templateData = {
@@ -310,17 +380,15 @@ export const renderCertificatePdf = async (htmlContent) => {
     throw error;
   }
 
-  let browser = null;
+  // Use the shared browser singleton (Task B: reuse one browser instance)
+  let page = null;
   try {
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
+    const browser = await getBrowser();
+    page = await browser.newPage();
+    await page.setContent(htmlContent, { waitUntil: ['load', 'networkidle0'] });
 
-    const page = await browser.newPage();
-    await page.setContent(htmlContent, {
-      waitUntil: ['load', 'networkidle0']
-    });
+    // Task B: wait for Google Fonts (and all web fonts) to load before capturing
+    await page.evaluate(() => document.fonts.ready);
 
     const pdfBytes = await page.pdf({
       format: 'A4',
@@ -336,12 +404,9 @@ export const renderCertificatePdf = async (htmlContent) => {
     error.statusCode = 500;
     throw error;
   } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch {
-        // Safe disposal
-      }
+    // Close only the page — the browser stays open for the next render
+    if (page) {
+      try { await page.close(); } catch { /* safe disposal */ }
     }
   }
 };

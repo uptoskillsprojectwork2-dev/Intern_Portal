@@ -86,7 +86,8 @@ export default function Login() {
     } catch (error) {
       console.error(error);
       setLoading(false);
-      notify('error', error.message || 'Invalid email or password.');
+      const backendMessage = error.response?.data?.message || error.message || 'Invalid email or password.';
+      notify('error', backendMessage);
     }
   };
 

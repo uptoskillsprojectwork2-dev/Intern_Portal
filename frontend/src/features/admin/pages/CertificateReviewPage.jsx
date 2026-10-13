@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import CertificatePreview from '../components/CertificatePreview';
+import CertificateTemplateEditor from '../components/CertificateTemplateEditor';
 import useCertificateDraft from '../hooks/useCertificateDraft';
 import Toast from '../../../shared/components/Toast';
 import './CertificateReviewPage.css';
@@ -10,14 +11,16 @@ import './CertificateReviewPage.css';
  * CertificateReviewPage
  *
  * Day 4 Certificate Engine Review & Finalization Interface.
- * Connects real certificate draft fetching, live HTML editing,
- * iframe-based preview rendering, draft persistence, and
+ * Connects real certificate draft fetching, GrapesJS visual editing,
+ * live preview rendering, draft persistence, and
  * final PDF generation + email delivery.
  */
 export default function CertificateReviewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, handleLogout } = useAuth();
+
+  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'code'
 
   const {
     draft,
@@ -204,116 +207,160 @@ export default function CertificateReviewPage() {
               </div>
             </section>
 
-            {/* Main review workspace */}
-            <div className="certificate-review-workspace">
-              {/* Left: Certificate Preview */}
-              <CertificatePreview htmlContent={htmlContent} />
+            {/* Editor Mode Switcher */}
+            <div className="certificate-editor-mode-toggle">
+              <button
+                type="button"
+                className={`mode-toggle-btn ${editorMode === 'visual' ? 'active' : ''}`}
+                onClick={() => setEditorMode('visual')}
+              >
+                🎨 Visual Editor (GrapesJS)
+              </button>
+              <button
+                type="button"
+                className={`mode-toggle-btn ${editorMode === 'code' ? 'active' : ''}`}
+                onClick={() => setEditorMode('code')}
+              >
+                📝 Code & Preview View
+              </button>
+            </div>
 
-              {/* Right: HTML/Content Editor */}
-              <section className="certificate-editor-container" aria-label="Certificate HTML editor panel">
-                <header className="certificate-editor-header">
-                  <div className="certificate-editor-title-group">
-                    <h2 className="certificate-editor-title">HTML Template Editor</h2>
-                    <span className="certificate-editor-meta">{lineCount} lines · {htmlContent.length} chars</span>
-                  </div>
+            {editorMode === 'visual' ? (
+              <div className="visual-editor-wrapper">
+                <CertificateTemplateEditor
+                  initialHtml={htmlContent}
+                  onSave={async (newHtml) => {
+                    setHtmlContent(newHtml);
+                    await saveDraft();
+                  }}
+                  readOnly={isFinalized}
+                  title={`Visual Editor: ${draft?.userId?.fullName || 'Intern'} — ${draft?.certificateNumber || 'Draft'}`}
+                />
 
-                  <div className="certificate-editor-controls">
-                    <button
-                      type="button"
-                      className="editor-action-btn"
-                      onClick={handleCopyHtml}
-                      title="Copy HTML to clipboard"
-                    >
-                      <span>{copied ? '✓ Copied' : '📋 Copy HTML'}</span>
-                    </button>
-                    {!isFinalized && (
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '14px', marginTop: '16px' }}>
+                  <button
+                    type="button"
+                    className={`editor-finalize-btn ${finalizing ? 'is-finalizing' : ''} ${isFinalized ? 'is-finalized' : ''}`}
+                    onClick={finalizeDraft}
+                    disabled={finalizing || saving || loading || isFinalized}
+                    style={{ padding: '12px 28px', fontSize: '14px', borderRadius: '8px' }}
+                  >
+                    {finalizing ? 'Finalizing & Sending...' : isFinalized ? '✓ Finalized' : 'Finalize & Send'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Main review workspace */
+              <div className="certificate-review-workspace">
+                {/* Left: Certificate Preview */}
+                <CertificatePreview htmlContent={htmlContent} />
+
+                {/* Right: HTML/Content Editor */}
+                <section className="certificate-editor-container" aria-label="Certificate HTML editor panel">
+                  <header className="certificate-editor-header">
+                    <div className="certificate-editor-title-group">
+                      <h2 className="certificate-editor-title">HTML Template Editor</h2>
+                      <span className="certificate-editor-meta">{lineCount} lines · {htmlContent.length} chars</span>
+                    </div>
+
+                    <div className="certificate-editor-controls">
                       <button
                         type="button"
                         className="editor-action-btn"
-                        onClick={resetContent}
-                        title="Reset to last saved draft content"
+                        onClick={handleCopyHtml}
+                        title="Copy HTML to clipboard"
                       >
-                        <span>↺ Revert to Saved</span>
+                        <span>{copied ? '✓ Copied' : '📋 Copy HTML'}</span>
                       </button>
-                    )}
-                  </div>
-                </header>
+                      {!isFinalized && (
+                        <button
+                          type="button"
+                          className="editor-action-btn"
+                          onClick={resetContent}
+                          title="Reset to last saved draft content"
+                        >
+                          <span>↺ Revert to Saved</span>
+                        </button>
+                      )}
+                    </div>
+                  </header>
 
-                <div className="certificate-editor-body">
-                  <p className="certificate-editor-instructions">
-                    {isFinalized
-                      ? 'This certificate is finalized. Markup is in read-only mode.'
-                      : 'Modify HTML markup or certificate details below. The preview updates in real-time.'}
-                  </p>
+                  <div className="certificate-editor-body">
+                    <p className="certificate-editor-instructions">
+                      {isFinalized
+                        ? 'This certificate is finalized. Markup is in read-only mode.'
+                        : 'Modify HTML markup or certificate details below. The preview updates in real-time.'}
+                    </p>
 
-                  <div className="certificate-editor-field">
-                    <label htmlFor="certificate-html-editor" className="visually-hidden">
-                      Certificate HTML markup
-                    </label>
-                    <textarea
-                      id="certificate-html-editor"
-                      className={`certificate-editor-textarea ${isFinalized ? 'is-finalized-textarea' : ''}`}
-                      value={htmlContent}
-                      onChange={(e) => !isFinalized && setHtmlContent(e.target.value)}
-                      readOnly={isFinalized}
-                      disabled={isFinalized}
-                      spellCheck={false}
-                      autoCapitalize="off"
-                      autoComplete="off"
-                      autoCorrect="off"
-                      aria-label="Certificate HTML markup"
-                      placeholder="Enter certificate HTML template..."
-                    />
-                  </div>
-                </div>
-
-                <footer className="certificate-editor-footer">
-                  <div className="editor-save-wrapper">
-                    {/* Save Draft Button */}
-                    <button
-                      type="button"
-                      className={`editor-save-btn ${saving ? 'is-saving' : ''}`}
-                      onClick={saveDraft}
-                      disabled={saving || loading || finalizing || isFinalized}
-                      title={isFinalized ? 'Certificate is finalized' : 'Save modifications to the certificate draft'}
-                    >
-                      {saving ? 'Saving...' : 'Save Draft'}
-                    </button>
-
-                    {/* Finalize & Send Button */}
-                    <button
-                      type="button"
-                      className={`editor-finalize-btn ${finalizing ? 'is-finalizing' : ''} ${isFinalized ? 'is-finalized' : ''}`}
-                      onClick={finalizeDraft}
-                      disabled={finalizing || saving || loading || isFinalized}
-                      title={
-                        isFinalized
-                          ? 'Certificate is already finalized'
-                          : 'Render PDF, finalize document, and send email to intern'
-                      }
-                    >
-                      {finalizing ? 'Finalizing & Sending...' : isFinalized ? '✓ Finalized' : 'Finalize & Send'}
-                    </button>
-
-                    {saveSuccess && (
-                      <span className="editor-save-feedback success" role="status">
-                        ✓ Draft saved successfully.
-                      </span>
-                    )}
-
-                    {saveError && (
-                      <span className="editor-save-feedback error" role="alert">
-                        ✕ {saveError}
-                      </span>
-                    )}
+                    <div className="certificate-editor-field">
+                      <label htmlFor="certificate-html-editor" className="visually-hidden">
+                        Certificate HTML markup
+                      </label>
+                      <textarea
+                        id="certificate-html-editor"
+                        className={`certificate-editor-textarea ${isFinalized ? 'is-finalized-textarea' : ''}`}
+                        value={htmlContent}
+                        onChange={(e) => !isFinalized && setHtmlContent(e.target.value)}
+                        readOnly={isFinalized}
+                        disabled={isFinalized}
+                        spellCheck={false}
+                        autoCapitalize="off"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        aria-label="Certificate HTML markup"
+                        placeholder="Enter certificate HTML template..."
+                      />
+                    </div>
                   </div>
 
-                  <div className="editor-stats-indicator">
-                    <span>UTF-8 · HTML5</span>
-                  </div>
-                </footer>
-              </section>
-            </div>
+                  <footer className="certificate-editor-footer">
+                    <div className="editor-save-wrapper">
+                      {/* Save Draft Button */}
+                      <button
+                        type="button"
+                        className={`editor-save-btn ${saving ? 'is-saving' : ''}`}
+                        onClick={saveDraft}
+                        disabled={saving || loading || finalizing || isFinalized}
+                        title={isFinalized ? 'Certificate is finalized' : 'Save modifications to the certificate draft'}
+                      >
+                        {saving ? 'Saving...' : 'Save Draft'}
+                      </button>
+
+                      {/* Finalize & Send Button */}
+                      <button
+                        type="button"
+                        className={`editor-finalize-btn ${finalizing ? 'is-finalizing' : ''} ${isFinalized ? 'is-finalized' : ''}`}
+                        onClick={finalizeDraft}
+                        disabled={finalizing || saving || loading || isFinalized}
+                        title={
+                          isFinalized
+                            ? 'Certificate is already finalized'
+                            : 'Render PDF, finalize document, and send email to intern'
+                        }
+                      >
+                        {finalizing ? 'Finalizing & Sending...' : isFinalized ? '✓ Finalized' : 'Finalize & Send'}
+                      </button>
+
+                      {saveSuccess && (
+                        <span className="editor-save-feedback success" role="status">
+                          ✓ Draft saved successfully.
+                        </span>
+                      )}
+
+                      {saveError && (
+                        <span className="editor-save-feedback error" role="alert">
+                          ✕ {saveError}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="editor-stats-indicator">
+                      <span>UTF-8 · HTML5</span>
+                    </div>
+                  </footer>
+                </section>
+              </div>
+            )}
           </>
         )}
       </main>
