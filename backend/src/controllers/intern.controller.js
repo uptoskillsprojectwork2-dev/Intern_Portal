@@ -7,23 +7,20 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.js';
 
-
-
 const ALLOWED_TYPES = [
   'offer_letter', 'bonafide', 'ojt_certificate', 'experience_letter',
   'completion_certificate', 'intern_of_month', 'league_winner', 'custom'
 ];
 
-const generateRequestNumber = async () => {
+export const generateRequestNumber = async () => {
   const year = new Date().getFullYear();
-
-  const counter = await Counter.findOneAndUpdate(
-    { _id: 'certRequest' },
+  const counter = await Counter.findByIdAndUpdate(
+    `certRequest:${year}`,
     { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { returnDocument: 'after', upsert: true }
   );
-
-  return `CERT-${year}-${String(counter.seq).padStart(5, '0')}`;
+  const seq = counter.seq;
+  return `CERT-${year}-${String(seq).padStart(5, '0')}`;
 };
 
 export const submitCertificateRequest = async (req, res) => {

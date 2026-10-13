@@ -4,6 +4,7 @@ import { useIntern } from '../hooks/useIntern';
 import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
 import MyRequestsList from '../components/MyRequestsList';
+import ArchivalWarningBanner from '../components/ArchivalWarningBanner';
 import './InternDashboard.css';
 import '../../../app/App.css';
 
@@ -128,6 +129,8 @@ export default function InternDashboard() {
             Here's your internship overview for today.
           </p>
         </header>
+
+        <ArchivalWarningBanner endDate={profile?.endDate} />
 
         {activeNav === 'certificates' && (
           <>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Internship Experience Letter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 1123px;
+      height: 794px;
+      margin: 0;
+      padding: 0;
+      background-color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      color: #0f172a;
+    }
+    .cert-outer-border {
+      width: 1123px;
+      height: 794px;
+      padding: 24px;
+      background: #0f172a;
+      position: relative;
+    }
+    .cert-inner-border {
+      width: 100%;
+      height: 100%;
+      border: 4px double #d4af37;
+      background: #ffffff;
+      padding: 36px 48px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+    .cert-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 16px;
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      background: #0f172a;
+      color: #d4af37;
+      font-weight: 800;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      letter-spacing: -1px;
+    }
+    .brand-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+    .cert-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      font-weight: 700;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .cert-body {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .cert-subtitle {
+      font-size: 16px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
+    }
+    .intern-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 38px;
+      font-weight: 700;
+      color: #1e3a8a;
+      display: inline-block;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #d4af37;
+      margin-bottom: 20px;
+    }
+    .cert-text {
+      font-size: 16px;
+      line-height: 1.8;
+      color: #334155;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    .cert-text strong {
+      color: #0f172a;
+    }
+    .cert-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .footer-col {
+      flex: 1;
+      text-align: center;
+    }
+    .sig-line {
+      width: 180px;
+      border-top: 1px dashed #94a3b8;
+      margin: 0 auto 8px;
+    }
+    .sig-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: #0f172a;
+    }
+    .sig-role {
+      font-size: 13px;
+      color: #64748b;
+    }
+    .badge-placeholder {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      border: 2px dashed #d4af37;
+      background: #fefce8;
+      color: #b45309;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      margin: 0 auto;
+    }
+    .qr-placeholder {
+      width: 70px;
+      height: 70px;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #64748b;
+      margin: 0 auto;
+    }
+    .meta-line {
+      font-size: 12px;
+      color: #64748b;
+      text-align: center;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div class="cert-outer-border">
+    <div class="cert-inner-border">
+      <header class="cert-header">
+        <div class="brand-group">
+          <div class="brand-logo">UP</div>
+          <span class="brand-name">UPTOSKILL</span>
+        </div>
+        <div class="cert-title">Experience Letter</div>
+      </header>
+
+      <main class="cert-body">
+        <p class="cert-subtitle">This certificate of experience is awarded to</p>
+        <h1 class="intern-name">{{fullName}}</h1>
+        <p class="cert-text">
+          who served as a <strong>{{domain}} Intern</strong> (Code: <strong>{{internCode}}</strong>) at UPTOSKILL from <strong>{{startDate}}</strong> to <strong>{{endDate}}</strong>.
+          During this tenure, they exhibited high technical proficiency, strong teamwork, and professional excellence. We wish them continued success in their career.
+        </p>
+      </main>
+
+      <footer class="cert-footer">
+        <div class="footer-col">
+          <p class="sig-name">Issue Date</p>
+          <p class="sig-role"><strong>{{issueDate}}</strong></p>
+          <div class="meta-line">Ref: {{requestNumber}}</div>
+        </div>
+
+        <div class="footer-col">
+          <div class="badge-placeholder">VERIFIED BADGE</div>
+        </div>
+
+        <div class="footer-col">
+          <div class="qr-placeholder">{{#if qrCodeUrl}}<img src="{{qrCodeUrl}}" alt="QR" width="60" />{{else}}QR Code{{/if}}</div>
+        </div>
+
+        <div class="footer-col">
+          <div class="sig-line"></div>
+          <p class="sig-name">Chief Executive Officer</p>
+          <p class="sig-role">UPTOSKILL Engineering</p>
+        </div>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

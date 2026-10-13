@@ -1,0 +1,93 @@
+.stuck-requests-wrapper {
+    background: color-mix(in srgb, var(--card) 96%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px var(--shadow);
+}
+
+.stuck-requests-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.stuck-requests-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.stuck-requests-count {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: color-mix(in srgb, var(--error) 15%, transparent);
+    color: var(--error);
+}
+
+.stuck-requests-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.stuck-requests-table th {
+    padding: 10px 16px;
+    text-align: left;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+}
+
+.stuck-requests-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+}
+
+.stuck-requests-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.stuck-req-code {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.stuck-intern strong {
+    display: block;
+    font-size: 13px;
+}
+
+.stuck-intern span {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.stuck-days {
+    color: var(--error);
+    font-weight: 700;
+}
+
+.stuck-review-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.stuck-review-btn:hover {
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+}

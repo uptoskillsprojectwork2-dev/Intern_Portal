@@ -55,6 +55,19 @@ export const finalizeCertificate = (id) => request('post', `/api/admin/certifica
 // Day 5 Admin Overview & Retry Generation
 export const getAllCertificates = () => request('get', '/api/admin/certificates');
 export const retryCertificateGeneration = (id) => request('post', `/api/admin/requests/${id}/retry-generation`);
+
+// Template Management & Placeholders API
+export const getPlaceholders = () => request('get', '/api/admin/templates/placeholders');
+export const getAllTemplates = () => request('get', '/api/admin/templates');
+export const getTemplateByType = (type) => request('get', `/api/admin/templates/type/${type}`);
+export const createTemplate = (payload) => request('post', '/api/admin/templates', payload);
+export const updateTemplate = (id, payload) => request('patch', `/api/admin/templates/${id}`, payload);
+
+// Account Retention Policy & Archived Interns API
+export const getRetentionPolicy = () => request('get', '/api/admin/retention-policy');
+export const updateRetentionPolicy = (payload) => request('patch', '/api/admin/retention-policy', payload);
+export const getArchivedInterns = () => request('get', '/api/admin/interns/archived');
+export const restoreArchivedIntern = (id) => request('patch', `/api/admin/interns/${id}/restore`);
 export const downloadAdminCertificate = async (id, fileName) => {
   const response = await adminApi.get(`/api/admin/certificates/${id}/download`, {
     responseType: 'blob'
@@ -64,6 +77,40 @@ export const downloadAdminCertificate = async (id, fileName) => {
   const link = document.createElement('a');
   link.href = url;
   link.setAttribute('download', fileName || 'certificate.pdf');
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+// Analytics API
+const buildQuery = (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  );
+  return query.toString() ? `?${query.toString()}` : '';
+};
+
+export const getAnalyticsOverview = (params = {}) => request('get', `/api/admin/analytics/overview${buildQuery(params)}`);
+export const getAnalyticsRequestsTrend = (params = {}) => request('get', `/api/admin/analytics/requests-trend${buildQuery(params)}`);
+export const getAnalyticsCertificateTypes = (params = {}) => request('get', `/api/admin/analytics/certificate-types${buildQuery(params)}`);
+export const getAnalyticsTurnaround = (params = {}) => request('get', `/api/admin/analytics/turnaround${buildQuery(params)}`);
+export const getAnalyticsTeamLeaders = (params = {}) => request('get', `/api/admin/analytics/team-leaders${buildQuery(params)}`);
+export const getAnalyticsDomains = (params = {}) => request('get', `/api/admin/analytics/domains${buildQuery(params)}`);
+export const getAnalyticsPipeline = (params = {}) => request('get', `/api/admin/analytics/pipeline${buildQuery(params)}`);
+export const getAnalyticsUpcomingCompletions = (params = {}) => request('get', `/api/admin/analytics/upcoming-completions${buildQuery(params)}`);
+export const exportAnalyticsCsv = async (type, params = {}) => {
+  const queryString = buildQuery(params);
+  const response = await adminApi.get(`/api/admin/analytics/export?type=${encodeURIComponent(type)}${queryString.replace(/^\?/, '&')}`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([response.data], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0, 10);
+  link.setAttribute('download', `analytics-${type}-${dateStr}.csv`);
   document.body.appendChild(link);
   link.click();
   link.remove();

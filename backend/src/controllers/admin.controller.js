@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import User from "../models/User.js";
 import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
+import RetentionPolicy from '../models/RetentionPolicy.model.js';
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { generateInternCode } from "../utils/generateInternCode.js";
@@ -16,6 +17,7 @@ import {
   sendCertificateEmail
 } from '../services/certificate.service.js';
 import { logAudit } from '../utils/auditLogger.js';
+import { clearAnalyticsCache } from '../utils/cache.js';
 
 dotenv.config();
 
@@ -144,7 +146,7 @@ export async function createTeamLeader(req, res) {
 
 export async function getAllInterns(req, res) {
     try {
-        const filter = { role: 'intern' };
+        const filter = { role: 'intern', isArchived: { $ne: true } };
 
         if (req.query.search) {
             const s = req.query.search.trim();
@@ -574,6 +576,7 @@ export const finalizeRequest = async (req, res) => {
     if (action === 'reject') request.rejectionReason = rejectionReason;
 
     await request.save();
+    clearAnalyticsCache();
 
     let certificate = null;
     if (action === 'approve') {
@@ -614,6 +617,7 @@ export const finalizeCertificate = async (req, res) => {
 
     // 1. Finalize certificate and render PDF
     const { certificate, request, absolutePdfPath } = await finalizeCertificateService(id);
+    clearAnalyticsCache();
 
     // 2. Send email with PDF attachment
     let emailSent = false;
@@ -706,6 +710,7 @@ export const retryCertificateGeneration = async (req, res) => {
 
     // Re-use existing createCertificateDraft service
     const certificate = await createCertificateDraft(request._id);
+    clearAnalyticsCache();
 
     return res.status(200).json({
       message: 'Certificate draft generated successfully',
@@ -753,3 +758,143 @@ export const downloadCertificatePdf = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+/**
+ * GET /api/admin/retention-policy
+ * Returns current retention policy settings (or creates default single document).
+ */
+export const getRetentionPolicy = async (req, res) => {
+  try {
+    let policy = await RetentionPolicy.findOne();
+    if (!policy) {
+      policy = await RetentionPolicy.create({ graceDays: 30, purgeDays: 90 });
+    }
+    return res.json({ policy });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+/**
+ * PATCH /api/admin/retention-policy
+ * Updates graceDays and purgeDays (validates purgeDays > graceDays, min 1).
+ */
+export const updateRetentionPolicy = async (req, res) => {
+  try {
+    const { graceDays, purgeDays } = req.body;
+
+    const parsedGrace = parseInt(graceDays, 10);
+    const parsedPurge = parseInt(purgeDays, 10);
+
+    if (isNaN(parsedGrace) || parsedGrace < 1) {
+      return res.status(400).json({ message: 'Grace days must be a positive number (at least 1)' });
+    }
+
+    if (isNaN(parsedPurge) || parsedPurge < 1) {
+      return res.status(400).json({ message: 'Purge days must be a positive number (at least 1)' });
+    }
+
+    if (parsedPurge <= parsedGrace) {
+      return res.status(400).json({ message: 'Purge days must be greater than grace days' });
+    }
+
+    let policy = await RetentionPolicy.findOne();
+    if (!policy) {
+      policy = new RetentionPolicy({ graceDays: parsedGrace, purgeDays: parsedPurge, updatedBy: req.user.id });
+    } else {
+      policy.graceDays = parsedGrace;
+      policy.purgeDays = parsedPurge;
+      policy.updatedBy = req.user.id;
+    }
+
+    await policy.save();
+
+    await logAudit({
+      userId: req.user.id,
+      action: 'UPDATE_RETENTION_POLICY',
+      entityType: 'retention_policy',
+      entityId: policy._id,
+      description: `Updated retention policy: graceDays=${parsedGrace}, purgeDays=${parsedPurge}`,
+      req,
+    });
+
+    return res.json({ message: 'Retention policy updated successfully', policy });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+/**
+ * GET /api/admin/interns/archived
+ * Lists all archived interns with remaining days before data purge.
+ */
+export const getArchivedInterns = async (req, res) => {
+  try {
+    let policy = await RetentionPolicy.findOne();
+    if (!policy) {
+      policy = await RetentionPolicy.create({ graceDays: 30, purgeDays: 90 });
+    }
+    const purgeDays = policy.purgeDays || 90;
+
+    const archivedInterns = await User.find({ role: 'intern', isArchived: true })
+      .select('fullName email internCode domain startDate endDate isArchived archivedAt createdAt')
+      .sort({ archivedAt: -1, createdAt: -1 });
+
+    const now = new Date();
+    const formattedList = archivedInterns.map((intern) => {
+      const archDate = intern.archivedAt ? new Date(intern.archivedAt) : new Date(intern.createdAt);
+      const purgeDate = new Date(archDate.getTime() + purgeDays * 24 * 60 * 60 * 1000);
+      const diffMs = purgeDate - now;
+      const daysLeftBeforePurge = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+
+      return {
+        ...intern.toObject(),
+        daysLeftBeforePurge
+      };
+    });
+
+    return res.json({ archivedInterns: formattedList, count: formattedList.length, policy });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+/**
+ * PATCH /api/admin/interns/:id/restore
+ * Restores an archived intern account.
+ */
+export const restoreArchivedIntern = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid intern ID format' });
+    }
+
+    const intern = await User.findById(id);
+    if (!intern) {
+      return res.status(404).json({ message: 'Intern not found' });
+    }
+
+    if (!intern.isArchived) {
+      return res.status(400).json({ message: 'Intern account is not currently archived' });
+    }
+
+    intern.isArchived = false;
+    intern.archivedAt = null;
+    await intern.save();
+
+    await logAudit({
+      userId: req.user.id,
+      action: 'RESTORE_ARCHIVED_INTERN',
+      entityType: 'user',
+      entityId: intern._id,
+      description: `Restored archived intern ${intern.fullName} (${intern.email})`,
+      req,
+    });
+
+    return res.json({ message: 'Intern account restored successfully', intern });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};

@@ -54,6 +54,8 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     const origFindOne = CertificateRequest.findOne;
     const origCreate = CertificateRequest.create;
     const origCount = CertificateRequest.countDocuments;
+    const Counter = (await import('../src/models/Counter.js')).default;
+    const origCounterFindByIdAndUpdate = Counter.findByIdAndUpdate;
 
     User.findById = () => Promise.resolve({
       _id: new mongoose.Types.ObjectId(),
@@ -66,7 +68,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     });
 
     CertificateRequest.findOne = () => Promise.resolve(null);
-    CertificateRequest.countDocuments = () => Promise.resolve(10);
+    Counter.findByIdAndUpdate = () => Promise.resolve({ seq: 11 });
     CertificateRequest.create = (doc) => Promise.resolve({ _id: new mongoose.Types.ObjectId(), ...doc });
 
     try {
@@ -108,6 +110,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
       CertificateRequest.findOne = origFindOne;
       CertificateRequest.create = origCreate;
       CertificateRequest.countDocuments = origCount;
+      Counter.findByIdAndUpdate = origCounterFindByIdAndUpdate;
     }
   });
 

@@ -36,12 +36,14 @@ const certificateSchema = new mongoose.Schema(
     certificateType: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+        index: true
     },
 
     domain: {
         type: String,
-        trim: true
+        trim: true,
+        index: true
     },
 
     startDate: {
@@ -54,7 +56,8 @@ const certificateSchema = new mongoose.Schema(
 
     issuedDate: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        index: true
     },
 
     status: {

@@ -1,0 +1,19 @@
+.bar-tooltip {
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 24px var(--shadow);
+}
+
+.bar-tooltip-label {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.bar-tooltip-value {
+    color: var(--muted);
+    font-size: 12px;
+}

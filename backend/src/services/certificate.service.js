@@ -9,6 +9,29 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
 import { sendEmail } from '../utils/sendEmail.js';
 
+let browserInstance = null;
+
+const getBrowser = async () => {
+  if (browserInstance && browserInstance.isConnected()) {
+    return browserInstance;
+  }
+  browserInstance = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+  });
+  return browserInstance;
+};
+
+export const closeBrowser = async () => {
+  if (browserInstance) {
+    try {
+      await browserInstance.close();
+    } catch {
+    }
+    browserInstance = null;
+  }
+};
+
 const generateCertificateNumber = async () => {
   const year = new Date().getFullYear();
   let count = await Certificate.countDocuments();
@@ -27,7 +50,8 @@ const generateVerificationCode = () => {
 const formatDate = (date) => {
   if (!date) return '';
   const d = new Date(date);
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 /**
@@ -200,7 +224,10 @@ export const createCertificateDraft = async (requestId) => {
     certificateType: formattedCertType,
     rawCertificateType: request.certificateType || '',
     VerificationCode: verificationCode,
-    verificationCode: verificationCode
+    verificationCode: verificationCode,
+    requestNumber: request.requestNumber || request._id?.toString() || '',
+    certificateTitle: getCertificateTitle(request.certificateType),
+    qrCodeUrl: ''
   };
 
   const templateData = {
@@ -298,7 +325,8 @@ export const updateCertificateDraft = async (id, htmlContent) => {
 
 /**
  * Renders HTML to a high-quality PDF buffer using Puppeteer.
- * Guarantees browser closure in a finally block.
+ * Reuses a single browser instance for efficiency and waits for
+ * Google Fonts (loaded via <link>) to be ready before rendering.
  *
  * @param {string} htmlContent - Full HTML markup to render
  * @returns {Promise<Buffer>}
@@ -310,23 +338,21 @@ export const renderCertificatePdf = async (htmlContent) => {
     throw error;
   }
 
-  let browser = null;
-  try {
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
+  const browser = await getBrowser();
+  const page = await browser.newPage();
 
-    const page = await browser.newPage();
+  try {
     await page.setContent(htmlContent, {
       waitUntil: ['load', 'networkidle0']
     });
+
+    // Wait for Google Fonts to finish loading before rendering
+    await page.evaluate(() => document.fonts.ready);
 
     const pdfBytes = await page.pdf({
       format: 'A4',
       landscape: true,
       printBackground: true,
-      preferCSSPageSize: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' }
     });
 
@@ -336,12 +362,9 @@ export const renderCertificatePdf = async (htmlContent) => {
     error.statusCode = 500;
     throw error;
   } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch {
-        // Safe disposal
-      }
+    try {
+      await page.close();
+    } catch {
     }
   }
 };
@@ -468,4 +491,19 @@ export const sendCertificateEmail = async ({ certificate, absolutePdfPath, user 
       }
     ]
   });
+};
+
+export const CERTIFICATE_TITLES = {
+  completion_certificate: 'Internship Completion',
+  experience_letter: 'Internship Experience',
+  bonafide: 'Bonafide Certificate',
+  ojt_certificate: 'On-the-Job Training',
+  offer_letter: 'Internship Offer',
+  intern_of_month: 'Intern of the Month',
+  league_winner: 'League Winner',
+  custom: 'Custom Certificate',
+};
+
+export const getCertificateTitle = (certificateType) => {
+  return CERTIFICATE_TITLES[certificateType] || certificateType.replace(/_/g, ' ');
 };

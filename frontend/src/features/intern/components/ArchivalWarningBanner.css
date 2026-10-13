@@ -1,0 +1,31 @@
+.archival-warning-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid #f59e0b;
+  color: #78350f;
+  padding: 14px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.1);
+}
+
+.warning-banner-icon {
+  font-size: 24px;
+}
+
+.warning-banner-text strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #92400e;
+  margin-bottom: 2px;
+}
+
+.warning-banner-text p {
+  margin: 0;
+  font-size: 13px;
+  color: #78350f;
+  line-height: 1.4;
+}

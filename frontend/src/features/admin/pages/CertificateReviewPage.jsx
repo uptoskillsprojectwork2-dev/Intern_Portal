@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import CertificatePreview from '../components/CertificatePreview';
+import CertificateTemplateEditor from '../components/CertificateTemplateEditor';
 import useCertificateDraft from '../hooks/useCertificateDraft';
 import Toast from '../../../shared/components/Toast';
 import './CertificateReviewPage.css';
@@ -18,6 +19,7 @@ export default function CertificateReviewPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, handleLogout } = useAuth();
+  const [editorMode, setEditorMode] = useState('visual'); // 'visual' | 'raw'
 
   const {
     draft,
@@ -203,6 +205,35 @@ export default function CertificateReviewPage() {
                 </p>
               </div>
             </section>
+
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+              <button
+                type="button"
+                onClick={() => setEditorMode('visual')}
+                style={{ background: editorMode === 'visual' ? '#2563eb' : '#1e293b', color: '#fff', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #475569', fontWeight: 600 }}
+              >
+                🎨 Visual Editor (GrapesJS)
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorMode('raw')}
+                style={{ background: editorMode === 'raw' ? '#2563eb' : '#1e293b', color: '#fff', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', border: '1px solid #475569', fontWeight: 600 }}
+              >
+                💻 Raw HTML Editor
+              </button>
+            </div>
+
+            {editorMode === 'visual' && !isFinalized ? (
+              <div style={{ marginBottom: '24px' }}>
+                <CertificateTemplateEditor
+                  initialHtml={htmlContent}
+                  onSave={async (newHtml) => {
+                    setHtmlContent(newHtml);
+                  }}
+                  readOnly={isFinalized}
+                />
+              </div>
+            ) : null}
 
             {/* Main review workspace */}
             <div className="certificate-review-workspace">

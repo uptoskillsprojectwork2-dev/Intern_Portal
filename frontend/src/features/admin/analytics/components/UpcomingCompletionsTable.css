@@ -1,0 +1,109 @@
+.upcoming-wrapper {
+    background: color-mix(in srgb, var(--card) 96%, transparent);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px var(--shadow);
+}
+
+.upcoming-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.upcoming-header h4 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.upcoming-count {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+    color: var(--accent);
+}
+
+.upcoming-without-cert {
+    margin-left: auto;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: color-mix(in srgb, var(--error) 12%, transparent);
+    color: var(--error);
+}
+
+.upcoming-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.upcoming-table th {
+    padding: 10px 16px;
+    text-align: left;
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+}
+
+.upcoming-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line);
+    color: var(--text);
+}
+
+.upcoming-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.upcoming-intern strong {
+    display: block;
+    font-size: 13px;
+}
+
+.upcoming-intern span {
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.upcoming-days {
+    font-weight: 700;
+}
+
+.upcoming-days.urgent {
+    color: var(--error);
+}
+
+.cert-status {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.cert-status.not-requested {
+    color: var(--error);
+    background: color-mix(in srgb, var(--error) 12%, transparent);
+}
+
+.cert-status.in-progress {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.cert-status.is-completed {
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+}

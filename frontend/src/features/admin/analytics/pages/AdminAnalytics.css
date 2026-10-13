@@ -1,0 +1,146 @@
+.analytics-shell {
+    min-height: 100vh;
+    background: var(--page);
+    color: var(--text);
+}
+
+.analytics-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 40px clamp(22px, 5vw, 56px) 70px;
+}
+
+.analytics-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 28px;
+}
+
+.analytics-page-header .admin-eyebrow {
+    margin-bottom: 10px;
+}
+
+.analytics-page-header h1 {
+    margin: 0 0 8px;
+    font-size: clamp(28px, 4vw, 40px);
+    letter-spacing: -1px;
+}
+
+.analytics-page-header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 16px;
+    max-width: 640px;
+}
+
+.analytics-back-btn {
+    padding: 10px 20px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.analytics-back-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.analytics-toast {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+}
+
+.analytics-kpi-row {
+    margin-bottom: 32px;
+}
+
+.analytics-charts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.analytics-tables-section {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.turnaround-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 8px 0;
+}
+
+.turnaround-card {
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--input) 40%, transparent);
+    text-align: center;
+}
+
+.turnaround-card h4 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
+.turnaround-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--text);
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.turnaround-substats {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+@media (max-width: 768px) {
+    .analytics-page-header {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .analytics-charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .turnaround-metrics {
+        grid-template-columns: 1fr;
+    }
+}

@@ -6,6 +6,8 @@ import dns from 'dns';
 import authRouter from './routes/auth.routes.js';
 import internRouter from './routes/intern.routes.js';
 import adminRouter from './routes/admin.routes.js';
+import analyticsRouter from './routes/analytics.routes.js';
+import templateRouter from './routes/template.routes.js';
 import teamleaderRouter from './routes/teamleader.routes.js';
 
 
@@ -34,6 +36,9 @@ app.use('/api/auth', authRouter);
 app.use('/api/intern', internRouter);
 
 app.use('/api/admin', adminRouter);
+
+app.use('/api/admin/analytics', analyticsRouter);
+app.use('/api/admin/templates', templateRouter);
 
 app.use('/api/teamleader', teamleaderRouter);
 

@@ -18,7 +18,11 @@ import {
   finalizeCertificate,
   getAllCertificates,
   retryCertificateGeneration,
-  downloadCertificatePdf
+  downloadCertificatePdf,
+  getRetentionPolicy,
+  updateRetentionPolicy,
+  getArchivedInterns,
+  restoreArchivedIntern
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
@@ -26,6 +30,14 @@ import requireAdmin from "../middlewares/requireAdmin.js";
 
 const adminRouter = express.Router();
 
+
+// Retention Policy routes
+adminRouter.get("/retention-policy", verifyAuth, requireAdmin, getRetentionPolicy);
+adminRouter.patch("/retention-policy", verifyAuth, requireAdmin, updateRetentionPolicy);
+
+// Archived Interns routes (placed BEFORE /interns/:id)
+adminRouter.get("/interns/archived", verifyAuth, requireAdmin, getArchivedInterns);
+adminRouter.patch("/interns/:id/restore", verifyAuth, requireAdmin, restoreArchivedIntern);
 
 // POST api/auth/register-intern
 adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);

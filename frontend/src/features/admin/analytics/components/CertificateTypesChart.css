@@ -1,0 +1,25 @@
+.donut-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.donut-tooltip {
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 24px var(--shadow);
+}
+
+.donut-tooltip-label {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.donut-tooltip-value {
+    color: var(--muted);
+    font-size: 12px;
+}

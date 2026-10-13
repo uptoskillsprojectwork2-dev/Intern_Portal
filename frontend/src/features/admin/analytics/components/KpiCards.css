@@ -1,0 +1,121 @@
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 18px;
+    margin-bottom: 32px;
+}
+
+.kpi-card {
+    padding: 24px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--card) 96%, transparent);
+    box-shadow: 0 10px 30px var(--shadow);
+    transition: transform 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+}
+
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--kpi-accent, var(--accent));
+}
+
+.kpi-card-icon {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 20px;
+    margin-bottom: 16px;
+}
+
+.kpi-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.kpi-card-label {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+}
+
+.kpi-card-value {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1;
+}
+
+.kpi-suffix {
+    font-size: 20px;
+    color: var(--muted);
+}
+
+.kpi-change {
+    font-size: 12px;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+.kpi-change.positive {
+    color: var(--success);
+}
+
+.kpi-change.negative {
+    color: var(--error);
+}
+
+.kpi-skeleton {
+    height: 150px;
+}
+
+.kpi-skeleton-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--border);
+    margin-bottom: 16px;
+    animation: pulse 1.4s ease-in-out infinite alternate;
+}
+
+.kpi-skeleton-line {
+    height: 24px;
+    border-radius: 6px;
+    background: var(--border);
+    width: 70%;
+    animation: pulse 1.4s ease-in-out infinite alternate;
+}
+
+.kpi-skeleton-line.short {
+    width: 40%;
+    margin-top: 6px;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+@media (max-width: 600px) {
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+    .kpi-card-value {
+        font-size: 26px;
+    }
+}

@@ -7,6 +7,7 @@ import ProtectedRoute from '../features/shared/components/ProtectedRoute';
 import InternDashboard from '../features/intern/pages/InternDashboard';
 import TLDashboard from '../features/teamleader/pages/TLDashboard';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
+import AdminAnalytics from '../features/admin/analytics/pages/AdminAnalytics';
 import CertificateReviewPage from '../features/admin/pages/CertificateReviewPage';
 import ThemeToggle from '../features/shared/components/ThemeToggle';
 import './App.css';
@@ -47,6 +48,7 @@ export default function App() {
 
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/certificates/:id/review" element={<CertificateReviewPage />} />
         </Route>
 

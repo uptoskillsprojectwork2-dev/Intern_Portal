@@ -1,100 +1,104 @@
 import mongoose from "mongoose";
 
 const certificateRequestSchema = new mongoose.Schema(
-{
-    requestNumber: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true
-    },
+    {
+        requestNumber: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true
+        },
 
-    userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
-        required: true,
-        index: true
-    },
+        userId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "user",
+            required: true,
+            index: true
+        },
 
-    internCode: {
-        type: String,
-        required: true,
-        index: true
-    },
+        internCode: {
+            type: String,
+            required: true,
+            index: true
+        },
 
-    certificateType: {
-        type: String,
-        required: true,
-        trim: true
-    },
+        certificateType: {
+            type: String,
+            required: true,
+            trim: true
+        },
 
-    templateId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "certificate_template"
-    },
+        templateId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "certificate_template"
+        },
 
-    reason: {
-        type: String,
-        trim: true
-    },
+        reason: {
+            type: String,
+            trim: true
+        },
 
-    metadata: {
-        type: Map,
-        of: String,
-        default: {}
-    },
+        metadata: {
+            type: Map,
+            of: String,
+            default: {}
+        },
 
-    status: {
-        type: String,
-        enum: [
-            "pending",
-            "approved",
-            "rejected",
-            "processing",
-            "completed",
-            "cancelled"
-        ],
-        default: "pending",
-        index: true
-    },
+        status: {
+            type: String,
+            enum: [
+                "pending",
+                "approved",
+                "rejected",
+                "processing",
+                "completed",
+                "cancelled"
+            ],
+            default: "pending",
+            index: true
+        },
 
-    requestedAt: {
-        type: Date,
-        default: Date.now,
-        index: true
-    },
+        requestedAt: {
+            type: Date,
+            default: Date.now,
+            index: true
+        },
 
-    reviewedAt: {
-        type: Date,
-    },
+        reviewedAt: {
+            type: Date,
+            index: true
+        },
 
-    reviewedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user"
-    },
-    forwardedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
-        index: true
-    },
+        reviewedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "user",
+            index: true
+        },
 
-    forwardedAt: {
-        type: Date,
-    },
+        forwardedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "user",
+            index: true
+        },
 
-    rejectionReason: {
-        type: String,
-        trim: true
-    },
+        forwardedAt: {
+            type: Date,
+            index: true
+        },
 
-    certificateId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "certificate"
-    }
-},
-{
-    timestamps: true
-});
+        rejectionReason: {
+            type: String,
+            trim: true
+        },
+
+        certificateId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "certificate"
+        }
+    },
+    {
+        timestamps: true
+    });
 
 certificateRequestSchema.pre("save", async function () {
     const userModel = mongoose.model("user");
