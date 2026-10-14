@@ -20,14 +20,16 @@ export function AuthProvider({ children }) {
       } catch (error) {
         console.error("Auth check failed:", error);
         setUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
       } finally {
         // Once the check is done (success or fail), stop loading
         setLoading(false);
       }
-    }
+    };
 
     checkAuth();
-  }, [])
+  }, []);
 
   // This is the correct way to "fix" it if you want to perform actions or log
   // the user state immediately after it has successfully updated.
@@ -69,7 +71,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, token, setToken, loading, setLoading, error, setError, handleLogin, handleLogout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, setUser, token, setToken, loading, setLoading, error, setError, handleLogin, handleLogout, isAuthenticated: !!user || !!token }}>
       {children}
     </AuthContext.Provider>
   );

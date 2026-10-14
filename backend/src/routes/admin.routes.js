@@ -18,7 +18,14 @@ import {
   finalizeCertificate,
   getAllCertificates,
   retryCertificateGeneration,
-  downloadCertificatePdf
+  downloadCertificatePdf,
+  getRetentionPolicy,
+  updateRetentionPolicy,
+  getArchivedInterns,
+  restoreArchivedIntern,
+  getOverviewStats,
+  getAuditLogs,
+  exportAuditLogs
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
@@ -26,6 +33,8 @@ import requireAdmin from "../middlewares/requireAdmin.js";
 
 const adminRouter = express.Router();
 
+// Admin Overview Analytics Stats
+adminRouter.get("/overview-stats", verifyAuth, requireAdmin, getOverviewStats);
 
 // POST api/auth/register-intern
 adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);
@@ -35,9 +44,11 @@ adminRouter.post("/create-tl", verifyAuth, requireAdmin, teamLeaderValidator, cr
 
 // Intern Management routes
 adminRouter.get("/interns", verifyAuth, requireAdmin, getAllInterns);
+adminRouter.get("/interns/archived", verifyAuth, requireAdmin, getArchivedInterns);
 adminRouter.get("/interns/:id", verifyAuth, requireAdmin, getInternById);
 adminRouter.patch("/interns/:id", verifyAuth, requireAdmin, updateInternValidator, updateIntern);
 adminRouter.patch("/interns/:id/assignment", verifyAuth, requireAdmin, assignTeamLeaderValidator, assignInternTeamLeader);
+adminRouter.patch("/interns/:id/restore", verifyAuth, requireAdmin, restoreArchivedIntern);
 
 // Team Leader Management routes
 adminRouter.get("/teamleaders", verifyAuth, requireAdmin, getAllTeamLeaders);
@@ -60,5 +71,13 @@ adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finaliz
 adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
 adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
+
+// Task C routes
+adminRouter.get("/retention-policy", verifyAuth, requireAdmin, getRetentionPolicy);
+adminRouter.patch("/retention-policy", verifyAuth, requireAdmin, updateRetentionPolicy);
+
+// Task D: Audit Logs
+adminRouter.get("/audit-logs", verifyAuth, requireAdmin, getAuditLogs);
+adminRouter.get("/audit-logs/export", verifyAuth, requireAdmin, exportAuditLogs);
 
 export default adminRouter;

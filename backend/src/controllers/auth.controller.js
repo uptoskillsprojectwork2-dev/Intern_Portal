@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { sendEmail } from "../utils/sendEmail.js";
+import logAction from "../utils/logAction.js";
 
 dotenv.config()
 
@@ -13,8 +14,27 @@ export async function login(req, res) {
     const user = await User.findOne({ email });
 
     if (!user) {
+        await logAction({
+            req,
+            action: 'LOGIN_FAILED',
+            targetType: 'User',
+            meta: { email }
+        });
         return res.status(401).json({
             message: "Invalid credentials"
+        });
+    }
+
+    if (user.isArchived) {
+        await logAction({
+            req,
+            action: 'LOGIN_FAILED',
+            targetType: 'User',
+            targetId: user._id,
+            meta: { email, reason: 'archived' }
+        });
+        return res.status(403).json({
+            message: "Your internship account has been archived. Contact admin."
         });
     }
 
@@ -22,6 +42,13 @@ export async function login(req, res) {
     const isCredentialValid = await user.comparePassword(password);
 
     if (!isCredentialValid) {
+        await logAction({
+            req,
+            action: 'LOGIN_FAILED',
+            targetType: 'User',
+            targetId: user._id,
+            meta: { email }
+        });
         return res.status(401).json({
             message: "Invalid credentials"
         });
@@ -34,10 +61,25 @@ export async function login(req, res) {
         role: user.role
     }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.cookie("token", token);
+    res.cookie("token", token, {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    await logAction({
+        req,
+        actor: user,
+        action: 'LOGIN',
+        targetType: 'User',
+        targetId: user._id,
+        meta: { email: user.email }
+    });
 
     return res.status(200).json({
         message: "User logged in successfully",
+        token,
         user: {
             id: user._id,
             fullName: user.fullName,
@@ -46,6 +88,26 @@ export async function login(req, res) {
             role: user.role,
             createdAt: user.createdAt
         }
+    });
+}
+
+export async function logout(req, res) {
+    if (req.user) {
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'LOGOUT',
+            targetType: 'User',
+            targetId: req.user.id
+        });
+    }
+    res.clearCookie('token', {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/'
+    });
+    return res.status(200).json({
+        message: 'Logged out successfully'
     });
 }
 
@@ -112,6 +174,14 @@ export async function forgotPassword(req, res) {
                 <p>This link expires in 15 minutes.</p>`
         });
 
+        await logAction({
+            req,
+            action: 'PASSWORD_RESET_REQUESTED',
+            targetType: 'User',
+            targetId: user._id,
+            meta: { email: user.email }
+        });
+
         return res.status(200).json({ message: genericMessage });
     } catch (err) {
         return res.status(500).json({
@@ -147,6 +217,14 @@ export async function resetPassword(req, res) {
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();
+
+        await logAction({
+            req,
+            action: 'PASSWORD_RESET_COMPLETED',
+            targetType: 'User',
+            targetId: user._id,
+            meta: { email: user.email }
+        });
 
         return res.status(200).json({
             message: "Password reset successful. You can now log in."

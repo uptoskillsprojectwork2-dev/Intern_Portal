@@ -118,7 +118,7 @@ export default function ForwardedRequestsList() {
                 disabled={isRetrying}
                 title="Recover draft generation for this approved request"
               >
-                {isRetrying ? 'Retrying…' : '🔄 Retry Generation'}
+                {isRetrying ? 'Retrying…' : <><i className="bi bi-arrow-repeat"></i> Retry Generation</>}
               </button>
             ) : rejectingId === id ? (
               <div className="forwarded-reject-form">
