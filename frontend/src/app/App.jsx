@@ -12,7 +12,10 @@ import ThemeToggle from '../features/shared/components/ThemeToggle';
 import './App.css';
 
 export default function App() {
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('theme') ||
+      (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -26,15 +29,8 @@ export default function App() {
   return (
     <>
       <Routes>
-        {/* Auth pages get a floating theme toggle in the corner */}
-        <Route path="/login" element={
-          <>
-            <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999 }}>
-              <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            </div>
-            <Login />
-          </>
-        } />
+        {/* Login page without theme toggle control */}
+        <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={
           <>
             <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 999 }}>
