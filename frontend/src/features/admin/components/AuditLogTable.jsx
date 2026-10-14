@@ -72,8 +72,11 @@ export default function AuditLogTable({
   error = null,
   onRetry,
   page = 1,
+  limit = 20,
   totalPages = 1,
+  total = 0,
   onPageChange,
+  onLimitChange,
 }) {
   const [expandedRows, setExpandedRows] = useState(new Set());
 
@@ -283,19 +286,44 @@ export default function AuditLogTable({
       </div>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="audit-pagination">
+      <div className="audit-pagination">
+        <div className="audit-pagination-left">
+          {onLimitChange && (
+            <div className="audit-per-page">
+              <label htmlFor="audit-rows-per-page">Rows per page:</label>
+              <select
+                id="audit-rows-per-page"
+                className="audit-page-select"
+                value={limit}
+                onChange={(e) => onLimitChange(Number(e.target.value))}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          )}
+          {total > 0 && (
+            <span className="audit-range-info">
+              Showing <strong>{Math.min((page - 1) * limit + 1, total)}</strong>–<strong>{Math.min(page * limit, total)}</strong> of <strong>{total}</strong>
+            </span>
+          )}
+        </div>
+
+        <div className="audit-pagination-right">
           <button
             type="button"
             className="audit-page-btn"
             disabled={page <= 1}
             onClick={() => onPageChange(page - 1)}
+            aria-label="Previous page"
           >
             ← Previous
           </button>
 
           <span className="audit-page-info">
-            Page <strong>{page}</strong> of <strong>{totalPages}</strong>
+            Page <strong>{page}</strong> of <strong>{Math.max(totalPages, 1)}</strong>
           </span>
 
           <button
@@ -303,11 +331,12 @@ export default function AuditLogTable({
             className="audit-page-btn"
             disabled={page >= totalPages}
             onClick={() => onPageChange(page + 1)}
+            aria-label="Next page"
           >
             Next →
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

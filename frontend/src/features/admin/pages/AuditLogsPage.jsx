@@ -58,7 +58,7 @@ export default function AuditLogsPage() {
 
           <div className="audit-user-info">
             <div className="audit-avatar">{initials}</div>
-            <div>
+            <div className="audit-user-text">
               <strong>{user?.fullName || 'Administrator'}</strong>
               <small>{user?.email || 'admin@uptoskills.com'}</small>
             </div>
@@ -105,8 +105,11 @@ export default function AuditLogsPage() {
           error={error}
           onRetry={retry}
           page={filters.page}
+          limit={filters.limit}
           totalPages={totalPages}
+          total={total}
           onPageChange={setPage}
+          onLimitChange={(newLimit) => updateFilters({ limit: newLimit })}
         />
       </main>
     </div>

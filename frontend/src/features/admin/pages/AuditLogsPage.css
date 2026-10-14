@@ -36,15 +36,20 @@
 }
 
 .audit-brand-icon {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  flex-shrink: 0;
   border-radius: 9px;
   color: #fff;
   background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
   font-size: 11px;
   font-weight: 900;
+  line-height: 1;
 }
 
 .audit-brand-tag {
@@ -87,7 +92,7 @@
   gap: 12px;
 }
 
-.audit-user-info > div {
+.audit-user-text {
   display: flex;
   flex-direction: column;
   line-height: 1.2;
@@ -103,14 +108,21 @@
 }
 
 .audit-avatar {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  flex-shrink: 0;
   border-radius: 50%;
   color: #fff;
   font-weight: 900;
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
   background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
 }
 
@@ -560,9 +572,51 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
   padding: 14px 22px;
   border-top: 1px solid var(--border);
   background: color-mix(in srgb, var(--panel) 40%, transparent);
+}
+
+.audit-pagination-left,
+.audit-pagination-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.audit-per-page {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.audit-page-select {
+  padding: 5px 8px;
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.audit-page-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.audit-range-info {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.audit-range-info strong {
+  color: var(--text);
 }
 
 .audit-page-btn {

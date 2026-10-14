@@ -11,8 +11,6 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: /^grapesjs$/, replacement: 'grapesjs/dist/grapes.min.js' },
-      { find: /^react-router$/, replacement: path.resolve(__dirname, 'node_modules/react-router-dom/node_modules/react-router/dist/production/index.js') },
-      { find: /^react-router\/dom$/, replacement: path.resolve(__dirname, 'node_modules/react-router-dom/node_modules/react-router/dist/production/dom-export.js') },
     ],
   },
   optimizeDeps: {
