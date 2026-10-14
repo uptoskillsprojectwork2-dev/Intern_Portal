@@ -4,8 +4,9 @@ import { createHash, randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { sendEmail } from "../utils/sendEmail.js";
+import { logAction } from "../utils/logAction.js";
 
-dotenv.config()
+dotenv.config();
 
 export async function login(req, res) {
     const { email, password } = req.body;
@@ -13,6 +14,14 @@ export async function login(req, res) {
     const user = await User.findOne({ email });
 
     if (!user) {
+        await logAction({
+            req,
+            actor: { role: "system", id: null },
+            action: "LOGIN_FAILED",
+            targetType: "user",
+            targetId: null,
+            meta: { email, reason: "Invalid credentials" }
+        });
         return res.status(401).json({
             message: "Invalid credentials"
         });
@@ -22,12 +31,28 @@ export async function login(req, res) {
     const isCredentialValid = await user.comparePassword(password);
 
     if (!isCredentialValid) {
+        await logAction({
+            req,
+            actor: { role: "system", id: user._id },
+            action: "LOGIN_FAILED",
+            targetType: "user",
+            targetId: user._id,
+            meta: { email, reason: "Invalid credentials" }
+        });
         return res.status(401).json({
             message: "Invalid credentials"
         });
     }
 
     if (user.role === "intern" && user.isArchived) {
+        await logAction({
+            req,
+            actor: { role: "system", id: user._id },
+            action: "LOGIN_FAILED",
+            targetType: "user",
+            targetId: user._id,
+            meta: { email, reason: "Account archived" }
+        });
         return res.status(403).json({
             message: "Your internship account has been archived. Contact admin."
         });
@@ -42,6 +67,15 @@ export async function login(req, res) {
 
     res.cookie("token", token);
 
+    await logAction({
+        req,
+        actor: { id: user._id, role: user.role },
+        action: "LOGIN",
+        targetType: "user",
+        targetId: user._id,
+        meta: { email: user.email, role: user.role }
+    });
+
     return res.status(200).json({
         message: "User logged in successfully",
         user: {
@@ -53,6 +87,28 @@ export async function login(req, res) {
             createdAt: user.createdAt
         }
     });
+}
+
+export async function logout(req, res) {
+    try {
+        if (req.user) {
+            await logAction({
+                req,
+                actor: req.user,
+                action: "LOGOUT",
+                targetType: "user",
+                targetId: req.user.id
+            });
+        }
+        res.clearCookie("token");
+        return res.status(200).json({
+            message: "User logged out successfully"
+        });
+    } catch (err) {
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
 }
 
 export async function getMe(req, res) {
@@ -118,6 +174,15 @@ export async function forgotPassword(req, res) {
                 <p>This link expires in 15 minutes.</p>`
         });
 
+        await logAction({
+            req,
+            actor: { role: "system", id: user._id },
+            action: "PASSWORD_RESET_REQUESTED",
+            targetType: "user",
+            targetId: user._id,
+            meta: { email: user.email }
+        });
+
         return res.status(200).json({ message: genericMessage });
     } catch (err) {
         return res.status(500).json({
@@ -153,6 +218,15 @@ export async function resetPassword(req, res) {
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();
+
+        await logAction({
+            req,
+            actor: { role: "system", id: user._id },
+            action: "PASSWORD_RESET_COMPLETED",
+            targetType: "user",
+            targetId: user._id,
+            meta: { email: user.email }
+        });
 
         return res.status(200).json({
             message: "Password reset successful. You can now log in."

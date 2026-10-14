@@ -8,12 +8,15 @@ const adminApi = axios.create({
   withCredentials: true,
 });
 
-const request = async (method, url, payload) => {
+const request = async (method, url, payload, config = {}) => {
   try {
+    const isGet = method.toLowerCase() === 'get';
     const response = await adminApi({
       method,
       url,
-      data: payload,
+      params: isGet ? payload : config.params,
+      data: !isGet ? payload : undefined,
+      ...config,
     });
 
     return response.data;
@@ -412,3 +415,34 @@ export const restoreIntern = (id) =>
     'patch',
     `/api/admin/interns/${id}/restore`
   );
+
+/*
+|--------------------------------------------------------------------------
+| Audit Logs
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Get paginated audit logs with filters.
+ *
+ * GET /api/admin/audit-logs
+ */
+export const getAuditLogs = (params) =>
+  request(
+    'get',
+    '/api/admin/audit-logs',
+    params
+  );
+
+/**
+ * Export audit logs as CSV.
+ *
+ * GET /api/admin/audit-logs/export
+ */
+export const exportAuditLogs = async (params) => {
+  const response = await adminApi.get('/api/admin/audit-logs/export', {
+    params,
+    responseType: 'blob',
+  });
+  return response.data;
+};
