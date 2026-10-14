@@ -4,6 +4,7 @@ import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import { logAudit } from '../utils/auditLogger.js';
+import logAction from '../utils/logAction.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -279,6 +280,27 @@ export const reviewRequestAsTL = async (req, res) => {
     }
 
     await request.save();
+
+    if (action === 'reject') {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'REQUEST_REJECTED',
+        targetType: 'CertificateRequest',
+        targetId: request._id,
+        meta: { rejectionReason, certificateType: request.certificateType }
+      });
+    } else {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'REQUEST_FORWARDED',
+        targetType: 'CertificateRequest',
+        targetId: request._id,
+        meta: { certificateType: request.certificateType }
+      });
+    }
+
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

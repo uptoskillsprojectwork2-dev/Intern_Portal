@@ -8,6 +8,7 @@ import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import logAction from '../utils/logAction.js';
 
 const generateCertificateNumber = async () => {
   const year = new Date().getFullYear();
@@ -230,6 +231,17 @@ export const createCertificateDraft = async (requestId) => {
   request.certificateId = certificate._id;
   await request.save();
 
+  await logAction({
+    actor: request.reviewedBy ? { id: request.reviewedBy, role: 'admin' } : null,
+    action: 'CERTIFICATE_DRAFT_CREATED',
+    targetType: 'Certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber,
+      certificateType: certificate.certificateType
+    }
+  });
+
   return certificate;
 };
 
@@ -292,6 +304,16 @@ export const updateCertificateDraft = async (id, htmlContent) => {
 
   certificate.htmlContent = htmlContent;
   await certificate.save();
+
+  await logAction({
+    action: 'CERTIFICATE_EDITED',
+    targetType: 'Certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber,
+      certificateType: certificate.certificateType
+    }
+  });
 
   return certificate;
 };
@@ -416,6 +438,17 @@ export const finalizeCertificate = async (certificateId) => {
     request.status = 'completed';
     await request.save();
   }
+
+  await logAction({
+    actor: certificate.generatedBy ? { id: certificate.generatedBy, role: 'admin' } : null,
+    action: 'CERTIFICATE_FINALIZED',
+    targetType: 'Certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber,
+      certificateType: certificate.certificateType
+    }
+  });
 
   return {
     certificate,

@@ -23,7 +23,9 @@ import {
   updateRetentionPolicy,
   getArchivedInterns,
   restoreArchivedIntern,
-  getOverviewStats
+  getOverviewStats,
+  getAuditLogs,
+  exportAuditLogs
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
@@ -73,5 +75,9 @@ adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, ret
 // Task C routes
 adminRouter.get("/retention-policy", verifyAuth, requireAdmin, getRetentionPolicy);
 adminRouter.patch("/retention-policy", verifyAuth, requireAdmin, updateRetentionPolicy);
+
+// Task D: Audit Logs
+adminRouter.get("/audit-logs", verifyAuth, requireAdmin, getAuditLogs);
+adminRouter.get("/audit-logs/export", verifyAuth, requireAdmin, exportAuditLogs);
 
 export default adminRouter;

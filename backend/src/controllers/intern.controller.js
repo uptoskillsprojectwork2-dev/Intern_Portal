@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.js';
+import logAction from '../utils/logAction.js';
 
 
 
@@ -94,6 +95,15 @@ export const submitCertificateRequest = async (req, res) => {
       certificateType,
       reason,
       metadata: safeMetadata
+    });
+
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'REQUEST_SUBMITTED',
+      targetType: 'CertificateRequest',
+      targetId: request._id,
+      meta: { certificateType, reason }
     });
 
     res.status(201).json({ request });

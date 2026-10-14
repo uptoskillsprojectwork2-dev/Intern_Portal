@@ -15,6 +15,7 @@ import teamleaderRouter from './routes/teamleader.routes.js';
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Allow the frontend to send and receive the authentication cookie.
 app.use(cors({

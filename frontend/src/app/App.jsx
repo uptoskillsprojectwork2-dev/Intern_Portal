@@ -67,6 +67,9 @@ export default function App() {
           <Route path="/admin/dashboard" element={
             <AdminDashboard theme={theme} onToggleTheme={toggleTheme} />
           } />
+          <Route path="/admin/audit-logs" element={
+            <AdminDashboard initialView="audit_logs" theme={theme} onToggleTheme={toggleTheme} />
+          } />
           <Route path="/admin/certificates/:id/review" element={
             <CertificateReviewPage theme={theme} onToggleTheme={toggleTheme} />
           } />

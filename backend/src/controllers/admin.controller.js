@@ -17,6 +17,8 @@ import {
   sendCertificateEmail
 } from '../services/certificate.service.js';
 import { logAudit } from '../utils/auditLogger.js';
+import AuditLog from '../models/AuditLog.model.js';
+import logAction from '../utils/logAction.js';
 
 dotenv.config();
 
@@ -74,6 +76,14 @@ export async function createIntern(req, res) {
             }
         });
 
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'USER_CREATED',
+            targetType: 'User',
+            targetId: user._id,
+            meta: { role: 'intern', email: user.email, domain: user.domain }
+        });
 
         res.status(200).json({
             message: "User registered successfully",
@@ -118,6 +128,15 @@ export async function createTeamLeader(req, res) {
             endDate,
             role: "teamleader",
             password
+        });
+
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'USER_CREATED',
+            targetType: 'User',
+            targetId: user._id,
+            meta: { role: 'teamleader', email: user.email }
         });
 
         const token = jwt.sign({
@@ -576,6 +595,26 @@ export const finalizeRequest = async (req, res) => {
 
     await request.save();
 
+    if (action === 'approve') {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'REQUEST_APPROVED',
+        targetType: 'CertificateRequest',
+        targetId: request._id,
+        meta: { certificateType: request.certificateType }
+      });
+    } else {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'REQUEST_REJECTED',
+        targetType: 'CertificateRequest',
+        targetId: request._id,
+        meta: { rejectionReason, certificateType: request.certificateType }
+      });
+    }
+
     let certificate = null;
     if (action === 'approve') {
       certificate = await createCertificateDraft(request._id);
@@ -789,6 +828,15 @@ export const updateRetentionPolicy = async (req, res) => {
         policy.updatedBy = req.user.id;
         await policy.save();
 
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'RETENTION_POLICY_UPDATED',
+            targetType: 'RetentionPolicy',
+            targetId: policy._id,
+            meta: { graceDays, purgeDays }
+        });
+
         res.status(200).json({ policy, message: "Policy updated successfully" });
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });
@@ -820,6 +868,15 @@ export const restoreArchivedIntern = async (req, res) => {
         intern.isArchived = false;
         intern.archivedAt = null;
         await intern.save();
+
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'INTERN_RESTORED',
+            targetType: 'User',
+            targetId: intern._id,
+            meta: { email: intern.email }
+        });
 
         res.status(200).json({ message: "Intern restored successfully", intern });
     } catch (err) {
@@ -869,5 +926,245 @@ export const getOverviewStats = async (req, res) => {
         });
     } catch (err) {
         return res.status(500).json({ message: "Failed to fetch overview stats", error: err.message });
+    }
+};
+
+/**
+ * Task D: Audit Logs
+ * GET /api/admin/audit-logs
+ * Paginated list. Filters: actor, action, targetType, from, to, page, limit (max 100), sort.
+ * Populates actor name and email.
+ */
+export const getAuditLogs = async (req, res) => {
+    try {
+        const { actor, action, targetType, from, to, page = 1, limit = 20, sort = 'desc' } = req.query;
+
+        const query = {};
+
+        // Validate limit within range
+        const parsedLimit = parseInt(limit, 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
+            return res.status(400).json({ message: 'limit must be a number between 1 and 100' });
+        }
+
+        const parsedPage = parseInt(page, 10);
+        if (isNaN(parsedPage) || parsedPage < 1) {
+            return res.status(400).json({ message: 'page must be a positive integer' });
+        }
+
+        // Validate dates
+        let fromDate = null;
+        let toDate = null;
+        if (from) {
+            fromDate = new Date(from);
+            if (isNaN(fromDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid "from" date parameter' });
+            }
+        }
+
+        if (to) {
+            toDate = new Date(to);
+            if (isNaN(toDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid "to" date parameter' });
+            }
+            if (typeof to === 'string' && to.length === 10) {
+                toDate.setHours(23, 59, 59, 999);
+            }
+        }
+
+        if (fromDate && toDate && fromDate > toDate) {
+            return res.status(400).json({ message: '"from" date must be before or equal to "to" date' });
+        }
+
+        if (fromDate || toDate) {
+            query.createdAt = {};
+            if (fromDate) query.createdAt.$gte = fromDate;
+            if (toDate) query.createdAt.$lte = toDate;
+        }
+
+        // Filter by action
+        if (action && typeof action === 'string' && action.trim()) {
+            query.action = action.trim();
+        }
+
+        // Filter by targetType
+        if (targetType && typeof targetType === 'string' && targetType.trim()) {
+            query.targetType = targetType.trim();
+        }
+
+        // Filter by actor
+        if (actor && typeof actor === 'string' && actor.trim()) {
+            const actorVal = actor.trim();
+            const validRoles = ['admin', 'teamleader', 'intern', 'system'];
+            if (validRoles.includes(actorVal.toLowerCase())) {
+                query.actorRole = actorVal.toLowerCase();
+            } else if (mongoose.Types.ObjectId.isValid(actorVal)) {
+                query.actorId = new mongoose.Types.ObjectId(actorVal);
+            } else {
+                const matchedUsers = await User.find({
+                    $or: [
+                        { email: { $regex: actorVal, $options: 'i' } },
+                        { fullName: { $regex: actorVal, $options: 'i' } }
+                    ]
+                }).select('_id');
+                const userIds = matchedUsers.map(u => u._id);
+                query.actorId = { $in: userIds };
+            }
+        }
+
+        const sortDirection = sort === 'asc' ? 1 : -1;
+        const sortObj = { createdAt: sortDirection };
+
+        const total = await AuditLog.countDocuments(query);
+        const totalPages = Math.ceil(total / parsedLimit) || 1;
+
+        const logs = await AuditLog.find(query)
+            .sort(sortObj)
+            .skip((parsedPage - 1) * parsedLimit)
+            .limit(parsedLimit)
+            .populate('actorId', 'fullName email role');
+
+        return res.status(200).json({
+            logs,
+            page: parsedPage,
+            totalPages,
+            total
+        });
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to fetch audit logs', error: error.message });
+    }
+};
+
+/**
+ * Task D: Audit Logs Export
+ * GET /api/admin/audit-logs/export
+ * Downloads CSV of the current filter and logs this download itself as EXPORT.
+ */
+export const exportAuditLogs = async (req, res) => {
+    try {
+        const { actor, action, targetType, from, to, sort = 'desc' } = req.query;
+
+        const query = {};
+
+        let fromDate = null;
+        let toDate = null;
+        if (from) {
+            fromDate = new Date(from);
+            if (isNaN(fromDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid "from" date parameter' });
+            }
+        }
+
+        if (to) {
+            toDate = new Date(to);
+            if (isNaN(toDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid "to" date parameter' });
+            }
+            if (typeof to === 'string' && to.length === 10) {
+                toDate.setHours(23, 59, 59, 999);
+            }
+        }
+
+        if (fromDate && toDate && fromDate > toDate) {
+            return res.status(400).json({ message: '"from" date must be before or equal to "to" date' });
+        }
+
+        if (fromDate || toDate) {
+            query.createdAt = {};
+            if (fromDate) query.createdAt.$gte = fromDate;
+            if (toDate) query.createdAt.$lte = toDate;
+        }
+
+        if (action && typeof action === 'string' && action.trim()) {
+            query.action = action.trim();
+        }
+
+        if (targetType && typeof targetType === 'string' && targetType.trim()) {
+            query.targetType = targetType.trim();
+        }
+
+        if (actor && typeof actor === 'string' && actor.trim()) {
+            const actorVal = actor.trim();
+            const validRoles = ['admin', 'teamleader', 'intern', 'system'];
+            if (validRoles.includes(actorVal.toLowerCase())) {
+                query.actorRole = actorVal.toLowerCase();
+            } else if (mongoose.Types.ObjectId.isValid(actorVal)) {
+                query.actorId = new mongoose.Types.ObjectId(actorVal);
+            } else {
+                const matchedUsers = await User.find({
+                    $or: [
+                        { email: { $regex: actorVal, $options: 'i' } },
+                        { fullName: { $regex: actorVal, $options: 'i' } }
+                    ]
+                }).select('_id');
+                const userIds = matchedUsers.map(u => u._id);
+                query.actorId = { $in: userIds };
+            }
+        }
+
+        const sortDirection = sort === 'asc' ? 1 : -1;
+        const logs = await AuditLog.find(query)
+            .sort({ createdAt: sortDirection })
+            .limit(10000)
+            .populate('actorId', 'fullName email role');
+
+        // Requirement: "This download is itself logged as EXPORT."
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'EXPORT',
+            targetType: 'AuditLog',
+            meta: {
+                filter: { actor, action, targetType, from, to },
+                exportedCount: logs.length
+            }
+        });
+
+        const escapeCsv = (str) => {
+            if (str === null || str === undefined) return '""';
+            const s = String(str).replace(/"/g, '""');
+            return `"${s}"`;
+        };
+
+        const headers = [
+            'Timestamp (ISO)',
+            'Actor Name',
+            'Actor Email',
+            'Actor Role',
+            'Action',
+            'Target Type',
+            'Target ID',
+            'IP Address',
+            'User Agent',
+            'Metadata'
+        ];
+
+        const rows = logs.map(log => {
+            const actorName = log.actorId?.fullName || (log.actorRole === 'system' ? 'System' : 'Unknown');
+            const actorEmail = log.actorId?.email || (log.actorRole === 'system' ? 'system@internal' : 'N/A');
+            const actorRole = log.actorRole || log.actorId?.role || 'system';
+            const metaStr = log.meta ? JSON.stringify(log.meta) : '{}';
+
+            return [
+                escapeCsv(log.createdAt?.toISOString() || ''),
+                escapeCsv(actorName),
+                escapeCsv(actorEmail),
+                escapeCsv(actorRole),
+                escapeCsv(log.action),
+                escapeCsv(log.targetType || ''),
+                escapeCsv(log.targetId || ''),
+                escapeCsv(log.ip || ''),
+                escapeCsv(log.userAgent || ''),
+                escapeCsv(metaStr)
+            ].join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\r\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="audit-logs.csv"');
+        return res.status(200).send(csvContent);
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to export audit logs', error: error.message });
     }
 };

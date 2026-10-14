@@ -85,4 +85,33 @@ export const getArchivedInterns = () => request('get', '/api/admin/interns/archi
 export const restoreArchivedIntern = (id) => request('patch', `/api/admin/interns/${id}/restore`);
 
 // Overview Analytics
-export const getOverviewStats = () => request('get', '/api/admin/overview-stats');
+export const getOverviewStats = () => request('get', '/api/admin/overview-stats');
+
+// Task D: Audit Logs
+export const getAuditLogs = (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  );
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return request('get', `/api/admin/audit-logs${qs}`);
+};
+
+export const exportAuditLogs = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+  );
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const response = await adminApi.get(`/api/admin/audit-logs/export${qs}`, {
+    responseType: 'blob'
+  });
+  const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'audit-logs.csv');
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+

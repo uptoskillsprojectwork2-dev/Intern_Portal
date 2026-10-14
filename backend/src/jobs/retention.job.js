@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import User from '../models/User.js';
 import RetentionPolicy from '../models/RetentionPolicy.model.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import logAction from '../utils/logAction.js';
 
 export const initRetentionJob = () => {
   cron.schedule('0 2 * * *', async () => {
@@ -61,7 +62,13 @@ export const initRetentionJob = () => {
 
                 // Archive
                 if (today >= archiveDate) {
-                    // TODO: logAction
+                    await logAction({
+                        actor: { role: 'system' },
+                        action: 'INTERN_ARCHIVED',
+                        targetType: 'User',
+                        targetId: intern._id,
+                        meta: { email: intern.email }
+                    });
                     if (!isDryRun) {
                         intern.isArchived = true;
                         intern.archivedAt = new Date();
@@ -97,7 +104,12 @@ export const initRetentionJob = () => {
                 purgeDate.setDate(purgeDate.getDate() + purgeDays);
 
                 if (today >= purgeDate) {
-                    // TODO: logAction
+                    await logAction({
+                        actor: { role: 'system' },
+                        action: 'INTERN_PURGED',
+                        targetType: 'User',
+                        targetId: intern._id
+                    });
                     if (!isDryRun) {
                         intern.fullName = 'Anonymized User';
                         intern.email = `anon_${intern._id}@anonymized.com`;

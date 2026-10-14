@@ -9,6 +9,7 @@ import CertificatesOverview from '../components/CertificatesOverview';
 import AdminInternsList from '../components/AdminInternsList';
 import RetentionPolicyForm from '../components/RetentionPolicyForm';
 import ArchivedInternsList from '../components/ArchivedInternsList';
+import AuditLogsPage from './AuditLogsPage';
 import { getOverviewStats } from '../services/admin.service';
 import ThemeToggle from '../../shared/components/ThemeToggle';
 import {
@@ -25,14 +26,15 @@ import {
   IconArchive,
   IconTrendingUp,
   IconActivity,
-  IconChevronRight
+  IconChevronRight,
+  IconShield
 } from '../../shared/components/Icons';
 import './AdminDashboard.css';
 
-const AdminDashboard = ({ theme, onToggleTheme }) => {
+const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState('overview');
+  const [activeView, setActiveView] = useState(initialView || 'overview');
 
   const [stats, setStats] = useState({
     totalInterns: 0,
@@ -86,6 +88,7 @@ const AdminDashboard = ({ theme, onToggleTheme }) => {
     retention: 'Retention & Lifecycle Policy',
     archived_interns: 'Archived Interns Audit',
     requests: 'Certificate Requests',
+    audit_logs: 'System Audit Logs & Governance',
   };
 
   const viewDesc = {
@@ -98,6 +101,7 @@ const AdminDashboard = ({ theme, onToggleTheme }) => {
     archived_interns: 'View and restore intern accounts that have been archived.',
     intern: 'Complete the details below to create a new intern portal account.',
     teamleader: 'Complete the details below to create a new Team Leader account.',
+    audit_logs: 'Tamper-evident activity logs across authentication, certificate workflows, and retention tasks.',
   };
 
   return (
@@ -184,8 +188,12 @@ const AdminDashboard = ({ theme, onToggleTheme }) => {
           </button>
         </nav>
 
-        <p className="admin-sidebar-label">Settings</p>
+        <p className="admin-sidebar-label">Settings & Governance</p>
         <nav className="admin-sidebar-nav">
+          <button className={`admin-nav-item ${activeView === 'audit_logs' ? 'active' : ''}`} onClick={() => setActiveView('audit_logs')}>
+            <span className="admin-nav-icon"><IconShield size={16} /></span>
+            Audit Logs
+          </button>
           <button className={`admin-nav-item ${activeView === 'retention' ? 'active' : ''}`} onClick={() => setActiveView('retention')}>
             <span className="admin-nav-icon"><IconSettings size={16} /></span>
             Retention Policy
@@ -390,6 +398,8 @@ const AdminDashboard = ({ theme, onToggleTheme }) => {
           <RetentionPolicyForm />
         ) : activeView === 'archived_interns' ? (
           <ArchivedInternsList />
+        ) : activeView === 'audit_logs' ? (
+          <AuditLogsPage />
         ) : (
           <ForwardedRequestsList />
         )}
