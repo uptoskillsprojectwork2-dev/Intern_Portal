@@ -15,6 +15,9 @@ dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const app = express();
 
+// Trust proxy for accurate req.ip when behind a reverse proxy
+app.set('trust proxy', 1);
+
 // Allow the frontend to send and receive the authentication cookie.
 app.use(cors({
 	origin: process.env.FRONTEND_URL || 'http://localhost:5173',

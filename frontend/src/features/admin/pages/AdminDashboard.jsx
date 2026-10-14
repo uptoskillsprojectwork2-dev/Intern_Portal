@@ -299,6 +299,18 @@ const AdminDashboard = () => {
             Certificate Templates
           </button>
 
+          {/* =====================================================
+              AUDIT LOGS
+          ====================================================== */}
+          <button
+            type="button"
+            className="admin-nav-item"
+            onClick={() => navigate('/admin/audit-logs')}
+          >
+            <span>📋</span>
+            Audit Logs
+          </button>
+
         </nav>
 
 

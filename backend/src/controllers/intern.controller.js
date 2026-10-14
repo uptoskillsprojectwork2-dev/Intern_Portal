@@ -8,6 +8,7 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.model.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
+import { logAction } from '../utils/logAction.js';
 
 const ALLOWED_TYPES = [
   'offer_letter',
@@ -117,6 +118,18 @@ export const submitCertificateRequest = async (req, res) => {
       certificateType,
       reason,
       metadata: safeMetadata
+    });
+
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'REQUEST_SUBMITTED',
+      targetType: 'request',
+      targetId: request._id,
+      meta: {
+        certificateType: request.certificateType,
+        requestNumber: request.requestNumber
+      }
     });
 
     return res.status(201).json({ request });

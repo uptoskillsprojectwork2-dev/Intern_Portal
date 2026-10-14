@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import User from '../models/User.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import { logAction } from '../utils/logAction.js';
 
 const BATCH_SIZE = 100;
 const DAY_MS = 86400000;
@@ -71,7 +72,15 @@ async function sendArchiveWarnings({ graceDays, dryRun, today }) {
         }
       }
       warnings += 1;
-      // TODO: logAction for the archive warning.
+      if (!dryRun) {
+        await logAction({
+          actor: 'system',
+          action: 'ARCHIVE_WARNING',
+          targetType: 'user',
+          targetId: intern._id,
+          meta: { email: intern.email, daysUntilArchive }
+        });
+      }
     }
   });
   return warnings;
@@ -90,7 +99,15 @@ async function archiveCompletedInterns({ graceDays, dryRun, today }) {
       plusDays(intern.endDate, graceDays) < today);
     for (const intern of eligible) {
       console.log(`[retention] ${dryRun ? 'DRY RUN: would archive' : 'archiving'} ${intern._id}`);
-      // TODO: logAction for the archive.
+      if (!dryRun) {
+        await logAction({
+          actor: 'system',
+          action: 'INTERN_ARCHIVED',
+          targetType: 'user',
+          targetId: intern._id,
+          meta: { endDate: intern.endDate }
+        });
+      }
     }
     if (eligible.length && !dryRun) {
       await User.updateMany(
@@ -115,7 +132,15 @@ async function purgeArchivedInterns({ purgeDays, dryRun, today }) {
     for (const intern of batch) {
       const id = intern._id.toString();
       console.log(`[retention] ${dryRun ? 'DRY RUN: would anonymize' : 'anonymizing'} ${id}`);
-      // TODO: logAction for personal-data purge. Certificate records and files remain intact.
+      if (!dryRun) {
+        await logAction({
+          actor: 'system',
+          action: 'INTERN_PURGED',
+          targetType: 'user',
+          targetId: intern._id,
+          meta: { internId: id }
+        });
+      }
       if (!dryRun) {
         await User.updateOne({ _id: intern._id, isArchived: true, personalDataPurged: { $ne: true } }, {
           $set: {
