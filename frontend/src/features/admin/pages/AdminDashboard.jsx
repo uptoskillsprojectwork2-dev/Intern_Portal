@@ -16,6 +16,7 @@ import CertificateTemplateEditorPage from './CertificateTemplateEditorPage';
 
 import { getOverviewStats } from '../services/admin.service';
 import ThemeToggle from '../../shared/components/ThemeToggle';
+import NotificationBell from '../../../shared/components/NotificationBell';
 import {
   IconBrandLogo,
   IconLogout,
@@ -134,17 +135,23 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
           <span className="admin-brand-icon">
             <IconBrandLogo size={18} color="#fff" />
           </span>
-          uptoskills
+          UptoSkills
         </div>
 
         <div className="admin-topbar-right">
           <div className="admin-search-hint" role="button" tabIndex={0} aria-label="Search">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
             </svg>
             Search...
             <span className="admin-search-kbd">⌘K</span>
           </div>
+
+          {/* Notification Bell */}
+          <NotificationBell
+            role="admin"
+            onNavigate={(targetView) => changeView(targetView)}
+          />
 
           {/* Theme toggle embedded in topbar */}
           {onToggleTheme && (
@@ -274,7 +281,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
         {/* Page Header */}
         <header className="admin-page-header">
           <p className="admin-eyebrow">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>
             Enterprise Administration
           </p>
           <h1>{viewTitle[activeView] || 'Administration'}</h1>

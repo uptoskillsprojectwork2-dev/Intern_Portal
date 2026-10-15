@@ -4,6 +4,7 @@ import { useIntern } from '../hooks/useIntern';
 import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
 import MyRequestsList from '../components/MyRequestsList';
+import NotificationBell from '../../../shared/components/NotificationBell';
 import './InternDashboard.css';
 import '../../../app/App.css';
 
@@ -79,6 +80,10 @@ export default function InternDashboard() {
         </div>
 
         <div className="id-nav-right">
+          <NotificationBell
+            role="intern"
+            onNavigate={(targetNav) => setActiveNav(targetNav)}
+          />
           <div className="id-avatar" aria-label="User avatar">
             {initials}
           </div>

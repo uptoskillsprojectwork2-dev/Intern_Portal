@@ -5,6 +5,7 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import { logAudit } from '../utils/auditLogger.js';
 import logAction from '../utils/logAction.js';
+import { notify } from '../services/notification.service.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -291,6 +292,19 @@ export const reviewRequestAsTL = async (req, res) => {
         targetId: request._id,
         meta: { rejectionReason, certificateType: request.certificateType }
       });
+
+      // Notify intern (in-app and email)
+      try {
+        const typeName = (request.certificateType || '').replace(/_/g, ' ');
+        await notify(request.userId, 'REQUEST_REJECTED', {
+          title: 'Certificate Request Rejected',
+          message: `Your request for ${typeName} was rejected by Team Leader. Reason: ${rejectionReason}`,
+          requestId: request._id,
+          email: true,
+        });
+      } catch (notifyErr) {
+        console.error('[notification] Failed to send REQUEST_REJECTED notification:', notifyErr);
+      }
     } else {
       await logAction({
         req,
@@ -300,6 +314,22 @@ export const reviewRequestAsTL = async (req, res) => {
         targetId: request._id,
         meta: { certificateType: request.certificateType }
       });
+
+      // Notify all admins (in-app only)
+      try {
+        const admins = await User.find({ role: 'admin' }).select('_id');
+        const typeName = (request.certificateType || '').replace(/_/g, ' ');
+        for (const admin of admins) {
+          await notify(admin._id, 'REQUEST_FORWARDED', {
+            title: 'Certificate Request Forwarded',
+            message: `Certificate request ${request.requestNumber || ''} (${typeName}) was forwarded by Team Leader for admin review.`,
+            requestId: request._id,
+            email: false,
+          });
+        }
+      } catch (notifyErr) {
+        console.error('[notification] Failed to send REQUEST_FORWARDED notification:', notifyErr);
+      }
     }
 
     res.json({ request });

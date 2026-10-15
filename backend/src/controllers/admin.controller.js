@@ -22,6 +22,7 @@ import { logAudit } from '../utils/auditLogger.js';
 import AuditLog from '../models/AuditLog.model.js';
 import logAction from '../utils/logAction.js';
 import { invalidateAnalyticsCache } from '../utils/redisCache.js';
+import { notify } from '../services/notification.service.js';
 
 dotenv.config();
 
@@ -608,6 +609,19 @@ export const finalizeRequest = async (req, res) => {
         targetId: request._id,
         meta: { certificateType: request.certificateType }
       });
+
+      // Notify intern (in-app and email)
+      try {
+        const typeName = (request.certificateType || '').replace(/_/g, ' ');
+        await notify(request.userId, 'REQUEST_APPROVED', {
+          title: 'Certificate Request Approved',
+          message: `Your certificate request for ${typeName} has been approved by administrator.`,
+          requestId: request._id,
+          email: true,
+        });
+      } catch (notifyErr) {
+        console.error('[notification] Failed to send REQUEST_APPROVED notification:', notifyErr);
+      }
     } else {
       await logAction({
         req,
@@ -617,6 +631,19 @@ export const finalizeRequest = async (req, res) => {
         targetId: request._id,
         meta: { rejectionReason, certificateType: request.certificateType }
       });
+
+      // Notify intern (in-app and email)
+      try {
+        const typeName = (request.certificateType || '').replace(/_/g, ' ');
+        await notify(request.userId, 'REQUEST_REJECTED', {
+          title: 'Certificate Request Rejected',
+          message: `Your certificate request for ${typeName} was rejected by administrator. Reason: ${rejectionReason}`,
+          requestId: request._id,
+          email: true,
+        });
+      } catch (notifyErr) {
+        console.error('[notification] Failed to send REQUEST_REJECTED notification:', notifyErr);
+      }
     }
 
     let certificate = null;
@@ -661,6 +688,19 @@ export const finalizeCertificate = async (req, res) => {
     // 1. Finalize certificate and render PDF
     const { certificate, request, absolutePdfPath } = await finalizeCertificateService(id);
     await invalidateAnalyticsCache();
+
+    // Trigger in-app notification for intern (email already handled via sendCertificateEmail)
+    try {
+      const typeName = (certificate.certificateType || '').replace(/_/g, ' ');
+      await notify(certificate.userId, 'CERTIFICATE_SENT', {
+        title: 'Certificate Finalized & Issued',
+        message: `Your certificate (${certificate.certificateNumber || typeName}) has been finalized and issued. You can view or download it directly from your portal.`,
+        requestId: certificate.requestId || request?._id,
+        email: false,
+      });
+    } catch (notifyErr) {
+      console.error('[notification] Failed to send CERTIFICATE_SENT in-app notification:', notifyErr);
+    }
 
     // 2. Send email with PDF attachment
     let emailSent = false;

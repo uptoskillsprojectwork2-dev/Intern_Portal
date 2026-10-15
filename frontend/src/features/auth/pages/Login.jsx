@@ -40,9 +40,9 @@ export default function Login() {
     setTimeout(() => setNotification(null), 4000);
   };
 
-  const isEmailValid   = touched.email    && !errors.email    && values.email.trim()    && validateEmail(values.email);
-  const isEmailInvalid = touched.email    && errors.email;
-  const isPasswordValid   = touched.password && !errors.password && values.password.trim().length > 0;
+  const isEmailValid = touched.email && !errors.email && values.email.trim() && validateEmail(values.email);
+  const isEmailInvalid = touched.email && errors.email;
+  const isPasswordValid = touched.password && !errors.password && values.password.trim().length > 0;
   const isPasswordInvalid = touched.password && errors.password;
 
   const handleChange = (e) => {
@@ -51,13 +51,13 @@ export default function Login() {
     if (loginError) setLoginError('');
 
     if (name === 'email') {
-      if (!value.trim())            setErrors((p) => ({ ...p, email: 'Email is required.' }));
+      if (!value.trim()) setErrors((p) => ({ ...p, email: 'Email is required.' }));
       else if (!validateEmail(value)) setErrors((p) => ({ ...p, email: 'Please enter a valid email address.' }));
-      else                            setErrors((p) => { const n = { ...p }; delete n.email; return n; });
+      else setErrors((p) => { const n = { ...p }; delete n.email; return n; });
     }
     if (name === 'password') {
       if (!value) setErrors((p) => ({ ...p, password: 'Password is required.' }));
-      else        setErrors((p) => { const n = { ...p }; delete n.password; return n; });
+      else setErrors((p) => { const n = { ...p }; delete n.password; return n; });
     }
   };
 
@@ -131,7 +131,7 @@ export default function Login() {
             <span className="login-brand-icon">
               <IconBrandLogo size={20} color="#fff" />
             </span>
-            <span>uptoskills</span>
+            <span>UptoSkills</span>
           </div>
         </header>
 
@@ -199,7 +199,7 @@ export default function Login() {
             <div className="login-feature-item login-anim-4">
               <div className="login-feature-icon">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </div>
               <div className="login-feature-text">
@@ -211,10 +211,10 @@ export default function Login() {
             <div className="login-feature-item login-anim-4">
               <div className="login-feature-icon">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
               </div>
               <div className="login-feature-text">
@@ -226,7 +226,7 @@ export default function Login() {
             <div className="login-feature-item login-anim-5">
               <div className="login-feature-icon">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>
               </div>
               <div className="login-feature-text">

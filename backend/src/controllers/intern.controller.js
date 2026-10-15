@@ -9,6 +9,7 @@ import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.model.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
 import logAction from '../utils/logAction.js';
+import { notify } from '../services/notification.service.js';
 
 const ALLOWED_TYPES = [
   'offer_letter',
@@ -128,6 +129,39 @@ export const submitCertificateRequest = async (req, res) => {
       targetId: request._id,
       meta: { certificateType, reason }
     });
+
+    // Trigger notification to intern's TL (in-app and email)
+    try {
+      const tlEmail = user.internshipDetails?.teamleaderEmail;
+      if (tlEmail) {
+        const tl = await User.findOne({
+          email: tlEmail.toLowerCase(),
+          role: 'teamleader'
+        });
+        if (tl) {
+          const typeName = (certificateType || '').replace(/_/g, ' ');
+          await notify(tl._id, 'REQUEST_SUBMITTED', {
+            title: 'New Certificate Request Submitted',
+            message: `${user.fullName || 'An intern'} (${user.internCode || 'ID'}) has submitted a request for ${typeName}.`,
+            requestId: request._id,
+            email: true
+          });
+        } else {
+          console.warn(
+            `[notification] No team leader found matching email "${tlEmail}" for intern ${user._id}. Skipping TL notification.`
+          );
+        }
+      } else {
+        console.warn(
+          `[notification] Intern ${user._id} has no teamleaderEmail configured. Skipping TL notification.`
+        );
+      }
+    } catch (notifyErr) {
+      console.error(
+        '[notification] Failed to send REQUEST_SUBMITTED notification:',
+        notifyErr.message || notifyErr
+      );
+    }
 
     return res.status(201).json({ request });
   } catch (err) {
