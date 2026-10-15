@@ -92,7 +92,7 @@ export default function App() {
           <CertificateReviewPage theme={theme} onToggleTheme={toggleTheme} />
         } />
         <Route path="/admin/certificate-templates" element={
-          <CertificateTemplateEditorPage />
+          <AdminDashboard initialView="templates" theme={theme} onToggleTheme={toggleTheme} />
         } />
       </Route>
 

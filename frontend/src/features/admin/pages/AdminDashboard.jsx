@@ -12,6 +12,7 @@ import AdminUpcomingCompletions from '../components/AdminUpcomingCompletions';
 import RetentionManagement from '../components/RetentionManagement';
 import AnalyticsView from '../analytics/pages/AnalyticsView';
 import AuditLogsPage from './AuditLogsPage';
+import CertificateTemplateEditorPage from './CertificateTemplateEditorPage';
 
 import { getOverviewStats } from '../services/admin.service';
 import ThemeToggle from '../../shared/components/ThemeToggle';
@@ -31,6 +32,7 @@ import {
   IconActivity,
   IconChevronRight,
   IconShield,
+  IconTemplate,
 } from '../../shared/components/Icons';
 
 import './AdminDashboard.css';
@@ -90,10 +92,6 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
     navigate('/login');
   };
 
-  const openCertificateTemplates = () => {
-    navigate('/admin/certificate-templates');
-  };
-
   const changeView = (view) => {
     setActiveView(view);
   };
@@ -106,6 +104,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
     intern: 'Create an Intern Account',
     teamleader: 'Create a Team Leader Account',
     certificates: 'Issued Certificates',
+    templates: 'Certificate Templates',
     retention: 'Account Retention & Lifecycle',
     archived_interns: 'Account Retention & Lifecycle',
     requests: 'Certificate Requests',
@@ -119,6 +118,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
     teamleaders: 'View, search, and manage all Team Leaders and their assigned intern teams.',
     requests: 'Finalize certificate requests forwarded by Team Leaders.',
     certificates: 'Audit and manage all generated certificates across the portal.',
+    templates: 'Design, customize, preview, and manage certificate HTML templates with live A4 preview.',
     retention: 'Set archive and purge periods, review archived interns, and restore accounts.',
     archived_interns: 'Set archive and purge periods, review archived interns, and restore accounts.',
     intern: 'Complete the details below to create a new intern portal account.',
@@ -237,11 +237,10 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
             Issued Certs
           </button>
           <button
-            type="button"
-            className="admin-nav-item"
-            onClick={openCertificateTemplates}
+            className={`admin-nav-item ${activeView === 'templates' ? 'active' : ''}`}
+            onClick={() => changeView('templates')}
           >
-            <span className="admin-nav-icon">🎨</span>
+            <span className="admin-nav-icon"><IconTemplate size={16} /></span>
             Certificate Templates
           </button>
         </nav>
@@ -409,9 +408,9 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
                 </div>
               </button>
 
-              <button className="admin-action-card outline-coral" onClick={openCertificateTemplates}>
+              <button className="admin-action-card outline-coral" onClick={() => changeView('templates')}>
                 <div className="action-card-header">
-                  <span className="action-icon-wrap coral"><span style={{ fontSize: '14px' }}>🎨</span></span>
+                  <span className="action-icon-wrap coral"><IconTemplate size={16} /></span>
                   <IconChevronRight size={14} color="var(--text-muted)" />
                 </div>
                 <div>
@@ -485,6 +484,8 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
           <CreateTl />
         ) : activeView === 'certificates' ? (
           <CertificatesOverview />
+        ) : activeView === 'templates' ? (
+          <CertificateTemplateEditorPage embedded={true} />
         ) : activeView === 'retention' || activeView === 'archived_interns' ? (
           <RetentionManagement />
         ) : activeView === 'audit_logs' ? (
