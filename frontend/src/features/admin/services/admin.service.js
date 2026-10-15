@@ -2,7 +2,9 @@ import axios from 'axios';
 
 const adminApi = axios.create({
   baseURL: 'http://localhost:3000',
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+  },
   withCredentials: true,
 });
 
@@ -16,81 +18,250 @@ adminApi.interceptors.request.use((config) => {
 
 const request = async (method, url, payload) => {
   try {
-    const response = await adminApi({ method, url, data: payload });
+    const response = await adminApi({
+      method,
+      url,
+      data: payload,
+    });
+
     return response.data;
   } catch (error) {
     const data = error.response?.data;
-    const validationMessage = data?.errors?.map(({ msg }) => msg).join(' ');
+
+    const validationMessage = data?.errors
+      ?.map(({ msg }) => msg)
+      .join(' ');
+
     throw new Error(
-      validationMessage || data?.message || (error.response?.status === 500 ? 'Internal server error.' : 'Request failed.'),
-      { cause: error }
+      validationMessage ||
+        data?.message ||
+        (error.response?.status === 500
+          ? 'Internal server error.'
+          : 'Request failed.'),
+      {
+        cause: error,
+      }
     );
   }
 };
 
-export const createIntern = (payload) => request('post', '/api/admin/create-intern', payload);
-export const createTeamLeader = (payload) => request('post', '/api/admin/create-tl', payload);
+/*
+|--------------------------------------------------------------------------
+| Admin User Management
+|--------------------------------------------------------------------------
+*/
 
-// Intern Management API
+export const createIntern = (payload) =>
+  request('post', '/api/admin/create-intern', payload);
+
+export const createTeamLeader = (payload) =>
+  request('post', '/api/admin/create-tl', payload);
+
+/*
+|--------------------------------------------------------------------------
+| Intern Management API
+|--------------------------------------------------------------------------
+*/
+
 export const getAllInterns = (params = {}) => {
-  const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+  const query = new URLSearchParams(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== ''
+    )
+  );
+
   const qs = query.toString() ? `?${query.toString()}` : '';
+
   return request('get', `/api/admin/interns${qs}`);
 };
-export const getInternById = (id) => request('get', `/api/admin/interns/${id}`);
-export const updateIntern = (id, payload) => request('patch', `/api/admin/interns/${id}`, payload);
-export const assignInternTeamLeader = (id, teamLeaderId) => request('patch', `/api/admin/interns/${id}/assignment`, { teamLeaderId });
 
-// Team Leader Management API
+export const getInternById = (id) =>
+  request('get', `/api/admin/interns/${id}`);
+
+export const updateIntern = (id, payload) =>
+  request('patch', `/api/admin/interns/${id}`, payload);
+
+export const assignInternTeamLeader = (id, teamLeaderId) =>
+  request('patch', `/api/admin/interns/${id}/assignment`, {
+    teamLeaderId,
+  });
+
+/*
+|--------------------------------------------------------------------------
+| Team Leader Management API
+|--------------------------------------------------------------------------
+*/
+
 export const getAllTeamLeaders = (params = {}) => {
-  const query = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''));
+  const query = new URLSearchParams(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== ''
+    )
+  );
+
   const qs = query.toString() ? `?${query.toString()}` : '';
+
   return request('get', `/api/admin/teamleaders${qs}`);
 };
-export const getTeamLeaderById = (id) => request('get', `/api/admin/teamleaders/${id}`);
-export const updateTeamLeader = (id, payload) => request('patch', `/api/admin/teamleaders/${id}`, payload);
-export const getInternsByTeamLeader = (id) => request('get', `/api/admin/teamleaders/${id}/interns`);
-export const getForwardedRequests = () => request('get', '/api/admin/forwarded-requests');
-export const finalizeRequest = (id, action, rejectionReason) => request(
-  'patch',
-  `/api/admin/requests/${id}/finalize`,
-  action === 'reject' ? { action, rejectionReason } : { action }
-);
-export const getCertificateDraft = (id) => request('get', `/api/admin/certificates/${id}`);
-export const updateCertificateDraft = (id, htmlContent) => request('patch', `/api/admin/certificates/${id}`, { htmlContent });
-export const finalizeCertificate = (id) => request('post', `/api/admin/certificates/${id}/finalize`);
 
-// Day 5 Admin Overview & Retry Generation
-export const getAllCertificates = () => request('get', '/api/admin/certificates');
-export const retryCertificateGeneration = (id) => request('post', `/api/admin/requests/${id}/retry-generation`);
-export const downloadAdminCertificate = async (id, fileName) => {
-  const response = await adminApi.get(`/api/admin/certificates/${id}/download`, {
-    responseType: 'blob'
+export const getTeamLeaderById = (id) =>
+  request('get', `/api/admin/teamleaders/${id}`);
+
+export const updateTeamLeader = (id, payload) =>
+  request('patch', `/api/admin/teamleaders/${id}`, payload);
+
+export const getInternsByTeamLeader = (id) =>
+  request('get', `/api/admin/teamleaders/${id}/interns`);
+
+/*
+|--------------------------------------------------------------------------
+| Certificate Request Management
+|--------------------------------------------------------------------------
+*/
+
+export const getForwardedRequests = () =>
+  request('get', '/api/admin/forwarded-requests');
+
+export const finalizeRequest = (id, action, rejectionReason) =>
+  request(
+    'patch',
+    `/api/admin/requests/${id}/finalize`,
+    action === 'reject'
+      ? {
+          action,
+          rejectionReason,
+        }
+      : {
+          action,
+        }
+  );
+
+/*
+|--------------------------------------------------------------------------
+| Certificate Draft Management
+|--------------------------------------------------------------------------
+*/
+
+export const getCertificateDraft = (id) =>
+  request('get', `/api/admin/certificates/${id}`);
+
+export const updateCertificateDraft = (id, htmlContent) =>
+  request('patch', `/api/admin/certificates/${id}`, {
+    htmlContent,
   });
-  const blob = new Blob([response.data], { type: 'application/pdf' });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', fileName || 'certificate.pdf');
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
+
+export const finalizeCertificate = (id) =>
+  request('post', `/api/admin/certificates/${id}/finalize`);
+
+/*
+|--------------------------------------------------------------------------
+| Admin Certificates
+|--------------------------------------------------------------------------
+*/
+
+export const getAllCertificates = () =>
+  request('get', '/api/admin/certificates');
+
+export const retryCertificateGeneration = (id) =>
+  request('post', `/api/admin/requests/${id}/retry-generation`);
+
+export const downloadAdminCertificate = async (id, fileName) => {
+  try {
+    const response = await adminApi.get(
+      `/api/admin/certificates/${id}/download`,
+      {
+        responseType: 'blob',
+      }
+    );
+
+    const blob = new Blob([response.data], {
+      type: 'application/pdf',
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName || 'certificate.pdf');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    const data = error.response?.data;
+
+    throw new Error(
+      data?.message || 'Failed to download certificate.',
+      {
+        cause: error,
+      }
+    );
+  }
 };
 
-// Task C
-export const getRetentionPolicy = () => request('get', '/api/admin/retention-policy');
-export const updateRetentionPolicy = (payload) => request('patch', '/api/admin/retention-policy', payload);
-export const getArchivedInterns = () => request('get', '/api/admin/interns/archived');
-export const restoreArchivedIntern = (id) => request('patch', `/api/admin/interns/${id}/restore`);
+/*
+|--------------------------------------------------------------------------
+| Certificate Template Management API
+|--------------------------------------------------------------------------
+*/
 
-// Overview Analytics
-export const getOverviewStats = () => request('get', '/api/admin/overview-stats');
+export const getCertificateTemplates = () =>
+  request('get', '/api/admin/templates');
 
-// Task D: Audit Logs
+export const getTemplatePlaceholders = () =>
+  request('get', '/api/admin/templates/placeholders');
+
+export const createCertificateTemplate = (payload) =>
+  request('post', '/api/admin/templates', payload);
+
+export const updateCertificateTemplate = (id, payload) =>
+  request('patch', `/api/admin/templates/${id}`, payload);
+
+/*
+|--------------------------------------------------------------------------
+| Retention Policy
+|--------------------------------------------------------------------------
+*/
+
+export const getRetentionPolicy = () =>
+  request('get', '/api/admin/retention-policy');
+
+export const updateRetentionPolicy = (payload) =>
+  request('patch', '/api/admin/retention-policy', payload);
+
+/*
+|--------------------------------------------------------------------------
+| Archived Interns
+|--------------------------------------------------------------------------
+*/
+
+export const getArchivedInterns = () =>
+  request('get', '/api/admin/interns/archived');
+
+export const restoreIntern = (id) =>
+  request('patch', `/api/admin/interns/${id}/restore`);
+
+export const restoreArchivedIntern = restoreIntern;
+
+/*
+|--------------------------------------------------------------------------
+| Overview Analytics
+|--------------------------------------------------------------------------
+*/
+
+export const getOverviewStats = () =>
+  request('get', '/api/admin/overview-stats');
+
+/*
+|--------------------------------------------------------------------------
+| Task D: Audit Logs
+|--------------------------------------------------------------------------
+*/
+
 export const getAuditLogs = (params = {}) => {
   const query = new URLSearchParams(
-    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    Object.entries(params).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ''
+    )
   );
   const qs = query.toString() ? `?${query.toString()}` : '';
   return request('get', `/api/admin/audit-logs${qs}`);
@@ -98,11 +269,13 @@ export const getAuditLogs = (params = {}) => {
 
 export const exportAuditLogs = async (params = {}) => {
   const query = new URLSearchParams(
-    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    Object.entries(params).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ''
+    )
   );
   const qs = query.toString() ? `?${query.toString()}` : '';
   const response = await adminApi.get(`/api/admin/audit-logs/export${qs}`, {
-    responseType: 'blob'
+    responseType: 'blob',
   });
   const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
   const url = window.URL.createObjectURL(blob);
@@ -114,4 +287,3 @@ export const exportAuditLogs = async (params = {}) => {
   link.remove();
   window.URL.revokeObjectURL(url);
 };
-

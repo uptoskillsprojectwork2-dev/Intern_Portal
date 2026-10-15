@@ -1,129 +1,185 @@
 import cron from 'node-cron';
 import User from '../models/User.js';
-import RetentionPolicy from '../models/RetentionPolicy.model.js';
+import RetentionPolicy from '../models/RetentionPolicy.js';
 import { sendEmail } from '../utils/sendEmail.js';
 import logAction from '../utils/logAction.js';
 
-export const initRetentionJob = () => {
-  cron.schedule('0 2 * * *', async () => {
-    const isDryRun = process.env.DRY_RUN === 'true';
-    console.log(`[JOB] Starting retention job (DRY_RUN: ${isDryRun})`);
-    
-    try {
-        let policy = await RetentionPolicy.findOne();
-        if (!policy) {
-            console.log(`[JOB] No retention policy found, skipping.`);
-            return;
+const BATCH_SIZE = 100;
+const DAY_MS = 86400000;
+const dryRunEnabled = () => String(process.env.DRY_RUN).toLowerCase() === 'true';
+const escapeHtml = (value = '') => String(value).replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[character]));
+
+const startOfUtcDay = (date = new Date()) => {
+  const value = new Date(date);
+  value.setUTCHours(0, 0, 0, 0);
+  return value;
+};
+
+const plusDays = (date, days) => {
+  const value = startOfUtcDay(date);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value;
+};
+
+async function forEachBatch(query, callback) {
+  let lastId = null;
+  while (true) {
+    const batch = await User.find({ ...query, ...(lastId ? { _id: { $gt: lastId } } : {}) })
+      .sort({ _id: 1 })
+      .limit(BATCH_SIZE);
+    if (!batch.length) break;
+    lastId = batch[batch.length - 1]._id;
+    await callback(batch);
+  }
+}
+
+async function sendArchiveWarnings({ graceDays, dryRun, today }) {
+  let warnings = 0;
+  const targetEndDate = plusDays(today, 7 - graceDays);
+  await forEachBatch({
+    role: 'intern',
+    isArchived: { $ne: true },
+    personalDataPurged: { $ne: true },
+    endDate: { $gte: targetEndDate, $lt: plusDays(targetEndDate, 1) },
+  }, async (batch) => {
+    for (const intern of batch) {
+      if (!intern.endDate || !intern.email) continue;
+      const archiveDate = plusDays(intern.endDate, graceDays);
+      const daysUntilArchive = Math.round((archiveDate - today) / DAY_MS);
+      if (daysUntilArchive !== 7) continue;
+      if (intern.archiveWarningSentAt && startOfUtcDay(intern.archiveWarningSentAt).getTime() === today.getTime()) continue;
+
+      if (dryRun) {
+        console.log(`[retention] DRY RUN: would email ${intern.email} that account archives on ${archiveDate.toISOString().slice(0, 10)}`);
+      } else {
+        try {
+          await sendEmail({
+            to: intern.email,
+            subject: 'Your UPTOSKILL internship account will be archived in 7 days',
+            html: `<p>Hello ${escapeHtml(intern.fullName || 'Intern')},</p><p>Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then. Contact an administrator if you need help.</p>`,
+          });
+          intern.archiveWarningSentAt = new Date();
+          await intern.save();
+        } catch (error) {
+          console.error(`[retention] warning email failed for ${intern._id}:`, error.message);
+          continue;
         }
-
-        const { graceDays, purgeDays } = policy;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Archiving
-        const BATCH_SIZE = 100;
-        let skip = 0;
-        let hasMore = true;
-
-        while (hasMore) {
-            const completedInterns = await User.find({
-                role: 'intern',
-                'internshipDetails.status': 'completed',
-                isArchived: false,
-                endDate: { $exists: true }
-            }).limit(BATCH_SIZE).skip(skip);
-
-            if (completedInterns.length === 0) {
-                hasMore = false;
-                break;
-            }
-
-            for (const intern of completedInterns) {
-                const endDate = new Date(intern.endDate);
-                endDate.setHours(0, 0, 0, 0);
-
-                const archiveDate = new Date(endDate);
-                archiveDate.setDate(archiveDate.getDate() + graceDays);
-
-                const warningDate = new Date(archiveDate);
-                warningDate.setDate(warningDate.getDate() - 7);
-
-                // Warning email
-                if (today.getTime() === warningDate.getTime()) {
-                    if (!isDryRun) {
-                        await sendEmail({
-                            to: intern.email,
-                            subject: 'Your internship account will be archived soon',
-                            html: '<p>Your account will be archived in 7 days. Please download any necessary certificates before you lose access.</p>'
-                        });
-                    }
-                    console.log(`[JOB] Sent archive warning email to intern: ${intern.email}`);
-                }
-
-                // Archive
-                if (today >= archiveDate) {
-                    await logAction({
-                        actor: { role: 'system' },
-                        action: 'INTERN_ARCHIVED',
-                        targetType: 'User',
-                        targetId: intern._id,
-                        meta: { email: intern.email }
-                    });
-                    if (!isDryRun) {
-                        intern.isArchived = true;
-                        intern.archivedAt = new Date();
-                        await intern.save();
-                    }
-                    console.log(`[JOB] Archived intern: ${intern._id}`);
-                }
-            }
-            skip += BATCH_SIZE;
-        }
-
-        // Purging
-        skip = 0;
-        hasMore = true;
-
-        while (hasMore) {
-            const archivedInterns = await User.find({
-                role: 'intern',
-                isArchived: true,
-                archivedAt: { $exists: true }
-            }).limit(BATCH_SIZE).skip(skip);
-
-            if (archivedInterns.length === 0) {
-                hasMore = false;
-                break;
-            }
-
-            for (const intern of archivedInterns) {
-                const archivedDate = new Date(intern.archivedAt);
-                archivedDate.setHours(0, 0, 0, 0);
-                
-                const purgeDate = new Date(archivedDate);
-                purgeDate.setDate(purgeDate.getDate() + purgeDays);
-
-                if (today >= purgeDate) {
-                    await logAction({
-                        actor: { role: 'system' },
-                        action: 'INTERN_PURGED',
-                        targetType: 'User',
-                        targetId: intern._id
-                    });
-                    if (!isDryRun) {
-                        intern.fullName = 'Anonymized User';
-                        intern.email = `anon_${intern._id}@anonymized.com`;
-                        intern.mobileNo = '0000000000';
-                        intern.internCode = `ANON_${intern._id}`;
-                        await intern.save();
-                    }
-                    console.log(`[JOB] Purged intern data: ${intern._id}`);
-                }
-            }
-            skip += BATCH_SIZE;
-        }
-    } catch (err) {
-        console.error(`[JOB] Error in retention job: ${err.message}`);
+      }
+      warnings += 1;
+      try {
+        await logAction({
+          actor: { role: 'system' },
+          action: 'ARCHIVE_WARNING_SENT',
+          targetType: 'User',
+          targetId: intern._id,
+          meta: { email: intern.email, archiveDate }
+        });
+      } catch (logErr) {
+        // silent
+      }
     }
   });
-};
+  return warnings;
+}
+
+async function archiveCompletedInterns({ graceDays, dryRun, today }) {
+  let archived = 0;
+  await forEachBatch({
+    role: 'intern',
+    isArchived: { $ne: true },
+    'internshipDetails.status': 'completed',
+    endDate: { $lt: today },
+  }, async (batch) => {
+    const eligible = batch.filter((intern) => intern.endDate &&
+      (!intern.archiveRestoredAt || new Date(intern.endDate) > intern.archiveRestoredAt) &&
+      plusDays(intern.endDate, graceDays) < today);
+    for (const intern of eligible) {
+      console.log(`[retention] ${dryRun ? 'DRY RUN: would archive' : 'archiving'} ${intern._id}`);
+      try {
+        await logAction({
+          actor: { role: 'system' },
+          action: 'INTERN_ARCHIVED',
+          targetType: 'User',
+          targetId: intern._id,
+          meta: { email: intern.email }
+        });
+      } catch (logErr) {
+        // silent
+      }
+    }
+    if (eligible.length && !dryRun) {
+      await User.updateMany(
+        { _id: { $in: eligible.map(({ _id }) => _id) }, isArchived: { $ne: true } },
+        { $set: { isArchived: true, archivedAt: new Date() } }
+      );
+    }
+    archived += eligible.length;
+  });
+  return archived;
+}
+
+async function purgeArchivedInterns({ purgeDays, dryRun, today }) {
+  let purged = 0;
+  const cutoff = plusDays(today, -purgeDays);
+  await forEachBatch({
+    role: 'intern',
+    isArchived: true,
+    personalDataPurged: { $ne: true },
+    archivedAt: { $lt: cutoff },
+  }, async (batch) => {
+    for (const intern of batch) {
+      const id = intern._id.toString();
+      console.log(`[retention] ${dryRun ? 'DRY RUN: would anonymize' : 'anonymizing'} ${id}`);
+      try {
+        await logAction({
+          actor: { role: 'system' },
+          action: 'INTERN_PURGED',
+          targetType: 'User',
+          targetId: intern._id
+        });
+      } catch (logErr) {
+        // silent
+      }
+      if (!dryRun) {
+        await User.updateOne({ _id: intern._id, isArchived: true, personalDataPurged: { $ne: true } }, {
+          $set: {
+            fullName: `Former Intern ${id.slice(-8)}`,
+            email: `purged-${id}@privacy.invalid`,
+            internCode: `PURGED-${id}`,
+            mobileNo: '',
+            personalDataPurged: true,
+          },
+          $unset: { archiveWarningSentAt: 1 },
+        });
+      }
+      purged += 1;
+    }
+  });
+  return purged;
+}
+
+export async function runRetentionJob({ dryRun = dryRunEnabled(), now = new Date() } = {}) {
+  const today = startOfUtcDay(now);
+  const policy = await RetentionPolicy.findOne({ policyKey: 'intern' }).lean();
+  const graceDays = policy?.graceDays ?? 30;
+  const purgeDays = policy?.purgeDays ?? 90;
+
+  const warnings = await sendArchiveWarnings({ graceDays, dryRun, today });
+  const archived = await archiveCompletedInterns({ graceDays, dryRun, today });
+  const purged = await purgeArchivedInterns({ purgeDays, dryRun, today });
+  return { warnings, archived, purged, dryRun };
+}
+
+export function scheduleRetentionJob() {
+  return cron.schedule('5 2 * * *', () => {
+    runRetentionJob().catch((error) => console.error('[retention] job failed:', error));
+  }, { timezone: process.env.JOBS_TIMEZONE || 'Asia/Kolkata' });
+}
+
+export const initRetentionJob = scheduleRetentionJob;

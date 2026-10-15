@@ -36,7 +36,8 @@ const certificateSchema = new mongoose.Schema(
     certificateType: {
         type: String,
         required: true,
-        trim: true
+        trim: true,
+        index: true
     },
 
     domain: {
@@ -54,7 +55,13 @@ const certificateSchema = new mongoose.Schema(
 
     issuedDate: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        index: true
+    },
+
+    finalizedAt: {
+        type: Date,
+        index: true
     },
 
     status: {
@@ -92,6 +99,9 @@ const certificateSchema = new mongoose.Schema(
 {
     timestamps: true
 });
+
+certificateSchema.index({ userId: 1, finalizedAt: -1, status: 1 });
+certificateSchema.index({ domain: 1, finalizedAt: -1, status: 1 });
 
 certificateSchema.pre("save", async function () {
     const userModel = mongoose.model("user");

@@ -5,7 +5,9 @@ import mongoose from 'mongoose';
 import User from "../models/User.js";
 import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
-import RetentionPolicy from '../models/RetentionPolicy.model.js';
+import CertificateTemplate from '../models/CertificateTemplate.js';
+import RetentionPolicy from '../models/RetentionPolicy.js';
+import Handlebars from 'handlebars';
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { generateInternCode } from "../utils/generateInternCode.js";
@@ -19,6 +21,7 @@ import {
 import { logAudit } from '../utils/auditLogger.js';
 import AuditLog from '../models/AuditLog.model.js';
 import logAction from '../utils/logAction.js';
+import { invalidateAnalyticsCache } from '../utils/redisCache.js';
 
 dotenv.config();
 
@@ -164,7 +167,7 @@ export async function createTeamLeader(req, res) {
 
 export async function getAllInterns(req, res) {
     try {
-        const filter = { role: 'intern' };
+        const filter = { role: 'intern', isArchived: { $ne: true } };
 
         if (req.query.search) {
             const s = req.query.search.trim();
@@ -221,7 +224,7 @@ export async function getInternById(req, res) {
             return res.status(400).json({ message: 'Invalid intern ID format' });
         }
 
-        const intern = await User.findOne({ _id: id, role: 'intern' })
+        const intern = await User.findOne({ _id: id, role: 'intern', isArchived: { $ne: true } })
             .select('-password -resetPasswordToken -resetPasswordExpires')
             .populate('internshipDetails.teamLeader', 'fullName email mobileNo');
 
@@ -531,6 +534,7 @@ export async function getInternsByTeamLeader(req, res) {
 
         const interns = await User.find({
             role: 'intern',
+            isArchived: { $ne: true },
             $or: [
                 { 'internshipDetails.teamLeader': teamLeader._id },
                 { 'internshipDetails.teamleaderEmail': teamLeader.email.toLowerCase() }
@@ -620,6 +624,8 @@ export const finalizeRequest = async (req, res) => {
       certificate = await createCertificateDraft(request._id);
     }
 
+    await invalidateAnalyticsCache();
+
     res.json({ request, certificate });
   } catch (err) {
     const status = err.statusCode || 500;
@@ -654,6 +660,7 @@ export const finalizeCertificate = async (req, res) => {
 
     // 1. Finalize certificate and render PDF
     const { certificate, request, absolutePdfPath } = await finalizeCertificateService(id);
+    await invalidateAnalyticsCache();
 
     // 2. Send email with PDF attachment
     let emailSent = false;
@@ -746,6 +753,7 @@ export const retryCertificateGeneration = async (req, res) => {
 
     // Re-use existing createCertificateDraft service
     const certificate = await createCertificateDraft(request._id);
+    await invalidateAnalyticsCache();
 
     return res.status(200).json({
       message: 'Certificate draft generated successfully',
@@ -794,94 +802,431 @@ export const downloadCertificatePdf = async (req, res) => {
   }
 };
 
-export const getRetentionPolicy = async (req, res) => {
-    try {
-        let policy = await RetentionPolicy.findOne();
-        if (!policy) {
-            policy = await RetentionPolicy.create({ graceDays: 30, purgeDays: 90, updatedBy: req.user.id });
-        }
-        res.status(200).json({ policy });
-    } catch (err) {
-        res.status(500).json({ message: "Server error", error: err.message });
+const REQUIRED_TEMPLATE_PLACEHOLDERS = [
+  "{{fullName}}",
+  "{{internCode}}",
+  "{{domain}}",
+  "{{startDate}}",
+  "{{endDate}}",
+  "{{issueDate}}",
+  "{{requestNumber}}",
+  "{{certificateTitle}}",
+  "{{qrCodeUrl}}"
+];
+
+function validateTemplateContent(content) {
+  if (!content || typeof content !== "string") {
+    return {
+      valid: false,
+      message: "Template HTML content is required"
+    };
+  }
+
+  if (!content.includes("{{fullName}}")) {
+    return {
+      valid: false,
+      message: "Template must contain {{fullName}}"
+    };
+  }
+
+  const openTokens = (content.match(/\{\{/g) || []).length;
+  const closeTokens = (content.match(/\}\}/g) || []).length;
+  if (openTokens !== closeTokens) {
+    return {
+      valid: false,
+      message: 'Template contains unbalanced {{ and }} placeholder brackets',
+    };
+  }
+
+  try {
+    Handlebars.precompile(content);
+  } catch (error) {
+    return {
+      valid: false,
+      message: `Invalid template syntax: ${error.message}`
+    };
+  }
+
+  const placeholders = [
+    ...new Set(content.match(/\{\{[^{}]+\}\}/g) || [])
+  ];
+
+  return {
+    valid: true,
+    placeholders
+  };
+}
+
+export const getTemplatePlaceholders = async (req, res) => {
+  return res.status(200).json({
+    placeholders: REQUIRED_TEMPLATE_PLACEHOLDERS
+  });
+};
+
+// Certificate Template Management
+export const createCertificateTemplate = async (req, res) => {
+  try {
+    const {
+      templateCode,
+      templateName,
+      certificateType,
+      title,
+      description,
+      content,
+      htmlContent,
+      logoPath,
+      backgroundPath,
+      signaturePath,
+      status
+    } = req.body;
+
+    const templateHtml = htmlContent || content;
+
+    const validation = validateTemplateContent(templateHtml);
+
+    if (!validation.valid) {
+      return res.status(400).json({
+        message: validation.message
+      });
     }
+
+    if (!templateCode || !templateName || !certificateType || !title) {
+      return res.status(400).json({
+        message:
+          "templateCode, templateName, certificateType and title are required"
+      });
+    }
+
+    const existingTemplate = await CertificateTemplate.findOne({
+      templateCode: templateCode.trim()
+    });
+
+    if (existingTemplate) {
+      return res.status(409).json({
+        message: "A template with this templateCode already exists"
+      });
+    }
+
+    const template = await CertificateTemplate.create({
+      templateCode: templateCode.trim(),
+      templateName: templateName.trim(),
+      certificateType: certificateType.trim(),
+      title: title.trim(),
+      description: description?.trim() || "",
+      content: templateHtml,
+      htmlContent: templateHtml,
+      placeholders: validation.placeholders,
+      logoPath,
+      backgroundPath,
+      signaturePath,
+      status: status || "draft",
+      version: 1,
+      createdBy: req.user.id
+    });
+
+    return res.status(201).json({
+      message: "Certificate template created successfully",
+      template
+    });
+  } catch (error) {
+    console.error("Create certificate template error:", error);
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "A template with this templateCode already exists"
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
+export const updateCertificateTemplate = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        message: "Invalid template ID"
+      });
+    }
+
+    const template = await CertificateTemplate.findById(id);
+
+    if (!template) {
+      return res.status(404).json({
+        message: "Certificate template not found"
+      });
+    }
+
+    const {
+      templateCode,
+      templateName,
+      certificateType,
+      title,
+      description,
+      content,
+      htmlContent,
+      logoPath,
+      backgroundPath,
+      signaturePath,
+      status
+    } = req.body;
+
+    const templateHtml =
+      htmlContent !== undefined
+        ? htmlContent
+        : content !== undefined
+          ? content
+          : template.content;
+
+    const validation = validateTemplateContent(templateHtml);
+
+    if (!validation.valid) {
+      return res.status(400).json({
+        message: validation.message
+      });
+    }
+
+    if (
+      templateCode !== undefined &&
+      templateCode.trim() !== template.templateCode
+    ) {
+      const duplicate = await CertificateTemplate.findOne({
+        templateCode: templateCode.trim(),
+        _id: { $ne: id }
+      });
+
+      if (duplicate) {
+        return res.status(409).json({
+          message: "A template with this templateCode already exists"
+        });
+      }
+    }
+
+    template.templateCode =
+      templateCode !== undefined
+        ? templateCode.trim()
+        : template.templateCode;
+
+    template.templateName =
+      templateName !== undefined
+        ? templateName.trim()
+        : template.templateName;
+
+    template.certificateType =
+      certificateType !== undefined
+        ? certificateType.trim()
+        : template.certificateType;
+
+    template.title =
+      title !== undefined
+        ? title.trim()
+        : template.title;
+
+    template.description =
+      description !== undefined
+        ? description.trim()
+        : template.description;
+
+    template.content = templateHtml;
+    template.htmlContent = templateHtml;
+    template.placeholders = validation.placeholders;
+
+    if (logoPath !== undefined) {
+      template.logoPath = logoPath;
+    }
+
+    if (backgroundPath !== undefined) {
+      template.backgroundPath = backgroundPath;
+    }
+
+    if (signaturePath !== undefined) {
+      template.signaturePath = signaturePath;
+    }
+
+    if (status !== undefined) {
+      template.status = status;
+    }
+
+    template.version = (template.version || 1) + 1;
+
+    await template.save();
+
+    return res.status(200).json({
+      message: "Certificate template updated successfully",
+      template
+    });
+  } catch (error) {
+    console.error("Update certificate template error:", error);
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "A template with this templateCode already exists"
+      });
+    }
+
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
+export const getCertificateTemplates = async (req, res) => {
+  try {
+    const templates = await CertificateTemplate.find()
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      templates
+    });
+  } catch (error) {
+    console.error("Get certificate templates error:", error);
+
+    return res.status(500).json({
+      message: "Internal server error"
+    });
+  }
+};
+
+const DEFAULT_RETENTION_POLICY = { graceDays: 30, purgeDays: 90 };
+
+export const getRetentionPolicy = async (req, res) => {
+  try {
+    const policy = await RetentionPolicy.findOneAndUpdate(
+      { policyKey: 'intern' },
+      { $setOnInsert: { policyKey: 'intern', ...DEFAULT_RETENTION_POLICY } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+    return res.status(200).json({ policy });
+  } catch (error) {
+    console.error('Get retention policy error:', error);
+    return res.status(500).json({ message: 'Unable to load retention policy.' });
+  }
 };
 
 export const updateRetentionPolicy = async (req, res) => {
+  const graceDays = Number(req.body.graceDays);
+  const purgeDays = Number(req.body.purgeDays);
+
+  if (!Number.isInteger(graceDays) || graceDays < 1 ||
+      !Number.isInteger(purgeDays) || purgeDays <= graceDays) {
+    return res.status(400).json({
+      message: 'Grace days must be at least 1, and purge days must be greater than graceDays.',
+    });
+  }
+
+  try {
+    const policy = await RetentionPolicy.findOneAndUpdate(
+      { policyKey: 'intern' },
+      {
+        $set: {
+          policyKey: 'intern',
+          graceDays,
+          purgeDays,
+          updatedBy: req.user.id,
+        },
+      },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+    console.log(`[retention] policy updated by admin ${req.user.id}: grace=${graceDays}, purge=${purgeDays}`);
     try {
-        const { graceDays, purgeDays } = req.body;
-        if (graceDays === undefined || purgeDays === undefined) {
-            return res.status(400).json({ message: "graceDays and purgeDays are required" });
-        }
-        if (purgeDays <= graceDays) {
-            return res.status(400).json({ message: "purgeDays must be greater than graceDays" });
-        }
-        if (graceDays < 1 || purgeDays < 1) {
-            return res.status(400).json({ message: "minimum value is 1" });
-        }
-
-        let policy = await RetentionPolicy.findOne();
-        if (!policy) {
-            policy = new RetentionPolicy();
-        }
-        policy.graceDays = graceDays;
-        policy.purgeDays = purgeDays;
-        policy.updatedBy = req.user.id;
-        await policy.save();
-
-        await logAction({
-            req,
-            actor: req.user,
-            action: 'RETENTION_POLICY_UPDATED',
-            targetType: 'RetentionPolicy',
-            targetId: policy._id,
-            meta: { graceDays, purgeDays }
-        });
-
-        res.status(200).json({ policy, message: "Policy updated successfully" });
-    } catch (err) {
-        res.status(500).json({ message: "Server error", error: err.message });
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'RETENTION_POLICY_UPDATED',
+        targetType: 'RetentionPolicy',
+        targetId: policy._id,
+        meta: { graceDays, purgeDays }
+      });
+    } catch (logErr) {
+      // silent
     }
+    return res.status(200).json({ message: 'Retention policy saved.', policy });
+  } catch (error) {
+    console.error('Update retention policy error:', error);
+    return res.status(500).json({ message: 'Unable to save retention policy.' });
+  }
 };
 
 export const getArchivedInterns = async (req, res) => {
-    try {
-        const archivedInterns = await User.find({ role: 'intern', isArchived: true })
-            .select('-password -resetPasswordToken -resetPasswordExpires')
-            .sort({ archivedAt: -1 });
-        res.status(200).json({ interns: archivedInterns });
-    } catch (err) {
-        res.status(500).json({ message: "Server error", error: err.message });
-    }
+  try {
+    const policy = await RetentionPolicy.findOne({ policyKey: 'intern' }).lean();
+    const purgeDays = policy?.purgeDays ?? DEFAULT_RETENTION_POLICY.purgeDays;
+    const interns = await User.find({
+      role: 'intern',
+      isArchived: true,
+      personalDataPurged: { $ne: true },
+    })
+      .select('fullName email internCode domain endDate archivedAt')
+      .sort({ archivedAt: -1 })
+      .lean();
+
+    const now = Date.now();
+    const archivedInterns = interns.map((intern) => ({
+      ...intern,
+      daysLeftBeforePurge: Math.max(0, Math.ceil(
+        (new Date(intern.archivedAt).getTime() + purgeDays * 86400000 - now) / 86400000
+      )),
+    }));
+
+    return res.status(200).json({ interns: archivedInterns, purgeDays });
+  } catch (error) {
+    console.error('Get archived interns error:', error);
+    return res.status(500).json({ message: 'Unable to load archived interns.' });
+  }
 };
 
 export const restoreArchivedIntern = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: 'Invalid intern ID format' });
-        }
-        const intern = await User.findOne({ _id: id, role: 'intern', isArchived: true });
-        if (!intern) {
-            return res.status(404).json({ message: "Archived intern not found" });
-        }
-        
-        intern.isArchived = false;
-        intern.archivedAt = null;
-        await intern.save();
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid intern ID.' });
+  }
 
-        await logAction({
-            req,
-            actor: req.user,
-            action: 'INTERN_RESTORED',
-            targetType: 'User',
-            targetId: intern._id,
-            meta: { email: intern.email }
-        });
+  try {
+    const intern = await User.findOne({
+      _id: req.params.id,
+      role: 'intern',
+      isArchived: true,
+      personalDataPurged: { $ne: true },
+    });
 
-        res.status(200).json({ message: "Intern restored successfully", intern });
-    } catch (err) {
-        res.status(500).json({ message: "Server error", error: err.message });
+    if (!intern) {
+      return res.status(404).json({
+        message: 'Archived intern not found or personal data has already been purged.',
+      });
     }
+
+    intern.isArchived = false;
+    intern.archivedAt = null;
+    intern.archiveWarningSentAt = null;
+    intern.archiveRestoredAt = new Date();
+    await intern.save();
+    console.log(`[retention] admin ${req.user.id} restored intern ${intern._id}`);
+    try {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'INTERN_RESTORED',
+        targetType: 'User',
+        targetId: intern._id,
+        meta: { email: intern.email }
+      });
+    } catch (logErr) {
+      // silent
+    }
+    return res.status(200).json({ message: 'Intern restored.', intern: {
+      _id: intern._id,
+      fullName: intern.fullName,
+      internCode: intern.internCode,
+      email: intern.email,
+      isArchived: intern.isArchived,
+    } });
+  } catch (error) {
+    console.error('Restore archived intern error:', error);
+    return res.status(500).json({ message: 'Unable to restore intern.' });
+  }
 };
 
 /**

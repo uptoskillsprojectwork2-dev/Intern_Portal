@@ -1,4 +1,5 @@
 import express from 'express';
+import User from '../models/User.js';
 import verifyAuth from '../middlewares/verifyAuth.js';
 import {
   getMyRequests,
@@ -16,6 +17,18 @@ internRouter.use(verifyAuth, (req, res, next) => {
 	}
 
 	next();
+});
+
+internRouter.use(async (req, res, next) => {
+	try {
+		const user = await User.findById(req.user.id).select('isArchived');
+		if (user?.isArchived) {
+			return res.status(403).json({ message: 'Your internship account has been archived. Contact admin.' });
+		}
+		return next();
+	} catch (error) {
+		return res.status(500).json({ message: 'Unable to verify account status.' });
+	}
 });
 
 internRouter.get('/profile', getProfile);

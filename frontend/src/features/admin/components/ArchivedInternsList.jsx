@@ -1,124 +1,60 @@
-import { useState, useEffect } from 'react';
-import { useArchivedInterns } from '../hooks/useArchivedInterns';
-import { getRetentionPolicy } from '../services/admin.service';
-import './AdminDashboardRetention.css';
+import { useState } from 'react';
+import Toast from '../../../shared/components/Toast';
+import useArchivedInterns from '../hooks/useArchivedInterns';
+import './RetentionManagement.css';
+
+const dateLabel = (value) => value
+  ? new Date(value).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  : '—';
 
 export default function ArchivedInternsList() {
-  const { interns, loading, error, refetch, restoreIntern } = useArchivedInterns();
-  const [purgeDays, setPurgeDays] = useState(90);
-  const [restoreState, setRestoreState] = useState({ id: null, loading: false, error: null });
+  const { interns, loading, error, refresh, restore } = useArchivedInterns();
+  const [restoringId, setRestoringId] = useState('');
+  const [toast, setToast] = useState(null);
 
-  useEffect(() => {
-    const fetchPolicy = async () => {
-      try {
-        const data = await getRetentionPolicy();
-        if (data.policy) {
-          setPurgeDays(data.policy.purgeDays);
-        }
-      } catch (err) {
-        console.error('Failed to load retention policy', err);
-      }
-    };
-    fetchPolicy();
-  }, []);
-
-  const handleRestore = async (id) => {
-    if (!window.confirm('Are you sure you want to restore this intern? They will regain access to their account.')) {
-      return;
-    }
-
-    setRestoreState({ id, loading: true, error: null });
-    const result = await restoreIntern(id);
-    
-    if (result.success) {
-      alert('Intern restored successfully');
-      setRestoreState({ id: null, loading: false, error: null });
-    } else {
-      setRestoreState({ id, loading: false, error: result.error });
-      alert(`Failed to restore intern: ${result.error}`);
+  const handleRestore = async (intern) => {
+    if (!window.confirm(`Restore ${intern.fullName} and re-enable their portal login?`)) return;
+    setRestoringId(intern._id);
+    try {
+      const message = await restore(intern);
+      setToast({ type: 'success', message: typeof message === 'string' ? message : `${intern.fullName} has been restored.` });
+    } catch (requestError) {
+      setToast({ type: 'error', message: requestError.message || 'Unable to restore this intern.' });
+    } finally {
+      setRestoringId('');
     }
   };
-
-  const calculateDaysLeft = (archivedAt) => {
-    if (!archivedAt) return purgeDays;
-    const archivedDate = new Date(archivedAt);
-    archivedDate.setHours(0, 0, 0, 0);
-    
-    const purgeDate = new Date(archivedDate);
-    purgeDate.setDate(purgeDate.getDate() + purgeDays);
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const diffTime = purgeDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  };
-
-  if (loading) {
-    return <div style={{ color: '#6b7280', padding: '16px 0' }}>Loading archived interns...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="admin-retention-error">
-        <p>{error}</p>
-        <button onClick={refetch} style={{ background: 'none', border: 'none', textDecoration: 'underline', color: 'inherit', cursor: 'pointer', padding: 0, marginTop: '8px' }}>Try again</button>
-      </div>
-    );
-  }
-
-  if (interns.length === 0) {
-    return (
-      <div className="admin-archived-empty">
-        <p>No archived interns</p>
-      </div>
-    );
-  }
 
   return (
-    <div className="admin-archived-container">
-      <table className="admin-archived-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Intern Code</th>
-            <th>Domain</th>
-            <th>Archived Date</th>
-            <th>Days to Purge</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {interns.map((intern) => {
-            const daysLeft = calculateDaysLeft(intern.archivedAt);
-            const isDanger = daysLeft <= 7;
-            
-            return (
+    <section className="archived-interns-card" aria-labelledby="archived-interns-title">
+      {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
+      <header>
+        <div><p className="admin-eyebrow">FORMER INTERNS</p><h2 id="archived-interns-title">Archived accounts</h2></div>
+        <button type="button" onClick={refresh} disabled={loading}>Refresh</button>
+      </header>
+      {loading ? (
+        <div className="retention-state" role="status">Loading archived interns…</div>
+      ) : error ? (
+        <div className="retention-state retention-error" role="alert"><span>{error}</span><button type="button" onClick={refresh}>Retry</button></div>
+      ) : interns.length === 0 ? (
+        <div className="retention-state">No archived interns.</div>
+      ) : (
+        <div className="retention-table-wrap">
+          <table className="retention-table">
+            <thead><tr><th>Name</th><th>Intern code</th><th>Domain</th><th>Archived</th><th>Days before purge</th><th>Action</th></tr></thead>
+            <tbody>{interns.map((intern) => (
               <tr key={intern._id}>
-                <td className="fw-medium">{intern.fullName}</td>
-                <td>{intern.internCode}</td>
-                <td>{intern.domain}</td>
-                <td>{intern.archivedAt ? new Date(intern.archivedAt).toLocaleDateString() : 'N/A'}</td>
-                <td>
-                  <span className={`admin-archived-badge ${isDanger ? 'danger' : 'warning'}`}>
-                    {daysLeft} days
-                  </span>
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    onClick={() => handleRestore(intern._id)}
-                    disabled={restoreState.id === intern._id && restoreState.loading}
-                    className="admin-archived-btn"
-                  >
-                    {restoreState.id === intern._id && restoreState.loading ? 'Restoring...' : 'Restore'}
-                  </button>
-                </td>
+                <td>{intern.fullName}<small>{intern.email}</small></td>
+                <td>{intern.internCode || '—'}</td>
+                <td>{intern.domain || '—'}</td>
+                <td>{dateLabel(intern.archivedAt)}</td>
+                <td>{intern.daysLeftBeforePurge ?? '—'}</td>
+                <td><button type="button" onClick={() => handleRestore(intern)} disabled={restoringId === intern._id}>{restoringId === intern._id ? 'Restoring…' : 'Restore'}</button></td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

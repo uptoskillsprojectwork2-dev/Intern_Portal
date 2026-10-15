@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
+
 import CreateIntern from '../components/CreateIntern';
 import CreateTl from '../components/CreateTl';
 import ForwardedRequestsList from '../components/ForwardedRequestsList';
 import TeamLeadersSection from '../components/TeamLeadersSection';
 import CertificatesOverview from '../components/CertificatesOverview';
 import AdminInternsList from '../components/AdminInternsList';
-import RetentionPolicyForm from '../components/RetentionPolicyForm';
-import ArchivedInternsList from '../components/ArchivedInternsList';
+import AdminUpcomingCompletions from '../components/AdminUpcomingCompletions';
+import RetentionManagement from '../components/RetentionManagement';
+import AnalyticsView from '../analytics/pages/AnalyticsView';
 import AuditLogsPage from './AuditLogsPage';
+
 import { getOverviewStats } from '../services/admin.service';
 import ThemeToggle from '../../shared/components/ThemeToggle';
 import {
@@ -27,14 +30,21 @@ import {
   IconTrendingUp,
   IconActivity,
   IconChevronRight,
-  IconShield
+  IconShield,
 } from '../../shared/components/Icons';
+
 import './AdminDashboard.css';
 
 const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState(initialView || 'overview');
+
+  useEffect(() => {
+    if (initialView) {
+      setActiveView(initialView);
+    }
+  }, [initialView]);
 
   const [stats, setStats] = useState({
     totalInterns: 0,
@@ -44,7 +54,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
     teamLeadersCount: 0,
     issuedCertificatesCount: 0,
     pendingRequestsCount: 0,
-    completionRate: 0
+    completionRate: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
 
@@ -63,7 +73,9 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
       }
     };
     fetchStats();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [activeView]);
 
   const initials = (user?.fullName || 'Admin')
@@ -78,27 +90,37 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
     navigate('/login');
   };
 
+  const openCertificateTemplates = () => {
+    navigate('/admin/certificate-templates');
+  };
+
+  const changeView = (view) => {
+    setActiveView(view);
+  };
+
   const viewTitle = {
     overview: 'Administration Overview',
+    analytics: 'Admin Analytics',
     interns: 'Intern Management',
     teamleaders: 'Team Leader Management',
     intern: 'Create an Intern Account',
     teamleader: 'Create a Team Leader Account',
     certificates: 'Issued Certificates',
-    retention: 'Retention & Lifecycle Policy',
-    archived_interns: 'Archived Interns Audit',
+    retention: 'Account Retention & Lifecycle',
+    archived_interns: 'Account Retention & Lifecycle',
     requests: 'Certificate Requests',
     audit_logs: 'System Audit Logs & Governance',
   };
 
   const viewDesc = {
     overview: 'Comprehensive governance, candidate telemetry, and automated lifecycle compliance.',
-    interns: 'View, edit, and assign/reassign all interns across all Team Leaders.',
+    analytics: 'Comprehensive performance metrics, issuance speed, team leader bottlenecks, and analytics.',
+    interns: 'View, edit, and assign or reassign all interns across Team Leaders.',
     teamleaders: 'View, search, and manage all Team Leaders and their assigned intern teams.',
     requests: 'Finalize certificate requests forwarded by Team Leaders.',
     certificates: 'Audit and manage all generated certificates across the portal.',
-    retention: 'Configure the automated lifecycle and retention for intern accounts.',
-    archived_interns: 'View and restore intern accounts that have been archived.',
+    retention: 'Set archive and purge periods, review archived interns, and restore accounts.',
+    archived_interns: 'Set archive and purge periods, review archived interns, and restore accounts.',
     intern: 'Complete the details below to create a new intern portal account.',
     teamleader: 'Complete the details below to create a new Team Leader account.',
     audit_logs: 'Tamper-evident activity logs across authentication, certificate workflows, and retention tasks.',
@@ -148,29 +170,51 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
 
       {/* ── SIDEBAR ── */}
       <aside className="admin-sidebar" aria-label="Admin navigation">
-        <p className="admin-sidebar-label">Overview</p>
+        <p className="admin-sidebar-label">Workspace</p>
         <nav className="admin-sidebar-nav">
-          <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}>
+          <button
+            className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`}
+            onClick={() => changeView('overview')}
+          >
             <span className="admin-nav-icon"><IconGrid size={16} /></span>
-            Dashboard
+            Overview
+          </button>
+          <button
+            className={`admin-nav-item ${activeView === 'analytics' ? 'active' : ''}`}
+            onClick={() => changeView('analytics')}
+          >
+            <span className="admin-nav-icon"><IconTrendingUp size={16} /></span>
+            Admin Analytics
           </button>
         </nav>
 
         <p className="admin-sidebar-label">People</p>
         <nav className="admin-sidebar-nav">
-          <button className={`admin-nav-item ${activeView === 'interns' ? 'active' : ''}`} onClick={() => setActiveView('interns')}>
+          <button
+            className={`admin-nav-item ${activeView === 'interns' ? 'active' : ''}`}
+            onClick={() => changeView('interns')}
+          >
             <span className="admin-nav-icon"><IconUsers size={16} /></span>
             Intern Management
           </button>
-          <button className={`admin-nav-item ${activeView === 'teamleaders' ? 'active' : ''}`} onClick={() => setActiveView('teamleaders')}>
+          <button
+            className={`admin-nav-item ${activeView === 'teamleaders' ? 'active' : ''}`}
+            onClick={() => changeView('teamleaders')}
+          >
             <span className="admin-nav-icon"><IconBriefcase size={16} /></span>
             Team Leaders
           </button>
-          <button className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`} onClick={() => setActiveView('intern')}>
+          <button
+            className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`}
+            onClick={() => changeView('intern')}
+          >
             <span className="admin-nav-icon"><IconUserPlus size={16} /></span>
             Create Intern
           </button>
-          <button className={`admin-nav-item ${activeView === 'teamleader' ? 'active' : ''}`} onClick={() => setActiveView('teamleader')}>
+          <button
+            className={`admin-nav-item ${activeView === 'teamleader' ? 'active' : ''}`}
+            onClick={() => changeView('teamleader')}
+          >
             <span className="admin-nav-icon"><IconUserCheck size={16} /></span>
             Create Team Leader
           </button>
@@ -178,40 +222,57 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
 
         <p className="admin-sidebar-label">Certificates</p>
         <nav className="admin-sidebar-nav">
-          <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => setActiveView('requests')}>
+          <button
+            className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`}
+            onClick={() => changeView('requests')}
+          >
             <span className="admin-nav-icon"><IconFileText size={16} /></span>
             Cert Requests
           </button>
-          <button className={`admin-nav-item ${activeView === 'certificates' ? 'active' : ''}`} onClick={() => setActiveView('certificates')}>
+          <button
+            className={`admin-nav-item ${activeView === 'certificates' ? 'active' : ''}`}
+            onClick={() => changeView('certificates')}
+          >
             <span className="admin-nav-icon"><IconAward size={16} /></span>
             Issued Certs
+          </button>
+          <button
+            type="button"
+            className="admin-nav-item"
+            onClick={openCertificateTemplates}
+          >
+            <span className="admin-nav-icon">🎨</span>
+            Certificate Templates
           </button>
         </nav>
 
         <p className="admin-sidebar-label">Settings & Governance</p>
         <nav className="admin-sidebar-nav">
-          <button className={`admin-nav-item ${activeView === 'audit_logs' ? 'active' : ''}`} onClick={() => setActiveView('audit_logs')}>
+          <button
+            className={`admin-nav-item ${activeView === 'audit_logs' ? 'active' : ''}`}
+            onClick={() => changeView('audit_logs')}
+          >
             <span className="admin-nav-icon"><IconShield size={16} /></span>
             Audit Logs
           </button>
-          <button className={`admin-nav-item ${activeView === 'retention' ? 'active' : ''}`} onClick={() => setActiveView('retention')}>
+          <button
+            className={`admin-nav-item ${activeView === 'retention' ? 'active' : ''}`}
+            onClick={() => changeView('retention')}
+          >
             <span className="admin-nav-icon"><IconSettings size={16} /></span>
-            Retention Policy
-          </button>
-          <button className={`admin-nav-item ${activeView === 'archived_interns' ? 'active' : ''}`} onClick={() => setActiveView('archived_interns')}>
-            <span className="admin-nav-icon"><IconArchive size={16} /></span>
-            Archived Interns
+            Account Retention
           </button>
         </nav>
 
         <div className="admin-sidebar-note">
-          <span></span>
-          Admin access active
+          <span>●</span>
+          Admin access enabled
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
+      {/* ── MAIN CONTENT ── */}
       <main className="admin-dashboard-main">
+        {/* Page Header */}
         <header className="admin-page-header">
           <p className="admin-eyebrow">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>
@@ -221,7 +282,11 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
           <p>{viewDesc[activeView] || ''}</p>
         </header>
 
-        {activeView === 'overview' ? (
+        {activeView === 'analytics' ? (
+          <AnalyticsView
+            onOpenRequests={() => changeView('requests')}
+          />
+        ) : activeView === 'overview' ? (
           <>
             {/* METRICS GRID */}
             <section className="admin-stats-grid" aria-label="Key Performance Indicators">
@@ -311,7 +376,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
             </div>
 
             <section className="admin-quick-cards-grid" aria-label="Quick Administrative Actions">
-              <button className="admin-action-card primary-cobalt" onClick={() => setActiveView('intern')}>
+              <button className="admin-action-card primary-cobalt" onClick={() => changeView('intern')}>
                 <div className="action-card-header">
                   <span className="action-icon-wrap"><IconUserPlus size={16} /></span>
                   <IconChevronRight size={14} />
@@ -322,7 +387,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
                 </div>
               </button>
 
-              <button className="admin-action-card primary-coral" onClick={() => setActiveView('teamleader')}>
+              <button className="admin-action-card primary-coral" onClick={() => changeView('teamleader')}>
                 <div className="action-card-header">
                   <span className="action-icon-wrap"><IconUserCheck size={16} /></span>
                   <IconChevronRight size={14} />
@@ -333,7 +398,29 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
                 </div>
               </button>
 
-              <button className="admin-action-card outline-cobalt" onClick={() => setActiveView('retention')}>
+              <button className="admin-action-card outline-cobalt" onClick={() => changeView('analytics')}>
+                <div className="action-card-header">
+                  <span className="action-icon-wrap"><IconTrendingUp size={16} /></span>
+                  <IconChevronRight size={14} color="var(--text-muted)" />
+                </div>
+                <div>
+                  <h3>Admin Analytics</h3>
+                  <p>View bottlenecks, issuance speed & metrics</p>
+                </div>
+              </button>
+
+              <button className="admin-action-card outline-coral" onClick={openCertificateTemplates}>
+                <div className="action-card-header">
+                  <span className="action-icon-wrap coral"><span style={{ fontSize: '14px' }}>🎨</span></span>
+                  <IconChevronRight size={14} color="var(--text-muted)" />
+                </div>
+                <div>
+                  <h3>Certificate Templates</h3>
+                  <p>Design, preview & customize templates</p>
+                </div>
+              </button>
+
+              <button className="admin-action-card outline-cobalt" onClick={() => changeView('retention')}>
                 <div className="action-card-header">
                   <span className="action-icon-wrap"><IconSettings size={16} /></span>
                   <IconChevronRight size={14} color="var(--text-muted)" />
@@ -344,14 +431,14 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
                 </div>
               </button>
 
-              <button className="admin-action-card outline-coral" onClick={() => setActiveView('archived_interns')}>
+              <button className="admin-action-card outline-coral" onClick={() => changeView('audit_logs')}>
                 <div className="action-card-header">
-                  <span className="action-icon-wrap coral"><IconArchive size={16} /></span>
+                  <span className="action-icon-wrap coral"><IconShield size={16} /></span>
                   <IconChevronRight size={14} color="var(--text-muted)" />
                 </div>
                 <div>
-                  <h3>Archived Interns</h3>
-                  <p>Audit and restore deactivated accounts</p>
+                  <h3>System Audit Logs</h3>
+                  <p>Tamper-evident activity logs & compliance</p>
                 </div>
               </button>
             </section>
@@ -382,6 +469,10 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
               </div>
             </section>
 
+            {/* Upcoming completions */}
+            <AdminUpcomingCompletions />
+
+            {/* Recent Interns Table */}
             <AdminInternsList />
           </>
         ) : activeView === 'interns' ? (
@@ -394,10 +485,8 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
           <CreateTl />
         ) : activeView === 'certificates' ? (
           <CertificatesOverview />
-        ) : activeView === 'retention' ? (
-          <RetentionPolicyForm />
-        ) : activeView === 'archived_interns' ? (
-          <ArchivedInternsList />
+        ) : activeView === 'retention' || activeView === 'archived_interns' ? (
+          <RetentionManagement />
         ) : activeView === 'audit_logs' ? (
           <AuditLogsPage />
         ) : (

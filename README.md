@@ -128,7 +128,7 @@ The backend currently has no automated test script. The frontend lint and build 
 
 ### Current implementation status
 
-The current working implementation includes the React/Vite application, Express API, MongoDB connection, cookie-based authentication flow, role-aware routes, login screen, and dashboard scaffolding. The architecture and feature sections below describe the planned full portal, including certificate workflows, AI services, PDF generation, notifications, and retention jobs; those modules still need to be implemented before production deployment.
+The current working implementation includes the React/Vite application, Express API, MongoDB connection, cookie-based authentication flow, role-aware dashboards, certificate template editing and PDF issuance, and the intern retention lifecycle. The internship-status job starts at 2:00 AM and the retention job at 2:05 AM (Asia/Kolkata by default). Set `DRY_RUN=true` in `backend/.env` to log planned job actions without changing records or sending archival warning emails.
 
 ---
 

@@ -1,43 +1,49 @@
-import { useState, useEffect, useCallback } from 'react';
-import { getArchivedInterns, restoreArchivedIntern } from '../services/admin.service';
+import { useCallback, useEffect, useState } from 'react';
+import { getArchivedInterns, restoreIntern, restoreArchivedIntern } from '../services/admin.service';
 
 export function useArchivedInterns() {
   const [interns, setInterns] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
-  const fetchInterns = useCallback(async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setError('');
     try {
-      const data = await getArchivedInterns();
-      setInterns(data.interns || []);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch archived interns');
+      const result = await getArchivedInterns();
+      setInterns(result.interns || []);
+    } catch (requestError) {
+      setError(requestError.message || 'Unable to load archived interns.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchInterns();
-  }, [fetchInterns]);
+    const timer = window.setTimeout(refresh, 0);
+    return () => window.clearTimeout(timer);
+  }, [refresh]);
 
-  const restoreIntern = async (id) => {
-    try {
-      await restoreArchivedIntern(id);
-      setInterns((prev) => prev.filter((intern) => intern._id !== id));
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err.message };
+  const restore = async (internOrId) => {
+    const id = typeof internOrId === 'object' && internOrId !== null ? internOrId._id : internOrId;
+    const restoreFn = restoreIntern || restoreArchivedIntern;
+    await restoreFn(id);
+    setInterns((current) => current.filter((item) => item._id !== id));
+    if (typeof internOrId === 'object' && internOrId?.fullName) {
+      return `${internOrId.fullName} has been restored.`;
     }
+    return { success: true };
   };
 
   return {
     interns,
     loading,
     error,
-    refetch: fetchInterns,
-    restoreIntern
+    refresh,
+    refetch: refresh,
+    restore,
+    restoreIntern: restore
   };
 }
+
+export default useArchivedInterns;

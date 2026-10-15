@@ -50,7 +50,7 @@ const NAV_ITEMS = [
    InternDashboard
    ============================================================ */
 export default function InternDashboard() {
-  const { profile, loading, error, fetchProfile } = useIntern();
+  const { profile, archiveNotice, loading, error, fetchProfile } = useIntern();
   const { handleLogout } = useAuth();
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('dashboard');
@@ -129,28 +129,22 @@ export default function InternDashboard() {
           </p>
         </header>
 
-        {profile?.daysUntilArchival !== undefined && profile.daysUntilArchival <= 7 && (
-          <div style={{
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            borderLeft: '4px solid #ef4444',
-            padding: '16px',
-            marginBottom: '24px',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'flex-start'
-          }}>
-            <div style={{ marginRight: '12px', fontSize: '20px' }}>
-              <span role="img" aria-label="warning">⚠️</span>
-            </div>
-            <div>
-              <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#b91c1c' }}>
-                Account Archival Notice
-              </p>
-              <p style={{ margin: '0', fontSize: '14px', color: '#b91c1c' }}>
-                Your internship account will be archived in {profile.daysUntilArchival} days. 
-                Please request and download any necessary certificates before you lose access.
-              </p>
-            </div>
+        {activeNav === 'dashboard' && archiveNotice && (
+          <div className="id-archive-warning" role="status">
+            <strong>Account archival scheduled</strong>
+            <span>
+              Your account is scheduled to be archived on {formatDate(archiveNotice.archiveDate)}.
+              {' '}You have {archiveNotice.daysUntilArchive} day{archiveNotice.daysUntilArchive === 1 ? '' : 's'} remaining to access your portal account and certificates.
+            </span>
+          </div>
+        )}
+        {activeNav === 'dashboard' && !archiveNotice && profile?.daysUntilArchival !== undefined && profile.daysUntilArchival <= 7 && (
+          <div className="id-archive-warning" role="status">
+            <strong>Account archival scheduled</strong>
+            <span>
+              Your internship account will be archived in {profile.daysUntilArchival} day{profile.daysUntilArchival === 1 ? '' : 's'}.
+              Please request and download any necessary certificates before you lose access.
+            </span>
           </div>
         )}
 

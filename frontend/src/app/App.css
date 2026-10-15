@@ -168,6 +168,11 @@
   --success-light: rgba(52,211,153,.12);
 }
 
+/* Keep native date picker controls legible when the app uses a dark theme. */
+:root[data-theme='dark'] input[type='date'] {
+  color-scheme: dark;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    GLOBAL RESET & BASE
    ═══════════════════════════════════════════════════════════════════════════ */

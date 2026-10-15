@@ -55,6 +55,7 @@ export async function getInternsForTL(req, res) {
 
 		const filter = {
 			role: 'intern',
+			isArchived: { $ne: true },
 			$or: [
 				{ 'internshipDetails.teamLeader': tlId },
 				{ 'internshipDetails.teamleaderEmail': tlEmail }
@@ -100,7 +101,7 @@ export async function getAssignedInternById(req, res) {
 			return res.status(400).json({ message: 'Invalid intern ID format' });
 		}
 
-		const intern = await User.findOne({ _id: id, role: 'intern' })
+		const intern = await User.findOne({ _id: id, role: 'intern', isArchived: { $ne: true } })
 			.select('-password -resetPasswordToken -resetPasswordExpires');
 
 		if (!intern) {
