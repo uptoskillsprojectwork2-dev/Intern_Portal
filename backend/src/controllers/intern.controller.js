@@ -8,6 +8,8 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.model.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
+import { logAction } from '../utils/logAction.js';
+import { notify } from '../services/notification.service.js';
 
 const ALLOWED_TYPES = [
   'offer_letter',
@@ -118,6 +120,39 @@ export const submitCertificateRequest = async (req, res) => {
       reason,
       metadata: safeMetadata
     });
+
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'REQUEST_SUBMITTED',
+      targetType: 'request',
+      targetId: request._id,
+      meta: {
+        certificateType: request.certificateType,
+        requestNumber: request.requestNumber
+      }
+    });
+
+    try {
+      const tlEmail = user.internshipDetails?.teamleaderEmail;
+      if (tlEmail) {
+        const tl = await User.findOne({ email: tlEmail.toLowerCase(), role: 'teamleader' });
+        if (tl) {
+          await notify(tl._id, 'REQUEST_SUBMITTED', {
+            title: 'New Certificate Request',
+            message: `${user.fullName || 'An intern'} has submitted a request for ${request.certificateType} (Ref: ${request.requestNumber}).`,
+            requestId: request._id,
+            email: true
+          });
+        } else {
+          console.warn(`[Notification] No team leader found with email: ${tlEmail}`);
+        }
+      } else {
+        console.warn(`[Notification] Intern ${user._id} has no team leader email assigned`);
+      }
+    } catch (notifErr) {
+      console.error('[Notification] Error sending submission notification:', notifErr.message);
+    }
 
     return res.status(201).json({ request });
   } catch (err) {

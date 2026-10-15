@@ -14,6 +14,7 @@ import TLDashboard from '../features/teamleader/pages/TLDashboard';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
 import CertificateReviewPage from '../features/admin/pages/CertificateReviewPage';
 import CertificateTemplateEditorPage from '../features/admin/pages/CertificateTemplateEditorPage';
+import AuditLogsPage from '../features/admin/pages/AuditLogsPage';
 
 import './App.css';
 
@@ -112,6 +113,11 @@ export default function App() {
           <Route
             path="/admin/certificate-templates"
             element={<CertificateTemplateEditorPage />}
+          />
+
+          <Route
+            path="/admin/audit-logs"
+            element={<AuditLogsPage />}
           />
         </Route>
 

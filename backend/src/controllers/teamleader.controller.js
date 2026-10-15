@@ -4,6 +4,8 @@ import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import { logAudit } from '../utils/auditLogger.js';
+import { logAction } from '../utils/logAction.js';
+import { notify } from '../services/notification.service.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -280,6 +282,39 @@ export const reviewRequestAsTL = async (req, res) => {
     }
 
     await request.save();
+
+    await logAction({
+      req,
+      actor: req.user,
+      action: action === 'forward' ? 'REQUEST_FORWARDED' : 'REQUEST_REJECTED',
+      targetType: 'request',
+      targetId: request._id,
+      meta: action === 'reject' ? { reason: rejectionReason } : { certificateType: request.certificateType }
+    });
+
+    try {
+      if (action === 'forward') {
+        const admins = await User.find({ role: 'admin' }).select('_id');
+        for (const admin of admins) {
+          await notify(admin._id, 'REQUEST_FORWARDED', {
+            title: 'Certificate Request Forwarded',
+            message: `A request for ${request.certificateType} (${request.requestNumber || ''}) has been forwarded by Team Leader for your decision.`,
+            requestId: request._id,
+            email: false
+          });
+        }
+      } else if (action === 'reject') {
+        await notify(request.userId, 'REQUEST_REJECTED', {
+          title: 'Certificate Request Rejected',
+          message: `Your request for ${request.certificateType} was rejected. Reason: ${rejectionReason}`,
+          requestId: request._id,
+          email: true
+        });
+      }
+    } catch (notifErr) {
+      console.error('[Notification] Error in TL review notifications:', notifErr.message);
+    }
+
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

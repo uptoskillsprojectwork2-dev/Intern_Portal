@@ -10,6 +10,7 @@ import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import { logAction } from '../utils/logAction.js';
 
 /* =========================================================
    CONSTANTS
@@ -878,6 +879,17 @@ export const createCertificateDraft = async (requestId) => {
 
   await request.save();
 
+  await logAction({
+    actor: { id: request.reviewedBy, role: 'admin' },
+    action: 'CERTIFICATE_DRAFT_CREATED',
+    targetType: 'certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber,
+      certificateType: certificate.certificateType
+    }
+  });
+
   return certificate;
 };
 
@@ -976,6 +988,16 @@ export const updateCertificateDraft = async (
     htmlContent;
 
   await certificate.save();
+
+  await logAction({
+    actor: { id: certificate.userId, role: 'admin' },
+    action: 'CERTIFICATE_EDITED',
+    targetType: 'certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber
+    }
+  });
 
   return certificate;
 };
@@ -1326,6 +1348,17 @@ export const finalizeCertificate = async (
 
     await request.save();
   }
+
+  await logAction({
+    actor: { id: certificate.generatedBy || certificate.userId, role: 'admin' },
+    action: 'CERTIFICATE_FINALIZED',
+    targetType: 'certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber,
+      certificateType: certificate.certificateType
+    }
+  });
 
   return {
     certificate,

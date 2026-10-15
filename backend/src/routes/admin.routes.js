@@ -28,6 +28,10 @@ import {
   getArchivedInterns,
   restoreArchivedIntern,
 } from "../controllers/admin.controller.js";
+import {
+  getAuditLogs,
+  exportAuditLogs,
+} from "../controllers/auditLog.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
@@ -66,6 +70,10 @@ adminRouter.get('/retention-policy', verifyAuth, requireAdmin, getRetentionPolic
 adminRouter.patch('/retention-policy', verifyAuth, requireAdmin, updateRetentionPolicy);
 adminRouter.get('/interns/archived', verifyAuth, requireAdmin, getArchivedInterns);
 adminRouter.patch('/interns/:id/restore', verifyAuth, requireAdmin, restoreArchivedIntern);
+
+// Audit logs routes
+adminRouter.get("/audit-logs/export", verifyAuth, requireAdmin, exportAuditLogs);
+adminRouter.get("/audit-logs", verifyAuth, requireAdmin, getAuditLogs);
 
 // POST api/auth/register-intern
 adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);

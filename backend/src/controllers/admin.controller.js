@@ -19,7 +19,9 @@ import {
   sendCertificateEmail
 } from '../services/certificate.service.js';
 import { logAudit } from '../utils/auditLogger.js';
+import { logAction } from '../utils/logAction.js';
 import { invalidateAnalyticsCache } from '../utils/redisCache.js';
+import { notify } from '../services/notification.service.js';
 
 dotenv.config();
 
@@ -77,6 +79,14 @@ export async function createIntern(req, res) {
             }
         });
 
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'USER_CREATED',
+            targetType: 'user',
+            targetId: user._id,
+            meta: { role: 'intern', email: user.email, fullName: user.fullName }
+        });
 
         res.status(200).json({
             message: "User registered successfully",
@@ -121,6 +131,15 @@ export async function createTeamLeader(req, res) {
             endDate,
             role: "teamleader",
             password
+        });
+
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'USER_CREATED',
+            targetType: 'user',
+            targetId: user._id,
+            meta: { role: 'teamleader', email: user.email, fullName: user.fullName }
         });
 
         const token = jwt.sign({
@@ -580,9 +599,38 @@ export const finalizeRequest = async (req, res) => {
 
     await request.save();
 
+    await logAction({
+      req,
+      actor: req.user,
+      action: action === 'approve' ? 'REQUEST_APPROVED' : 'REQUEST_REJECTED',
+      targetType: 'request',
+      targetId: request._id,
+      meta: action === 'reject' ? { reason: rejectionReason } : { certificateType: request.certificateType }
+    });
+
     let certificate = null;
     if (action === 'approve') {
       certificate = await createCertificateDraft(request._id);
+    }
+
+    try {
+      if (action === 'approve') {
+        await notify(request.userId, 'REQUEST_APPROVED', {
+          title: 'Certificate Request Approved',
+          message: `Your request for ${request.certificateType} has been approved by Admin and is queued for certificate generation.`,
+          requestId: request._id,
+          email: true
+        });
+      } else if (action === 'reject') {
+        await notify(request.userId, 'REQUEST_REJECTED', {
+          title: 'Certificate Request Rejected',
+          message: `Your request for ${request.certificateType} was rejected by Admin. Reason: ${rejectionReason}`,
+          requestId: request._id,
+          email: true
+        });
+      }
+    } catch (notifErr) {
+      console.error('[Notification] Error sending admin decision notification:', notifErr.message);
     }
 
     await invalidateAnalyticsCache();
@@ -636,6 +684,19 @@ export const finalizeCertificate = async (req, res) => {
       emailSent = true;
     } catch (mailErr) {
       emailError = mailErr.message || 'Email delivery failed';
+    }
+    try {
+      const recipientId = certificate.userId?._id || certificate.userId || request?.userId;
+      if (recipientId) {
+        await notify(recipientId, 'CERTIFICATE_SENT', {
+          title: 'Certificate Finalized and Sent',
+          message: `Your certificate (${certificate.certificateNumber || ''}) has been finalized and sent to your email.`,
+          requestId: request?._id,
+          email: false
+        });
+      }
+    } catch (notifErr) {
+      console.error('[Notification] Error sending certificate finalized notification:', notifErr.message);
     }
 
     if (emailError) {
@@ -884,6 +945,15 @@ export const createCertificateTemplate = async (req, res) => {
       createdBy: req.user.id
     });
 
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'TEMPLATE_CREATED',
+      targetType: 'template',
+      targetId: template._id,
+      meta: { templateCode: template.templateCode, templateName: template.templateName }
+    });
+
     return res.status(201).json({
       message: "Certificate template created successfully",
       template
@@ -1015,6 +1085,15 @@ export const updateCertificateTemplate = async (req, res) => {
 
     await template.save();
 
+    await logAction({
+      req,
+      actor: req.user,
+      action: status !== undefined ? 'TEMPLATE_TOGGLED' : 'TEMPLATE_UPDATED',
+      targetType: 'template',
+      targetId: template._id,
+      meta: { templateCode: template.templateCode, status: template.status }
+    });
+
     return res.status(200).json({
       message: "Certificate template updated successfully",
       template
@@ -1092,7 +1171,14 @@ export const updateRetentionPolicy = async (req, res) => {
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
     console.log(`[retention] policy updated by admin ${req.user.id}: grace=${graceDays}, purge=${purgeDays}`);
-    // TODO: logAction for the retention-policy change.
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'RETENTION_POLICY_UPDATED',
+      targetType: 'retention_policy',
+      targetId: policy._id,
+      meta: { graceDays, purgeDays }
+    });
     return res.status(200).json({ message: 'Retention policy saved.', policy });
   } catch (error) {
     console.error('Update retention policy error:', error);
@@ -1153,7 +1239,14 @@ export const restoreArchivedIntern = async (req, res) => {
     intern.archiveRestoredAt = new Date();
     await intern.save();
     console.log(`[retention] admin ${req.user.id} restored intern ${intern._id}`);
-    // TODO: logAction for the restore.
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'INTERN_RESTORED',
+      targetType: 'user',
+      targetId: intern._id,
+      meta: { email: intern.email }
+    });
     return res.status(200).json({ message: 'Intern restored.', intern: {
       _id: intern._id,
       fullName: intern.fullName,
