@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
 import { sendEmail } from '../utils/sendEmail.js';
 import { logAction } from '../utils/logAction.js';
+import { notify } from '../services/notification.service.js';
 
 const BATCH_SIZE = 100;
 const DAY_MS = 86400000;
@@ -59,15 +60,15 @@ async function sendArchiveWarnings({ graceDays, dryRun, today }) {
         console.log(`[retention] DRY RUN: would email ${intern.email} that account archives on ${archiveDate.toISOString().slice(0, 10)}`);
       } else {
         try {
-          await sendEmail({
-            to: intern.email,
-            subject: 'Your UPTOSKILL internship account will be archived in 7 days',
-            html: `<p>Hello ${escapeHtml(intern.fullName || 'Intern')},</p><p>Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then. Contact an administrator if you need help.</p>`,
+          await notify(intern._id, 'ARCHIVE_WARNING', {
+            title: 'Account Archival Warning',
+            message: `Hello ${escapeHtml(intern.fullName || 'Intern')}, your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then. Contact an administrator if you need help.`,
+            email: true
           });
           intern.archiveWarningSentAt = new Date();
           await intern.save();
         } catch (error) {
-          console.error(`[retention] warning email failed for ${intern._id}:`, error.message);
+          console.error(`[retention] warning notification failed for ${intern._id}:`, error.message);
           continue;
         }
       }

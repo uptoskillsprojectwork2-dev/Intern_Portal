@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
+import NotificationBell from '../../../shared/components/NotificationBell';
 
 import CreateIntern from '../components/CreateIntern';
 import CreateTl from '../components/CreateTl';
@@ -18,8 +19,16 @@ import './AdminDashboard.css';
 const AdminDashboard = () => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [activeView, setActiveView] = useState('overview');
+
+  useEffect(() => {
+    const viewParam = searchParams.get('view');
+    if (viewParam) {
+      setActiveView(viewParam);
+    }
+  }, [searchParams]);
 
   const initials = (user?.fullName || 'Admin')
     .split(' ')
@@ -131,6 +140,7 @@ const AdminDashboard = () => {
         </div>
 
         <div className="admin-topbar-user">
+          <NotificationBell userRole="admin" onNavigateTab={(view) => setActiveView(view)} />
 
           <div className="admin-avatar">
             {initials}

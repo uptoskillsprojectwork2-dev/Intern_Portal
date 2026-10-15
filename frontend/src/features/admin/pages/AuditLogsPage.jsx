@@ -4,6 +4,7 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import useAuditLogs from '../hooks/useAuditLogs';
 import AuditLogFilters from '../components/AuditLogFilters';
 import AuditLogTable from '../components/AuditLogTable';
+import NotificationBell from '../../../shared/components/NotificationBell';
 import './AuditLogsPage.css';
 
 export default function AuditLogsPage() {
@@ -55,6 +56,8 @@ export default function AuditLogsPage() {
           >
             ← Back to Dashboard
           </button>
+
+          <NotificationBell userRole="admin" />
 
           <div className="audit-user-info">
             <div className="audit-avatar">{initials}</div>

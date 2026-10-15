@@ -21,6 +21,7 @@ import {
 import { logAudit } from '../utils/auditLogger.js';
 import { logAction } from '../utils/logAction.js';
 import { invalidateAnalyticsCache } from '../utils/redisCache.js';
+import { notify } from '../services/notification.service.js';
 
 dotenv.config();
 
@@ -612,6 +613,26 @@ export const finalizeRequest = async (req, res) => {
       certificate = await createCertificateDraft(request._id);
     }
 
+    try {
+      if (action === 'approve') {
+        await notify(request.userId, 'REQUEST_APPROVED', {
+          title: 'Certificate Request Approved',
+          message: `Your request for ${request.certificateType} has been approved by Admin and is queued for certificate generation.`,
+          requestId: request._id,
+          email: true
+        });
+      } else if (action === 'reject') {
+        await notify(request.userId, 'REQUEST_REJECTED', {
+          title: 'Certificate Request Rejected',
+          message: `Your request for ${request.certificateType} was rejected by Admin. Reason: ${rejectionReason}`,
+          requestId: request._id,
+          email: true
+        });
+      }
+    } catch (notifErr) {
+      console.error('[Notification] Error sending admin decision notification:', notifErr.message);
+    }
+
     await invalidateAnalyticsCache();
 
     res.json({ request, certificate });
@@ -663,6 +684,19 @@ export const finalizeCertificate = async (req, res) => {
       emailSent = true;
     } catch (mailErr) {
       emailError = mailErr.message || 'Email delivery failed';
+    }
+    try {
+      const recipientId = certificate.userId?._id || certificate.userId || request?.userId;
+      if (recipientId) {
+        await notify(recipientId, 'CERTIFICATE_SENT', {
+          title: 'Certificate Finalized and Sent',
+          message: `Your certificate (${certificate.certificateNumber || ''}) has been finalized and sent to your email.`,
+          requestId: request?._id,
+          email: false
+        });
+      }
+    } catch (notifErr) {
+      console.error('[Notification] Error sending certificate finalized notification:', notifErr.message);
     }
 
     if (emailError) {
