@@ -201,6 +201,58 @@
   background: var(--error-light);
 }
 
+.admin-btn-danger-sm {
+  background: var(--error, #ef4444);
+  color: #fff;
+  border: 1px solid var(--error, #ef4444);
+  border-radius: var(--r-md, 8px);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--dur-fast, 150ms) ease;
+}
+.admin-btn-danger-sm:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+  transform: translateY(-1px);
+}
+.admin-btn-danger-sm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-modal-actions button,
+.admin-modal-actions .admin-btn-sm,
+.admin-modal-actions .admin-btn-primary-sm,
+.admin-modal-actions .admin-btn-danger-sm {
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--r-md, 8px);
+  min-height: 38px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all var(--dur-fast, 150ms) ease;
+}
+
+.admin-modal-actions button:hover:not(:disabled),
+.admin-modal-actions .admin-btn-sm:hover:not(:disabled),
+.admin-modal-actions .admin-btn-primary-sm:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.admin-modal-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* ── SIDEBAR ── */
 .admin-sidebar {
   display: flex;

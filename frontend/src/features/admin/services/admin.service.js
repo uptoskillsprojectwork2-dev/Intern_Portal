@@ -81,6 +81,9 @@ export const getInternById = (id) =>
 export const updateIntern = (id, payload) =>
   request('patch', `/api/admin/interns/${id}`, payload);
 
+export const deleteIntern = (id) =>
+  request('delete', `/api/admin/interns/${id}`);
+
 export const assignInternTeamLeader = (id, teamLeaderId) =>
   request('patch', `/api/admin/interns/${id}/assignment`, {
     teamLeaderId,
@@ -109,6 +112,9 @@ export const getTeamLeaderById = (id) =>
 
 export const updateTeamLeader = (id, payload) =>
   request('patch', `/api/admin/teamleaders/${id}`, payload);
+
+export const deleteTeamLeader = (id) =>
+  request('delete', `/api/admin/teamleaders/${id}`);
 
 export const getInternsByTeamLeader = (id) =>
   request('get', `/api/admin/teamleaders/${id}/interns`);

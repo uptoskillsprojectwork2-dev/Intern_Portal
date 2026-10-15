@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getAllInterns, getAllTeamLeaders, assignInternTeamLeader, updateIntern } from '../services/admin.service';
+import { getAllInterns, getAllTeamLeaders, assignInternTeamLeader, updateIntern, deleteIntern } from '../services/admin.service';
 import AdminInternsTable from './AdminInternsTable';
 import './AdminInternsList.css';
 
@@ -21,6 +21,7 @@ export default function AdminInternsList() {
   const [editingIntern, setEditingIntern] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [editMsg, setEditMsg] = useState(null);
 
   const today = new Date();
@@ -150,6 +151,28 @@ export default function AdminInternsList() {
       setEditMsg({ type: 'error', text: err.message || 'Failed to update intern profile' });
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleDeleteIntern = async () => {
+    if (!editingIntern) return;
+    const confirm = window.confirm(
+      `Are you sure you want to delete intern "${editingIntern.fullName || editingIntern.email}"? This action cannot be undone.`
+    );
+    if (!confirm) return;
+    setDeleteLoading(true);
+    setEditMsg(null);
+    try {
+      await deleteIntern(editingIntern._id);
+      setEditMsg({ type: 'success', text: 'Intern deleted successfully!' });
+      setTimeout(() => {
+        setEditingIntern(null);
+        loadData();
+      }, 700);
+    } catch (err) {
+      setEditMsg({ type: 'error', text: err.message || 'Failed to delete intern' });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -381,16 +404,25 @@ export default function AdminInternsList() {
               <div className="admin-modal-actions">
                 <button
                   type="button"
+                  className="admin-btn-sm admin-btn-danger-sm"
+                  style={{ marginRight: 'auto' }}
+                  onClick={handleDeleteIntern}
+                  disabled={editLoading || deleteLoading}
+                >
+                  {deleteLoading ? 'Deleting...' : 'Delete'}
+                </button>
+                <button
+                  type="button"
                   className="admin-btn-sm"
                   onClick={() => setEditingIntern(null)}
-                  disabled={editLoading}
+                  disabled={editLoading || deleteLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="admin-btn-sm admin-btn-primary-sm"
-                  disabled={editLoading}
+                  disabled={editLoading || deleteLoading}
                 >
                   {editLoading ? 'Saving...' : 'Save Changes'}
                 </button>

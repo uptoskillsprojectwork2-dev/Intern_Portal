@@ -333,6 +333,38 @@ export async function updateIntern(req, res) {
     }
 }
 
+export async function deleteIntern(req, res) {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid intern ID format' });
+        }
+
+        const intern = await User.findOne({ _id: id, role: 'intern' });
+        if (!intern) {
+            return res.status(404).json({ message: 'Intern not found' });
+        }
+
+        await User.findByIdAndDelete(id);
+        await CertificateRequest.deleteMany({ userId: id });
+
+        await logAudit({
+            userId: req.user.id,
+            action: 'DELETE_INTERN_BY_ADMIN',
+            entityType: 'User',
+            entityId: intern._id,
+            description: { email: intern.email, internCode: intern.internCode },
+            req
+        });
+
+        return res.status(200).json({
+            message: 'Intern deleted successfully'
+        });
+    } catch (err) {
+        return res.status(500).json({ message: 'Server error', error: err.message });
+    }
+}
+
 export async function assignInternTeamLeader(req, res) {
     try {
         const { id } = req.params;
@@ -513,6 +545,54 @@ export async function updateTeamLeader(req, res) {
         return res.status(200).json({
             message: 'Team leader updated successfully',
             teamLeader: sanitized
+        });
+    } catch (err) {
+        return res.status(500).json({ message: 'Server error', error: err.message });
+    }
+}
+
+export async function deleteTeamLeader(req, res) {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid team leader ID format' });
+        }
+
+        const tl = await User.findOne({ _id: id, role: 'teamleader' });
+        if (!tl) {
+            return res.status(404).json({ message: 'Team leader not found' });
+        }
+
+        // Unassign interns who were assigned to this Team Leader
+        await User.updateMany(
+            {
+                role: 'intern',
+                $or: [
+                    { 'internshipDetails.teamLeader': tl._id },
+                    { 'internshipDetails.teamleaderEmail': tl.email.toLowerCase() }
+                ]
+            },
+            {
+                $unset: {
+                    'internshipDetails.teamLeader': 1,
+                    'internshipDetails.teamleaderEmail': 1
+                }
+            }
+        );
+
+        await User.findByIdAndDelete(id);
+
+        await logAudit({
+            userId: req.user.id,
+            action: 'DELETE_TEAM_LEADER_BY_ADMIN',
+            entityType: 'User',
+            entityId: tl._id,
+            description: { email: tl.email, fullName: tl.fullName },
+            req
+        });
+
+        return res.status(200).json({
+            message: 'Team leader deleted successfully'
         });
     } catch (err) {
         return res.status(500).json({ message: 'Server error', error: err.message });

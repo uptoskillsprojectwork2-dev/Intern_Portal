@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import useTeamLeaders from '../hooks/useTeamLeaders';
-import { updateTeamLeader } from '../services/admin.service';
+import { updateTeamLeader, deleteTeamLeader } from '../services/admin.service';
 import './TeamLeadersSection.css';
+import './AdminInternsList.css';
 
 export default function TeamLeaderList({ onSelect }) {
   const { teamLeaders, loading, error, refetch } = useTeamLeaders();
@@ -11,6 +12,7 @@ export default function TeamLeaderList({ onSelect }) {
   const [editingTl, setEditingTl] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [editLoading, setEditLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [editMsg, setEditMsg] = useState(null);
 
   const filtered = teamLeaders.filter((tl) => {
@@ -49,6 +51,28 @@ export default function TeamLeaderList({ onSelect }) {
       setEditMsg({ type: 'error', text: err.message || 'Failed to update Team Leader' });
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleDeleteTl = async () => {
+    if (!editingTl) return;
+    const confirm = window.confirm(
+      `Are you sure you want to delete Team Leader "${editingTl.fullName || editingTl.email}"? Assigned interns will be unassigned.`
+    );
+    if (!confirm) return;
+    setDeleteLoading(true);
+    setEditMsg(null);
+    try {
+      await deleteTeamLeader(editingTl._id || editingTl.id);
+      setEditMsg({ type: 'success', text: 'Team Leader deleted successfully!' });
+      setTimeout(() => {
+        setEditingTl(null);
+        refetch();
+      }, 700);
+    } catch (err) {
+      setEditMsg({ type: 'error', text: err.message || 'Failed to delete team leader' });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -191,16 +215,25 @@ export default function TeamLeaderList({ onSelect }) {
               <div className="admin-modal-actions">
                 <button
                   type="button"
+                  className="admin-btn-sm admin-btn-danger-sm"
+                  style={{ marginRight: 'auto' }}
+                  onClick={handleDeleteTl}
+                  disabled={editLoading || deleteLoading}
+                >
+                  {deleteLoading ? 'Deleting...' : 'Delete'}
+                </button>
+                <button
+                  type="button"
                   className="admin-btn-sm"
                   onClick={() => setEditingTl(null)}
-                  disabled={editLoading}
+                  disabled={editLoading || deleteLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="admin-btn-sm admin-btn-primary-sm"
-                  disabled={editLoading}
+                  disabled={editLoading || deleteLoading}
                 >
                   {editLoading ? 'Saving...' : 'Save Changes'}
                 </button>

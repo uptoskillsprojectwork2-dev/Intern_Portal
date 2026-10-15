@@ -10,7 +10,9 @@ import {
   getAllInterns,
   getInternById,
   updateIntern,
+  deleteIntern,
   assignInternTeamLeader,
+  deleteTeamLeader,
   getForwardedRequests,
   finalizeRequest,
   getCertificateDraft,
@@ -62,12 +64,14 @@ adminRouter.post("/create-tl", verifyAuth, requireAdmin, teamLeaderValidator, cr
 adminRouter.get("/interns", verifyAuth, requireAdmin, getAllInterns);
 adminRouter.get("/interns/:id", verifyAuth, requireAdmin, getInternById);
 adminRouter.patch("/interns/:id", verifyAuth, requireAdmin, updateInternValidator, updateIntern);
+adminRouter.delete("/interns/:id", verifyAuth, requireAdmin, deleteIntern);
 adminRouter.patch("/interns/:id/assignment", verifyAuth, requireAdmin, assignTeamLeaderValidator, assignInternTeamLeader);
 
 // Team Leader Management routes
 adminRouter.get("/teamleaders", verifyAuth, requireAdmin, getAllTeamLeaders);
 adminRouter.get("/teamleaders/:id", verifyAuth, requireAdmin, getTeamLeaderById);
 adminRouter.patch("/teamleaders/:id", verifyAuth, requireAdmin, updateTeamLeader);
+adminRouter.delete("/teamleaders/:id", verifyAuth, requireAdmin, deleteTeamLeader);
 adminRouter.get("/teamleaders/:id/interns", verifyAuth, requireAdmin, getInternsByTeamLeader);
 
 adminRouter.get("/forwarded-requests", verifyAuth, requireAdmin, getForwardedRequests);

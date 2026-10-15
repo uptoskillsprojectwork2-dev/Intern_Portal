@@ -269,11 +269,6 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
             Account Retention
           </button>
         </nav>
-
-        <div className="admin-sidebar-note">
-          <span>●</span>
-          Admin access enabled
-        </div>
       </aside>
 
       {/* ── MAIN CONTENT ── */}
