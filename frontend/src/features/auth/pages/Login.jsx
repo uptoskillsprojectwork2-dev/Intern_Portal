@@ -10,7 +10,10 @@ import {
   IconCheck,
   IconClose,
   IconTrendingUp,
-  IconActivity
+  IconActivity,
+  IconShield,
+  IconUsers,
+  IconAward
 } from '../../shared/components/Icons';
 import '../../../app/App.css';
 import './Login.css';
@@ -148,60 +151,46 @@ export default function Login() {
             Sign in to manage your professional journey, oversee interns, and accelerate verified certifications.
           </p>
 
-          {/* Product preview card (mirrors dashboard stat-card style) */}
+          {/* Product preview card: Unified multi-role workspaces */}
           <div className="login-product-card login-anim-3" aria-hidden="true">
-            <div className="login-product-card-top">
-              {/* Metric 1: Active Interns with Indigo sparkline */}
-              <div className="login-product-metric">
-                <div className="login-metric-header">
-                  <span className="login-metric-label">Active Interns</span>
-                  <span className="login-metric-badge cobalt">
-                    <IconTrendingUp size={11} /> 1,280 active
-                  </span>
+            <div className="login-workspaces-header">
+              <span className="login-workspaces-eyebrow">PORTAL WORKSPACES</span>
+              <span className="login-workspaces-badge">
+                <span className="login-status-dot" aria-hidden="true" />
+                Active System
+              </span>
+            </div>
+
+            <div className="login-roles-grid">
+              <div className="login-role-card">
+                <div className="login-role-pill admin">
+                  <IconShield size={12} /> Admin
                 </div>
-                <div className="login-metric-value">1,280</div>
-                <div className="login-metric-chart">
-                  <svg width="100%" height="24" viewBox="0 0 140 24" fill="none">
-                    <path
-                      d="M0 18 C25 14 45 4 75 14 C105 24 120 8 140 10"
-                      stroke="var(--accent)"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      opacity="0.85"
-                    />
-                  </svg>
-                </div>
+                <div className="login-role-title">Governance & Audits</div>
+                <div className="login-role-desc">User control & security logs</div>
               </div>
 
-              <div className="login-metric-divider" />
+              <div className="login-role-card">
+                <div className="login-role-pill tl">
+                  <IconUsers size={12} /> Team Leader
+                </div>
+                <div className="login-role-title">Mentorship & Review</div>
+                <div className="login-role-desc">Evaluations & approvals</div>
+              </div>
 
-              {/* Metric 2: Completion Rate with Orange sparkline */}
-              <div className="login-product-metric">
-                <div className="login-metric-header">
-                  <span className="login-metric-label">Completion Rate</span>
-                  <span className="login-metric-badge coral">
-                    <IconActivity size={11} /> 98.4%
-                  </span>
+              <div className="login-role-card">
+                <div className="login-role-pill intern">
+                  <IconAward size={12} /> Intern
                 </div>
-                <div className="login-metric-value">98.4%</div>
-                <div className="login-metric-chart">
-                  <svg width="100%" height="24" viewBox="0 0 140 24" fill="none">
-                    <path
-                      d="M0 20 C20 16 50 20 80 8 C110 0 125 14 140 6"
-                      stroke="var(--coral)"
-                      strokeWidth="2.2"
-                      strokeLinecap="round"
-                      opacity="0.85"
-                    />
-                  </svg>
-                </div>
+                <div className="login-role-title">Learning Journey</div>
+                <div className="login-role-desc">Tasks & verified certs</div>
               </div>
             </div>
 
-            {/* Static status row with small pulsing dot instead of spinner */}
+            {/* Static status row with small pulsing dot */}
             <div className="login-product-status">
               <span className="login-status-dot" aria-hidden="true" />
-              <span>Lifecycle Engine · Auto-retention & archiving</span>
+              <span>Lifecycle Engine · Auto-retention & archiving active</span>
             </div>
           </div>
 
