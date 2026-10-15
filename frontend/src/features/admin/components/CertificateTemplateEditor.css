@@ -210,27 +210,175 @@
   color: var(--text-primary);
 }
 
+.certificate-editor-top-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Zoom controls pill */
+.certificate-zoom-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  padding: 3px 6px;
+}
+
+.certificate-zoom-bar button {
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  line-height: 1;
+  font-family: var(--font-ui);
+}
+
+.certificate-zoom-bar button:hover {
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+.certificate-zoom-btn.active {
+  background: var(--grad-btn) !important;
+  color: #ffffff !important;
+  box-shadow: var(--shadow-sm);
+}
+
+.certificate-zoom-label {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  min-width: 44px;
+  text-align: center;
+  user-select: none;
+}
+
+/* Header Save Button */
+.btn-save-template-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--r-md);
+  border: 0;
+  background: var(--grad-btn);
+  color: #ffffff;
+  box-shadow: var(--shadow-accent);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  font-family: var(--font-ui);
+}
+
+.btn-save-template-header:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btn-save-template-header:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Outer canvas viewport scroll container */
 .certificate-editor-canvas-wrap {
   width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   border-radius: var(--r-lg);
   border: 1px solid var(--border);
   background: var(--surface-2);
   padding: 24px;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
+  min-height: 580px;
+}
+
+/* Stage container matches scaled bounding box so layout is exact */
+.certificate-canvas-stage {
+  flex-shrink: 0;
+  margin: 0 auto;
+  position: relative;
+  transition: width 0.15s ease, height 0.15s ease;
+}
+
+/* Viewport is 1123x794 native A4, scaled with CSS transform */
+.certificate-canvas-viewport {
+  width: 1123px;
+  height: 794px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
+  overflow: hidden;
+  transform-origin: top left;
+}
+
+.certificate-template-editor {
+  width: 1123px;
+  height: 794px;
+  margin: 0;
+  padding: 0;
+  display: block;
+  position: relative;
+}
+
+.certificate-editor-actions {
+  display: none;
 }
 
 .certificate-editor-canvas {
-  width: 1123px;
-  min-height: 794px;
+  width: 1123px !important;
+  min-width: 1123px !important;
+  height: 794px !important;
+  min-height: 794px !important;
   background: #ffffff !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
   border-radius: 4px;
+  margin: 0 !important;
+  overflow: hidden;
+  display: block !important;
+}
+
+.certificate-editor-canvas .gjs-editor {
+  width: 1123px !important;
+  height: 794px !important;
+  background: #ffffff !important;
+}
+
+.certificate-editor-canvas .gjs-cv-canvas {
+  width: 1123px !important;
+  height: 794px !important;
+  background: #ffffff !important;
+  top: 0 !important;
+  left: 0 !important;
 }
 
 .certificate-editor-canvas .gjs-frame {
+  width: 1123px !important;
+  min-width: 1123px !important;
+  height: 794px !important;
+  min-height: 794px !important;
   background: #ffffff !important;
+  border: none !important;
+  display: block !important;
+  margin: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
 }
 
 /* Preview Frame */
@@ -243,16 +391,20 @@
   padding: 24px;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
 }
 
 .certificate-preview-frame {
-  width: 1123px;
-  height: 794px;
+  width: 1123px !important;
+  min-width: 1123px !important;
+  height: 794px !important;
+  min-height: 794px !important;
   border: none;
   display: block;
-  background: #ffffff;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.14);
-  border-radius: 4px;
+  margin: 0;
+  background: #ffffff !important;
+  box-shadow: none;
+  border-radius: 0;
 }
 
 /* ── SIDEBAR PANEL (Placeholders & Sample Data) ── */

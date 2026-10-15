@@ -11,18 +11,26 @@ import "../components/CertificateTemplateEditor.css";
 
 const SAMPLE_DATA = {
   fullName: "Sarvesh Choudhary",
+  internName: "Sarvesh Choudhary",
   internCode: "UPT-2026-001",
   domain: "Web Development",
+  department: "Web Development",
   startDate: "01 October 2026",
   endDate: "31 December 2026",
   issueDate: "06 October 2026",
+  issuedDate: "06 October 2026",
   requestNumber: "CERT-2026-00019",
+  certificateNumber: "CERT-2026-00019",
   certificateTitle: "Certificate of Completion",
   qrCodeUrl: "https://example.com/verify/CERT-2026-00019",
 };
 
+const SAMPLE_QR_SVG = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#ffffff"/><path d="M10,10 h30 v30 h-30 z M15,15 v20 h20 v-20 z M20,20 h10 v10 h-10 z" fill="#0f172a"/><path d="M60,10 h30 v30 h-30 z M65,15 v20 h20 v-20 z M70,20 h10 v10 h-10 z" fill="#0f172a"/><path d="M10,60 h30 v30 h-30 z M15,65 v20 h20 v-20 z M20,70 h10 v10 h-10 z" fill="#0f172a"/><rect x="48" y="15" width="8" height="8" fill="#0f172a"/><rect x="48" y="30" width="8" height="8" fill="#0f172a"/><rect x="15" y="48" width="8" height="8" fill="#0f172a"/><rect x="30" y="48" width="8" height="8" fill="#0f172a"/><rect x="48" y="48" width="12" height="12" fill="#0f172a"/><rect x="68" y="48" width="8" height="8" fill="#0f172a"/><rect x="48" y="68" width="8" height="8" fill="#0f172a"/><rect x="68" y="68" width="16" height="16" fill="#0f172a"/></svg>')}`;
+
+const starterHtml = `<!doctype html><html><head><meta charset="utf-8"><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"><style>@page{size:A4 landscape;margin:0}*{box-sizing:border-box}body{margin:0;width:1123px;height:794px;padding:40px;background:#fff;color:#0f172a;font-family:'Inter',sans-serif;text-align:center}.certificate{border:12px solid #0f172a;outline:3px solid #d97706;outline-offset:-6px;height:714px;padding:48px 36px;background:#ffffff;display:flex;flex-direction:column;justify-content:space-between;align-items:center}h1{font-family:'Playfair Display',serif;color:#0f172a;font-size:46px;margin:10px 0}h2{font-family:'Playfair Display',serif;color:#d97706;font-size:38px;margin:10px 0;border-bottom:2px solid #0f172a;display:inline-block;padding-bottom:4px}p{font-size:18px;color:#334155;margin:8px 0}.sig-block{border-top:1px solid #0f172a;width:240px;padding-top:8px;font-size:14px;color:#0f172a;font-weight:600}</style></head><body><main class="certificate"><div><p style="text-transform:uppercase;letter-spacing:3px;font-size:14px;color:#64748b;margin-bottom:4px">UPTOSKILL OFFICIAL CREDENTIAL</p><h1>{{certificateTitle}}</h1><p style="font-style:italic">This certificate is proudly presented to</p><h2>{{fullName}}</h2><p style="max-width:760px;margin:16px auto">For successful completion of the internship program in <strong>{{domain}}</strong> from <strong>{{startDate}}</strong> to <strong>{{endDate}}</strong>.</p></div><div style="width:100%;display:flex;justify-content:space-between;align-items:flex-end;padding:0 30px"><div class="sig-block"><p style="margin:0">Authorized Signatory</p><small style="color:#64748b;font-weight:400">Director</small></div><div style="width:80px;height:80px"><img width="80" height="80" src="{{qrCodeUrl}}" alt="QR Code" style="object-fit:contain"></div><div class="sig-block"><p style="margin:0">{{issueDate}}</p><small style="color:#64748b;font-weight:400">Date of Issue</small></div></div><p style="font-size:11px;color:#94a3b8;font-family:monospace">Ref: {{requestNumber}} | Intern Code: {{internCode}}</p></main></body></html>`;
+
 function getTemplateHtml(template) {
-  return template?.htmlContent || template?.content || "";
+  return template?.htmlContent || template?.content || starterHtml;
 }
 
 function replacePlaceholders(html) {
@@ -30,9 +38,21 @@ function replacePlaceholders(html) {
 
   let previewHtml = html;
 
+  // Replace qrCodeUrl placeholders with image tags so raw text never overflows
+  previewHtml = previewHtml.replace(
+    /src=["']\{\{\s*qrCodeUrl\s*\}\}["']/gi,
+    `src="${SAMPLE_QR_SVG}"`
+  );
+  previewHtml = previewHtml.replace(
+    /\{\{\s*qrCodeUrl\s*\}\}/gi,
+    `<img src="${SAMPLE_QR_SVG}" alt="QR Code" style="width:100%;height:100%;object-fit:contain;display:block;" />`
+  );
+
   Object.entries(SAMPLE_DATA).forEach(([key, value]) => {
-    const placeholder = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-    previewHtml = previewHtml.replace(placeholder, value);
+    if (key !== "qrCodeUrl") {
+      const placeholder = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+      previewHtml = previewHtml.replace(placeholder, value);
+    }
   });
 
   return previewHtml;
@@ -92,7 +112,25 @@ export default function CertificateTemplateEditorPage({ embedded = false }) {
     };
   }, []);
 
-  const starterHtml = `<!doctype html><html><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:0}*{box-sizing:border-box}body{margin:0;min-height:794px;padding:80px;background:#fff;color:#172554;font-family:Arial,sans-serif;text-align:center}.certificate{border:8px double #d4a72c;min-height:620px;padding:70px 36px}h1{color:#123a67;font-size:42px}p{font-size:20px}</style></head><body><main class="certificate"><h1>{{certificateTitle}}</h1><p>This certificate is presented to</p><h2>{{fullName}}</h2><p>For completing {{domain}}</p><p>{{startDate}} — {{endDate}}</p><p>Certificate {{requestNumber}}</p><img width="100" src="{{qrCodeUrl}}" alt="Verification QR code"></main></body></html>`;
+  const [zoom, setZoom] = useState(0.70);
+  const [autoFit, setAutoFit] = useState(true);
+  const canvasWrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!autoFit || !canvasWrapRef.current) return;
+    const calculateFit = () => {
+      if (!canvasWrapRef.current) return;
+      const availableWidth = canvasWrapRef.current.clientWidth - 48;
+      if (availableWidth > 320) {
+        const fitScale = Math.min(1.0, Math.max(0.4, Number((availableWidth / 1123).toFixed(2))));
+        setZoom(fitScale);
+      }
+    };
+    calculateFit();
+    const ro = new ResizeObserver(calculateFit);
+    ro.observe(canvasWrapRef.current);
+    return () => ro.disconnect();
+  }, [autoFit]);
 
   const selectedTemplate = useMemo(() => {
     if (!selectedTemplateId) {
@@ -520,34 +558,117 @@ export default function CertificateTemplateEditorPage({ embedded = false }) {
               </small>
             </div>
 
-            {saving && (
-              <span className="certificate-template-saving-badge">
-                Saving template…
-              </span>
-            )}
+            <div className="certificate-editor-top-controls">
+              {/* Zoom Controls */}
+              <div className="certificate-zoom-bar">
+                <button
+                  type="button"
+                  title="Zoom Out"
+                  onClick={() => {
+                    setAutoFit(false);
+                    setZoom((prev) => Math.max(0.4, Number((prev - 0.05).toFixed(2))));
+                  }}
+                >
+                  −
+                </button>
+                <span className="certificate-zoom-label">{Math.round(zoom * 100)}%</span>
+                <button
+                  type="button"
+                  title="Zoom In"
+                  onClick={() => {
+                    setAutoFit(false);
+                    setZoom((prev) => Math.min(1.5, Number((prev + 0.05).toFixed(2))));
+                  }}
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  className={`certificate-zoom-btn ${autoFit ? "active" : ""}`}
+                  title="Fit to Screen"
+                  onClick={() => setAutoFit(true)}
+                >
+                  Fit
+                </button>
+                <button
+                  type="button"
+                  className={`certificate-zoom-btn ${!autoFit && zoom === 1 ? "active" : ""}`}
+                  title="100% Size"
+                  onClick={() => {
+                    setAutoFit(false);
+                    setZoom(1);
+                  }}
+                >
+                  100%
+                </button>
+              </div>
+
+              {/* Primary Save Button in Header */}
+              {!previewMode && (
+                <button
+                  type="button"
+                  className="btn-template-primary btn-save-template-header"
+                  disabled={saving}
+                  onClick={async () => {
+                    if (!editorController) return;
+                    try {
+                      const html = editorController.getHtml();
+                      const ok = await handleSave(html);
+                      if (ok) {
+                        editorController.markSaved();
+                      }
+                    } catch (err) {
+                      console.error("Save error:", err);
+                    }
+                  }}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                  </svg>
+                  {saving ? "Saving…" : isDirty ? "Save Changes *" : "Save Template"}
+                </button>
+              )}
+            </div>
           </div>
 
-          {previewMode ? (
-            <div className="certificate-preview-container">
-              <iframe
-                title="Certificate Preview"
-                srcDoc={previewHtml}
-                className="certificate-preview-frame"
-              />
+          <div ref={canvasWrapRef} className="certificate-editor-canvas-wrap">
+            <div
+              className="certificate-canvas-stage"
+              style={{
+                width: `${Math.round(1123 * zoom)}px`,
+                height: `${Math.round(794 * zoom)}px`,
+              }}
+            >
+              <div
+                className="certificate-canvas-viewport"
+                style={{
+                  transform: `scale(${zoom})`,
+                  transformOrigin: "top left",
+                }}
+              >
+                {previewMode ? (
+                  <iframe
+                    title="Certificate Preview"
+                    srcDoc={previewHtml}
+                    className="certificate-preview-frame"
+                  />
+                ) : (
+                  <CertificateTemplateEditor
+                    key={createMode ? "new-template" : selectedTemplate?._id || "new-template"}
+                    initialHtml={createMode ? starterHtml : getTemplateHtml(selectedTemplate)}
+                    onSave={handleSave}
+                    onChange={handleEditorChange}
+                    onDirtyChange={handleEditorDirtyChange}
+                    onEditorReady={handleEditorReady}
+                    saving={saving}
+                    hideSaveButton={true}
+                  />
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="certificate-editor-canvas-wrap">
-              <CertificateTemplateEditor
-                key={createMode ? "new-template" : selectedTemplate?._id || "new-template"}
-                initialHtml={createMode ? starterHtml : getTemplateHtml(selectedTemplate)}
-                onSave={handleSave}
-                onChange={handleEditorChange}
-                onDirtyChange={handleEditorDirtyChange}
-                onEditorReady={handleEditorReady}
-                saving={saving}
-              />
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Sidebar: Placeholders & Sample Data */}

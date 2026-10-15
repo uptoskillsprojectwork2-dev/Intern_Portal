@@ -61,6 +61,7 @@ export default function CertificateTemplateEditor({
   onEditorReady,
   readOnly = false,
   saving = false,
+  hideSaveButton = false,
 }) {
   const editorContainerRef = useRef(null);
   const editorRef = useRef(null);
@@ -140,12 +141,11 @@ export default function CertificateTemplateEditor({
 
       let editorHtml = parts.html;
 
-      // Replace QR placeholder with sample QR image
+      // Replace QR placeholder with sample QR image tag to prevent raw base64 string overflow
       if (qrDataUrl) {
-        editorHtml = editorHtml.replace(
-          /\{\{\s*qrCodeUrl\s*\}\}/gi,
-          qrDataUrl
-        );
+        editorHtml = editorHtml
+          .replace(/src=["']\{\{\s*qrCodeUrl\s*\}\}["']/gi, `src="${qrDataUrl}"`)
+          .replace(/\{\{\s*qrCodeUrl\s*\}\}/gi, `<img src="${qrDataUrl}" alt="QR Code" style="width:100%;height:100%;object-fit:contain;display:block;" />`);
       }
 
       // --------------------------------------------------
@@ -156,7 +156,7 @@ export default function CertificateTemplateEditor({
 
         height: `${A4_HEIGHT}px`,
 
-        width: "100%",
+        width: `${A4_WIDTH}px`,
 
         storageManager: false,
 
@@ -177,6 +177,7 @@ export default function CertificateTemplateEditor({
         },
 
         deviceManager: {
+          default: "a4-landscape",
           devices: [
             {
               id: "a4-landscape",
@@ -192,6 +193,7 @@ export default function CertificateTemplateEditor({
         // --------------------------------------------------
         canvas: {
           styles: [
+            "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap",
             `
             * {
               box-sizing: border-box;
@@ -213,6 +215,7 @@ export default function CertificateTemplateEditor({
               background: #ffffff !important;
               color: #111827 !important;
               overflow: visible;
+              font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             }
 
             img {
@@ -288,7 +291,11 @@ export default function CertificateTemplateEditor({
 
       const serialize = () => {
         let html = editor.getHtml();
-        if (qrDataUrl) html = html.replaceAll(qrDataUrl, "{{qrCodeUrl}}");
+        if (qrDataUrl) {
+          html = html
+            .replace(/<img[^>]*alt=["']QR Code["'][^>]*src=["'][^"']*["'][^>]*\/?>/gi, "{{qrCodeUrl}}")
+            .replaceAll(qrDataUrl, "{{qrCodeUrl}}");
+        }
         return `<style>\n${editor.getCss()}\n</style>\n${html}`.trim();
       };
 
@@ -330,51 +337,51 @@ export default function CertificateTemplateEditor({
       // Force A4 white canvas after GrapesJS loads
       // --------------------------------------------------
       editor.on("load", () => {
+        try {
+          editor.setDevice("a4-landscape");
+        } catch (e) {}
+
         const frame = editor.Canvas.getFrameEl();
 
         if (!frame) {
           return;
         }
 
+        frame.style.width = `${A4_WIDTH}px`;
+        frame.style.height = `${A4_HEIGHT}px`;
+        frame.style.margin = "0 auto";
+        frame.style.display = "block";
+        frame.style.background = "#ffffff";
+
         const frameDocument = frame.contentDocument;
 
-        if (!frameDocument) {
-          return;
+        if (frameDocument) {
+          if (!frameDocument.querySelector("link[href*='Playfair']")) {
+            const fontLink = frameDocument.createElement("link");
+            fontLink.rel = "stylesheet";
+            fontLink.href = "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap";
+            frameDocument.head.appendChild(fontLink);
+          }
+
+          const htmlElement = frameDocument.documentElement;
+          const bodyElement = frameDocument.body;
+
+          if (htmlElement) {
+            htmlElement.style.width = `${A4_WIDTH}px`;
+            htmlElement.style.minHeight = `${A4_HEIGHT}px`;
+            htmlElement.style.background = "#ffffff";
+          }
+
+          if (bodyElement) {
+            bodyElement.style.width = `${A4_WIDTH}px`;
+            bodyElement.style.minHeight = `${A4_HEIGHT}px`;
+            bodyElement.style.margin = "0";
+            bodyElement.style.padding = "0";
+            bodyElement.style.background = "#ffffff";
+            bodyElement.style.color = "#111827";
+            bodyElement.style.overflow = "visible";
+          }
         }
-
-        const htmlElement =
-          frameDocument.documentElement;
-
-        const bodyElement =
-          frameDocument.body;
-
-        htmlElement.style.width =
-          `${A4_WIDTH}px`;
-
-        htmlElement.style.minHeight =
-          `${A4_HEIGHT}px`;
-
-        htmlElement.style.background =
-          "#ffffff";
-
-        bodyElement.style.width =
-          `${A4_WIDTH}px`;
-
-        bodyElement.style.minHeight =
-          `${A4_HEIGHT}px`;
-
-        bodyElement.style.margin = "0";
-
-        bodyElement.style.padding = "0";
-
-        bodyElement.style.background =
-          "#ffffff";
-
-        bodyElement.style.color =
-          "#111827";
-
-        bodyElement.style.overflow =
-          "visible";
       });
 
       // --------------------------------------------------
@@ -429,7 +436,7 @@ export default function CertificateTemplateEditor({
           Preparing the A4 editor…
         </div>
       )}
-      {onSave && (
+      {onSave && !hideSaveButton && (
         <div className="certificate-editor-actions">
           <div>
             {saveError && <p className="certificate-editor-save-error" role="alert">{saveError}</p>}
