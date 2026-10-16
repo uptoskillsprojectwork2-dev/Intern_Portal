@@ -204,6 +204,12 @@ export const downloadAdminCertificate = async (id, fileName) => {
   }
 };
 
+export const revokeCertificate = (id, reason) =>
+  request('patch', `/api/admin/certificates/${id}/revoke`, { reason });
+
+export const unrevokeCertificate = (id) =>
+  request('patch', `/api/admin/certificates/${id}/unrevoke`);
+
 /*
 |--------------------------------------------------------------------------
 | Certificate Template Management API

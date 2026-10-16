@@ -4,6 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Login from '../features/auth/pages/Login';
 import ForgotPasswordPage from '../features/auth/pages/ForgotPasswordPage';
 import ResetPasswordPage from '../features/auth/pages/ResetPasswordPage';
+import VerifyPage from '../features/public/pages/VerifyPage';
 
 import ProtectedRoute from '../features/shared/components/ProtectedRoute';
 import ThemeToggle from '../features/shared/components/ThemeToggle';
@@ -58,6 +59,10 @@ export default function App() {
           </div>
           <ResetPasswordPage />
         </>
+      } />
+
+      <Route path="/verify/:verifyId" element={
+        <VerifyPage theme={theme} onToggleTheme={toggleTheme} />
       } />
 
       {/* =========================
