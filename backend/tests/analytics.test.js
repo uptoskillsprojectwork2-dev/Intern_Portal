@@ -272,6 +272,7 @@ test('Admin Analytics Controller Tests', async (t) => {
     const origCertReqFind = CertificateRequest.find;
     const origUserFind = User.find;
     const origAuditCreate = AuditLog.create;
+    const origReadyState = mongoose.connection.readyState;
 
     User.countDocuments = async () => 10;
     User.find = () => ({ select: async () => [{ _id: new mongoose.Types.ObjectId() }] });
@@ -287,6 +288,7 @@ test('Admin Analytics Controller Tests', async (t) => {
       assert.equal(doc.action, 'EXPORT_ANALYTICS');
       return doc;
     };
+    mongoose.connection.readyState = 1;
 
     const req = { user: { id: adminId }, query: { type: 'overview' } };
     const res = mockRes();
@@ -304,6 +306,7 @@ test('Admin Analytics Controller Tests', async (t) => {
     Certificate.countDocuments = origCertCount;
     CertificateRequest.find = origCertReqFind;
     AuditLog.create = origAuditCreate;
+    mongoose.connection.readyState = origReadyState;
   });
 
   await t.test('GET /export?format=xlsx creates a workbook and logs its format', async () => {
@@ -313,6 +316,7 @@ test('Admin Analytics Controller Tests', async (t) => {
     const origCertCount = Certificate.countDocuments;
     const origCertReqFind = CertificateRequest.find;
     const origAuditCreate = AuditLog.create;
+    const origReadyState = mongoose.connection.readyState;
     let auditFormat;
 
     User.countDocuments = async () => 1;
@@ -321,6 +325,7 @@ test('Admin Analytics Controller Tests', async (t) => {
     Certificate.countDocuments = async () => 0;
     CertificateRequest.find = () => ({ select: async () => [] });
     AuditLog.create = async (doc) => { auditFormat = JSON.parse(doc.description).format; return doc; };
+    mongoose.connection.readyState = 1;
 
     try {
       const req = { user: { id: adminId }, query: { type: 'overview', format: 'xlsx', range: '30d' } };
@@ -340,6 +345,7 @@ test('Admin Analytics Controller Tests', async (t) => {
       Certificate.countDocuments = origCertCount;
       CertificateRequest.find = origCertReqFind;
       AuditLog.create = origAuditCreate;
+      mongoose.connection.readyState = origReadyState;
     }
   });
 });

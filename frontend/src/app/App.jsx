@@ -14,6 +14,7 @@ import TLDashboard from '../features/teamleader/pages/TLDashboard';
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
 import CertificateReviewPage from '../features/admin/pages/CertificateReviewPage';
 import CertificateTemplateEditorPage from '../features/admin/pages/CertificateTemplateEditorPage';
+import CertificateVerificationPage from '../features/shared/pages/CertificateVerificationPage';
 
 import './App.css';
 
@@ -58,6 +59,11 @@ export default function App() {
         <Route
           path="/reset-password/:token"
           element={<ResetPasswordPage />}
+        />
+
+        <Route
+          path="/verify/:certificateNumber"
+          element={<CertificateVerificationPage />}
         />
 
         {/* =========================

@@ -522,7 +522,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     const compTpl = templates.find((t) => t.certificateType === 'completion_certificate');
     CertificateTemplate.findOne = () => Promise.resolve({
       _id: new mongoose.Types.ObjectId(),
-      content: compTpl.content
+      content: `${compTpl.content}\n<a href="{{verificationUrl}}">Verify</a><img src="{{qrCodeUrl}}" alt="QR">`
     });
 
     Certificate.create = (doc) => Promise.resolve({
@@ -535,6 +535,11 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
       assert.ok(draft.htmlContent.includes('Jane Doe'));
       assert.ok(draft.htmlContent.includes('Certificate of Completion'));
       assert.ok(draft.htmlContent.includes('Full Stack'));
+      assert.match(draft.certificateNumber, /^CERT-\d{4}-\d{5}$/);
+      assert.match(draft.verificationCode, /^VER-[0-9A-F]{32}$/);
+      assert.equal(draft.verificationIdVersion, 2);
+      assert.match(draft.htmlContent, /<img src="data:image\/png;base64,[^"]+" alt="QR">/);
+      assert.match(draft.htmlContent, new RegExp(`/verify/${draft.verificationCode}`));
     } finally {
       CertificateRequest.findById = origRequestFindById;
       CertificateTemplate.findOne = origTemplateFindOne;

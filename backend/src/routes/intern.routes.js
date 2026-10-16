@@ -4,6 +4,8 @@ import verifyAuth from '../middlewares/verifyAuth.js';
 import {
   getMyRequests,
   getProfile,
+  getNotifications,
+  markNotificationAsRead,
   submitCertificateRequest,
   getCertificateForRequest,
   downloadCertificateForRequest
@@ -32,6 +34,9 @@ internRouter.use(async (req, res, next) => {
 });
 
 internRouter.get('/profile', getProfile);
+
+internRouter.get('/notifications', getNotifications);
+internRouter.patch('/notifications/:id/read', markNotificationAsRead);
 
 internRouter.post('/request-certificate', submitCertificateRequest);
 

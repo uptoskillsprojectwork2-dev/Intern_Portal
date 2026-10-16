@@ -164,6 +164,8 @@
   color: #eab308;
 }
 
+.cert-status-tag.is-revoked { background: rgba(239, 68, 68, .15); color: #ef4444; }
+
 .cert-pdf-btn {
   display: inline-flex;
   align-items: center;
@@ -188,6 +190,11 @@
   opacity: 0.6;
   cursor: wait;
 }
+
+.cert-row-actions { display: flex; align-items: center; gap: 8px; }
+.cert-revoke-btn { padding: 5px 10px; border: 1px solid #ef4444; border-radius: 6px; background: transparent; color: #ef4444; font-size: 12px; font-weight: 700; cursor: pointer; }
+.cert-revoke-btn:hover:not(:disabled) { background: #ef4444; color: #fff; }
+.cert-revoke-btn:disabled { opacity: .6; cursor: wait; }
 
 .cert-review-link-btn {
   display: inline-flex;

@@ -1,57 +1,100 @@
 import mongoose from "mongoose";
 
 const auditLogSchema = new mongoose.Schema(
-{
+  {
+    actorId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      index: true
+    },
     userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
-        index: true
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      index: true
     },
-
+    actorRole: {
+      type: String,
+      trim: true,
+      default: "system"
+    },
     action: {
-        type: String,
-        required: true,
-        trim: true,
-        index: true
+      type: String,
+      required: true,
+      trim: true,
+      index: true
     },
-
+    targetType: {
+      type: String,
+      trim: true,
+      default: "unknown"
+    },
     entityType: {
-        type: String,
-        required: true,
-        trim: true
+      type: String,
+      trim: true,
+      default: "unknown"
     },
-
+    targetId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null
+    },
     entityId: {
-        type: mongoose.Schema.Types.ObjectId
+      type: mongoose.Schema.Types.ObjectId,
+      default: null
     },
-
+    meta: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
+    },
     description: {
-        type: String
+      type: String
     },
-
+    ip: {
+      type: String,
+      default: ""
+    },
     ipAddress: {
-        type: String
+      type: String,
+      default: ""
     },
-
     userAgent: {
-        type: String
+      type: String,
+      default: ""
     }
-},
-{
-    timestamps: true
-});
+  },
+  {
+    timestamps: {
+      createdAt: true,
+      updatedAt: false
+    }
+  }
+);
+
+auditLogSchema.index({ actorId: 1, action: 1, targetType: 1, createdAt: -1 });
+auditLogSchema.index({ action: 1, createdAt: -1 });
+auditLogSchema.index({ targetType: 1, createdAt: -1 });
+auditLogSchema.index({ createdAt: -1 });
 
 auditLogSchema.pre("save", async function () {
-    if (this.userId) {
-        const userModel = mongoose.model("user");
-        const user = await userModel.findById(this.userId);
-        if (!user) throw new Error("userId does not reference an existing user");
-    }
+  if (!this.isNew) throw new Error("Audit logs are append-only and cannot be modified or deleted.");
+  const actorId = this.actorId || this.userId;
+  if (actorId) {
+    const userModel = mongoose.model("user");
+    const user = await userModel.findById(actorId);
+    if (!user) throw new Error("actorId does not reference an existing user");
+  }
+});
+
+auditLogSchema.pre(["findOneAndUpdate", "findOneAndReplace", "updateOne", "updateMany", "replaceOne", "findOneAndDelete", "deleteOne", "deleteMany"], function () {
+  throw new Error("Audit logs are append-only and cannot be modified or deleted.");
+});
+
+auditLogSchema.pre("bulkWrite", function () {
+  throw new Error("Audit logs are append-only and cannot be modified or deleted.");
 });
 
 const auditLogModel = mongoose.model(
-    "audit_log",
-    auditLogSchema
+  "audit_log",
+  auditLogSchema
 );
 
 export default auditLogModel;

@@ -6,8 +6,12 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
+import Notification from '../models/Notification.js';
 import Counter from '../models/Counter.model.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
+import { markNotificationRead } from '../utils/notificationService.js';
+import { logAudit } from '../utils/auditLogger.js';
+import { createNotification } from '../utils/notificationService.js';
 
 const ALLOWED_TYPES = [
   'offer_letter',
@@ -119,6 +123,15 @@ export const submitCertificateRequest = async (req, res) => {
       metadata: safeMetadata
     });
 
+    await logAudit({ userId: req.user.id, action: 'CERTIFICATE_REQUEST_SUBMITTED', entityType: 'CertificateRequest', entityId: request._id, meta: { certificateType, requestNumber }, req });
+    const teamLeaderId = user.internshipDetails?.teamLeader;
+    if (teamLeaderId) await createNotification({
+      userId: teamLeaderId,
+      title: 'New certificate request',
+      message: `${user.fullName} submitted a ${certificateType.replaceAll('_', ' ')} request for your review.`,
+      type: 'certificate',
+    });
+
     return res.status(201).json({ request });
   } catch (err) {
     return res.status(500).json({
@@ -201,6 +214,47 @@ export const getProfile = async (req, res) => {
     }
 
     return res.json({ user, archiveNotice });
+  } catch (err) {
+    return res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
+  }
+};
+
+export const getNotifications = async (req, res) => {
+  try {
+    const notifications = await Notification.find({ userId: req.user.id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+
+    const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+
+    return res.json({ notifications, unreadCount });
+  } catch (err) {
+    return res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
+  }
+};
+
+export const markNotificationAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid notification ID' });
+    }
+
+    const notification = await markNotificationRead(req.user.id, id);
+
+    if (!notification) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    return res.json({ message: 'Notification marked as read', notification });
   } catch (err) {
     return res.status(500).json({
       message: 'Server error',

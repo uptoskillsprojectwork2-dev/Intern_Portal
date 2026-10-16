@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 
 import CreateIntern from '../components/CreateIntern';
@@ -12,6 +12,8 @@ import AdminUpcomingCompletions from '../components/AdminUpcomingCompletions';
 import RetentionManagement from '../components/RetentionManagement';
 
 import AnalyticsView from '../analytics/pages/AnalyticsView';
+import AuditLogsPage from './AuditLogsPage';
+import NotificationBell from '../../shared/components/NotificationBell';
 
 import './AdminDashboard.css';
 
@@ -19,7 +21,9 @@ const AdminDashboard = () => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
 
-  const [activeView, setActiveView] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [fallbackView, setFallbackView] = useState('overview');
+  const activeView = searchParams.get('view') || fallbackView;
 
   const initials = (user?.fullName || 'Admin')
     .split(' ')
@@ -44,7 +48,8 @@ const AdminDashboard = () => {
    * Change dashboard view.
    */
   const changeView = (view) => {
-    setActiveView(view);
+    setFallbackView(view);
+    if (searchParams.has('view')) setSearchParams({});
   };
 
   /*
@@ -75,6 +80,9 @@ const AdminDashboard = () => {
 
       case 'retention':
         return 'Account Retention';
+
+      case 'audit':
+        return 'Audit Logs';
 
       case 'overview':
       default:
@@ -111,6 +119,9 @@ const AdminDashboard = () => {
       case 'retention':
         return 'Set archive and purge periods, review archived interns, and restore accounts.';
 
+      case 'audit':
+        return 'Review security events and administrative changes across the portal.';
+
       case 'overview':
       default:
         return 'Manage your portal accounts, certificates, templates, and administration from one secure workspace.';
@@ -131,6 +142,8 @@ const AdminDashboard = () => {
         </div>
 
         <div className="admin-topbar-user">
+
+          <NotificationBell />
 
           <div className="admin-avatar">
             {initials}
@@ -284,6 +297,11 @@ const AdminDashboard = () => {
           >
             <span>♻</span>
             Account Retention
+          </button>
+
+          <button type="button" className={`admin-nav-item ${activeView === 'audit' ? 'active' : ''}`} onClick={() => changeView('audit')}>
+            <span>◷</span>
+            Audit Logs
           </button>
 
 
@@ -581,6 +599,10 @@ const AdminDashboard = () => {
         ) : activeView === 'retention' ? (
 
           <RetentionManagement />
+
+        ) : activeView === 'audit' ? (
+
+          <AuditLogsPage />
 
         ) : (
 

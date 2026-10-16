@@ -57,6 +57,17 @@ export const createTeamLeader = (payload) =>
     payload
   );
 
+export const getAuditLogs = (params = {}) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== ''));
+  return request('get', `/api/admin/audit-logs${query.size ? `?${query}` : ''}`);
+};
+
+export const exportAuditLogs = async (params = {}) => {
+  const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== ''));
+  const response = await adminApi.get(`/api/admin/audit-logs/export${query.size ? `?${query}` : ''}`, { responseType: 'blob' });
+  return response.data;
+};
+
 
 /*
 |--------------------------------------------------------------------------
@@ -228,6 +239,12 @@ export const getAllCertificates = () =>
     'get',
     '/api/admin/certificates'
   );
+
+export const revokeAdminCertificate = (id, reason) =>
+  request('patch', `/api/admin/certificates/${id}/revoke`, { reason });
+
+export const unrevokeAdminCertificate = (id) =>
+  request('patch', `/api/admin/certificates/${id}/unrevoke`);
 
 export const retryCertificateGeneration = (
   id

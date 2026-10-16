@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useIntern } from '../hooks/useIntern';
 import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
 import MyRequestsList from '../components/MyRequestsList';
+import NotificationBell from '../../shared/components/NotificationBell';
 import './InternDashboard.css';
 import '../../../app/App.css';
 
@@ -53,12 +54,18 @@ export default function InternDashboard() {
   const { profile, archiveNotice, loading, error, fetchProfile } = useIntern();
   const { handleLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState('dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [fallbackNav, setFallbackNav] = useState('dashboard');
+  const activeNav = searchParams.get('view') || fallbackNav;
   const [showCertificateModal, setShowCertificateModal] = useState(false);
 
   const onLogout = () => {
     handleLogout();
     navigate('/login');
+  };
+  const changeNav = (view) => {
+    setFallbackNav(view);
+    if (searchParams.has('view')) setSearchParams({});
   };
 
   /* ── derived ── */
@@ -79,6 +86,7 @@ export default function InternDashboard() {
         </div>
 
         <div className="id-nav-right">
+          <NotificationBell />
           <div className="id-avatar" aria-label="User avatar">
             {initials}
           </div>
@@ -107,7 +115,7 @@ export default function InternDashboard() {
               key={item.id}
               id={`sidebar-nav-${item.id}`}
               className={`id-nav-item ${activeNav === item.id ? 'active' : ''}`}
-              onClick={() => setActiveNav(item.id)}
+              onClick={() => changeNav(item.id)}
             >
               <span className="id-nav-icon">{item.icon}</span>
               {item.label}

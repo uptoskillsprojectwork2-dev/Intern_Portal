@@ -17,6 +17,8 @@ import {
   updateCertificateDraft,
   finalizeCertificate,
   getAllCertificates,
+  revokeCertificate,
+  unrevokeCertificate,
   retryCertificateGeneration,
   downloadCertificatePdf,
   getTemplatePlaceholders,
@@ -31,8 +33,12 @@ import {
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
+import { getAuditLogs, exportAuditLogs } from "../controllers/audit.controller.js";
 
 const adminRouter = express.Router();
+
+adminRouter.get('/audit-logs/export', verifyAuth, requireAdmin, exportAuditLogs);
+adminRouter.get('/audit-logs', verifyAuth, requireAdmin, getAuditLogs);
 
 adminRouter.get(
   "/templates",
@@ -98,6 +104,8 @@ adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finaliz
 
 // Day 5 Admin Overview, Download & Retry Generation routes
 adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
+adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
+adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
 adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
 

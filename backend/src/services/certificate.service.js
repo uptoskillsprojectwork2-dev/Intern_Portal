@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import { randomBytes } from 'crypto';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import Handlebars from 'handlebars';
@@ -15,8 +16,17 @@ import { sendEmail } from '../utils/sendEmail.js';
    CONSTANTS
 ========================================================= */
 
-const FRONTEND_URL =
-  process.env.FRONTEND_URL || 'http://localhost:5173';
+export const getVerificationUrl = (verificationId) => {
+  const frontendUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173');
+  if (!frontendUrl) throw new Error('FRONTEND_URL must be set to the deployed frontend origin in production.');
+
+  const configuredUrl = new URL(frontendUrl);
+  if (process.env.NODE_ENV === 'production' && configuredUrl.protocol !== 'https:') {
+    throw new Error('FRONTEND_URL must use HTTPS in production.');
+  }
+
+  return `${configuredUrl.origin}/verify/${encodeURIComponent(verificationId)}`;
+};
 
 /* =========================================================
    CERTIFICATE TITLE MAPPER
@@ -78,10 +88,7 @@ const generateCertificateNumber = async () => {
 ========================================================= */
 
 const generateVerificationCode = () => {
-  return `VER-${Date.now()}-${Math.random()
-    .toString(36)
-    .substring(2, 8)
-    .toUpperCase()}`;
+  return `VER-${randomBytes(16).toString('hex').toUpperCase()}`;
 };
 
 /* =========================================================
@@ -116,9 +123,8 @@ const formatDate = (date) => {
  * Example output:
  * data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...
  */
-const generateQrCode = async (certificateNumber) => {
-  const verificationUrl =
-    `${FRONTEND_URL}/verify/${encodeURIComponent(certificateNumber)}`;
+const generateQrCode = async (verificationId) => {
+  const verificationUrl = getVerificationUrl(verificationId);
 
   const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
     errorCorrectionLevel: 'M',
@@ -308,7 +314,7 @@ export const createCertificateDraft = async (requestId) => {
   const {
     qrCodeDataUrl,
     verificationUrl,
-  } = await generateQrCode(certificateNumber);
+  } = await generateQrCode(verificationCode);
 
   /* ---------------------------------------------------------
      Request metadata
@@ -864,6 +870,8 @@ export const createCertificateDraft = async (requestId) => {
       htmlContent,
 
       verificationCode,
+
+      verificationIdVersion: 2,
 
       generatedBy:
         request.reviewedBy,
