@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Notification from "../models/Notification.model.js";
 
 /**
@@ -79,6 +80,10 @@ export const markNotificationRead = async (req, res) => {
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({ message: "Notification not found" });
     }
 
     // A user can never read or mark another user's notification -> 404

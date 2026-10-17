@@ -54,7 +54,7 @@ async function sendArchiveWarnings({ graceDays, dryRun, today }) {
       const archiveDate = plusDays(intern.endDate, graceDays);
       const daysUntilArchive = Math.round((archiveDate - today) / DAY_MS);
       if (daysUntilArchive !== 7) continue;
-      if (intern.archiveWarningSentAt && startOfUtcDay(intern.archiveWarningSentAt).getTime() === today.getTime()) continue;
+      if (intern.archiveWarningSentAt) continue;
 
       if (dryRun) {
         console.log(`[retention] DRY RUN: would email ${intern.email} that account archives on ${archiveDate.toISOString().slice(0, 10)}`);

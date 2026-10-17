@@ -15,6 +15,7 @@ import './NotificationBell.css';
 export default function NotificationBell({ role = 'intern', onNavigate }) {
   const navigate = useNavigate();
   const wrapperRef = useRef(null);
+  const bellBtnRef = useRef(null);
   const {
     unreadCount,
     badgeText,
@@ -31,13 +32,20 @@ export default function NotificationBell({ role = 'intern', onNavigate }) {
     clearToast,
   } = useNotifications();
 
+  const handleDropdownClose = (shouldFocusBell = false) => {
+    closeDropdown();
+    if (shouldFocusBell && bellBtnRef.current) {
+      bellBtnRef.current.focus();
+    }
+  };
+
   // Handle outside click when dropdown is open
   useEffect(() => {
     if (!isOpen) return;
 
     const handlePointerDown = (e) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        closeDropdown();
+        handleDropdownClose(false);
       }
     };
 
@@ -78,6 +86,7 @@ export default function NotificationBell({ role = 'intern', onNavigate }) {
   return (
     <div className="notif-bell-wrapper" ref={wrapperRef}>
       <button
+        ref={bellBtnRef}
         type="button"
         id="notification-bell-btn"
         className={`notif-bell-btn ${isOpen ? 'is-active' : ''}`}
@@ -117,7 +126,7 @@ export default function NotificationBell({ role = 'intern', onNavigate }) {
           unreadCount={unreadCount}
           loading={loading}
           error={error}
-          onClose={closeDropdown}
+          onClose={handleDropdownClose}
           onMarkAsRead={markAsRead}
           onMarkAllAsRead={markAllAsRead}
           onRefresh={refreshNotifications}

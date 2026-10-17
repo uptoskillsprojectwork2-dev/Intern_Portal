@@ -133,9 +133,9 @@ export const submitCertificateRequest = async (req, res) => {
     // Trigger notification to intern's TL (in-app and email)
     try {
       const tlEmail = user.internshipDetails?.teamleaderEmail;
-      if (tlEmail) {
+      if (tlEmail && typeof tlEmail === 'string') {
         const tl = await User.findOne({
-          email: tlEmail.toLowerCase(),
+          email: tlEmail.trim().toLowerCase(),
           role: 'teamleader'
         });
         if (tl) {

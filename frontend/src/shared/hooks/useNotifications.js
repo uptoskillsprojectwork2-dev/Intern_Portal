@@ -41,6 +41,12 @@ export function useNotifications() {
       prevUnreadCountRef.current = count;
       setUnreadCount(count);
     } catch (err) {
+      if (err.response?.status === 401) {
+        if (pollingTimerRef.current) {
+          clearInterval(pollingTimerRef.current);
+          pollingTimerRef.current = null;
+        }
+      }
       // Background poll silently logs failure without breaking UI
       console.warn('[useNotifications] Failed to poll unread count:', err.message);
     }

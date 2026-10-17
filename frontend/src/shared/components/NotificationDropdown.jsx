@@ -60,7 +60,7 @@ export default function NotificationDropdown({
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        onClose();
+        onClose(true);
       }
     };
 

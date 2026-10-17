@@ -6,12 +6,19 @@ const notificationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "user",
       required: true,
-      index: true,
     },
 
     type: {
       type: String,
       required: true,
+      enum: [
+        "REQUEST_SUBMITTED",
+        "REQUEST_FORWARDED",
+        "REQUEST_REJECTED",
+        "REQUEST_APPROVED",
+        "CERTIFICATE_SENT",
+        "ARCHIVE_WARNING",
+      ],
       trim: true,
     },
 
@@ -29,7 +36,7 @@ const notificationSchema = new mongoose.Schema(
 
     requestId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "CertificateRequest",
+      ref: "certificate_request",
       default: null,
     },
 
