@@ -30,7 +30,6 @@ export async function runInternshipStatusJob({ dryRun = dryRunEnabled() } = {}) 
       for (const intern of batch) {
         const message = `[internship-status] ${dryRun ? 'DRY RUN: would update' : 'updated'} ${intern._id} (${from} -> ${to})`;
         console.log(message);
-        // TODO: logAction for the status transition.
       }
 
       if (!dryRun) {
@@ -50,3 +49,5 @@ export function scheduleInternshipStatusJob() {
     runInternshipStatusJob().catch((error) => console.error('[internship-status] job failed:', error));
   }, { timezone: process.env.JOBS_TIMEZONE || 'Asia/Kolkata' });
 }
+
+export const initInternshipStatusJob = scheduleInternshipStatusJob;

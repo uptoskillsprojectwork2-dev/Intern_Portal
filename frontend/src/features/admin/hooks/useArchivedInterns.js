@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getArchivedInterns, restoreIntern } from '../services/admin.service';
+import { getArchivedInterns, restoreIntern, restoreArchivedIntern } from '../services/admin.service';
 
-export default function useArchivedInterns() {
+export function useArchivedInterns() {
   const [interns, setInterns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,11 +24,26 @@ export default function useArchivedInterns() {
     return () => window.clearTimeout(timer);
   }, [refresh]);
 
-  const restore = async (intern) => {
-    await restoreIntern(intern._id);
-    setInterns((current) => current.filter((item) => item._id !== intern._id));
-    return `${intern.fullName} has been restored.`;
+  const restore = async (internOrId) => {
+    const id = typeof internOrId === 'object' && internOrId !== null ? internOrId._id : internOrId;
+    const restoreFn = restoreIntern || restoreArchivedIntern;
+    await restoreFn(id);
+    setInterns((current) => current.filter((item) => item._id !== id));
+    if (typeof internOrId === 'object' && internOrId?.fullName) {
+      return `${internOrId.fullName} has been restored.`;
+    }
+    return { success: true };
   };
 
-  return { interns, loading, error, refresh, restore };
+  return {
+    interns,
+    loading,
+    error,
+    refresh,
+    refetch: refresh,
+    restore,
+    restoreIntern: restore
+  };
 }
+
+export default useArchivedInterns;

@@ -16,7 +16,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function validate(values) {
 	const errors = {};
 
-	if (!values.fullName.trim()) errors.fullName = 'Full name is required.';
+	if (!values.fullName.trim()) errors.fullName = 'Name is required.';
 	if (!values.email.trim()) errors.email = 'Email is required.';
 	else if (!emailPattern.test(values.email)) errors.email = 'Enter a valid email address.';
 	if (!values.mobileNo.trim()) errors.mobileNo = 'Mobile number is required.';
@@ -57,7 +57,7 @@ export default function CreateIntern() {
 				email: values.email.trim().toLowerCase(),
 				mobileNo: values.mobileNo.trim(),
 				domain: values.domain.trim(),
-					teamleaderEmail: values.teamleaderEmail.trim().toLowerCase(),
+				teamleaderEmail: values.teamleaderEmail.trim().toLowerCase(),
 			});
 			setValues(initialValues);
 			setErrors({});

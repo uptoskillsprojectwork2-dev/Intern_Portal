@@ -4,6 +4,7 @@ import { useIntern } from '../hooks/useIntern';
 import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
 import MyRequestsList from '../components/MyRequestsList';
+import NotificationBell from '../../../shared/components/NotificationBell';
 import './InternDashboard.css';
 import '../../../app/App.css';
 
@@ -79,6 +80,10 @@ export default function InternDashboard() {
         </div>
 
         <div className="id-nav-right">
+          <NotificationBell
+            role="intern"
+            onNavigate={(targetNav) => setActiveNav(targetNav)}
+          />
           <div className="id-avatar" aria-label="User avatar">
             {initials}
           </div>
@@ -135,6 +140,15 @@ export default function InternDashboard() {
             <span>
               Your account is scheduled to be archived on {formatDate(archiveNotice.archiveDate)}.
               {' '}You have {archiveNotice.daysUntilArchive} day{archiveNotice.daysUntilArchive === 1 ? '' : 's'} remaining to access your portal account and certificates.
+            </span>
+          </div>
+        )}
+        {activeNav === 'dashboard' && !archiveNotice && profile?.daysUntilArchival !== undefined && profile.daysUntilArchival <= 7 && (
+          <div className="id-archive-warning" role="status">
+            <strong>Account archival scheduled</strong>
+            <span>
+              Your internship account will be archived in {profile.daysUntilArchival} day{profile.daysUntilArchival === 1 ? '' : 's'}.
+              Please request and download any necessary certificates before you lose access.
             </span>
           </div>
         )}

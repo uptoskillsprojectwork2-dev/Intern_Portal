@@ -1,15 +1,18 @@
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import Handlebars from 'handlebars';
 import puppeteer from 'puppeteer';
 import QRCode from 'qrcode';
 
+import Counter from '../models/Counter.model.js';
 import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import logAction from '../utils/logAction.js';
 
 /* =========================================================
    CONSTANTS
@@ -54,23 +57,23 @@ const getCertificateTitle = (certificateType) => {
 };
 
 /* =========================================================
-   CERTIFICATE NUMBER
+   CERTIFICATE NUMBER & VERIFY ID
 ========================================================= */
 
 const generateCertificateNumber = async () => {
   const year = new Date().getFullYear();
 
-  let count = await Certificate.countDocuments();
+  const counter = await Counter.findOneAndUpdate(
+    { _id: 'certificateNumber' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
 
-  let candidate = `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
+  return `UTS-${year}-${String(counter.seq).padStart(6, '0')}`;
+};
 
-  while (await Certificate.exists({ certificateNumber: candidate })) {
-    count += 1;
-
-    candidate = `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
-  }
-
-  return candidate;
+const generateVerifyId = () => {
+  return crypto.randomBytes(6).toString('hex');
 };
 
 /* =========================================================
@@ -116,9 +119,9 @@ const formatDate = (date) => {
  * Example output:
  * data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...
  */
-const generateQrCode = async (certificateNumber) => {
+const generateQrCode = async (verifyId) => {
   const verificationUrl =
-    `${FRONTEND_URL}/verify/${encodeURIComponent(certificateNumber)}`;
+    `${FRONTEND_URL}/verify/${encodeURIComponent(verifyId)}`;
 
   const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
     errorCorrectionLevel: 'M',
@@ -302,13 +305,16 @@ export const createCertificateDraft = async (requestId) => {
     getCertificateTitle(request.certificateType);
 
   /* ---------------------------------------------------------
-     QR CODE
+     QR CODE & VERIFY ID
   --------------------------------------------------------- */
+
+  const verifyId =
+    generateVerifyId();
 
   const {
     qrCodeDataUrl,
     verificationUrl,
-  } = await generateQrCode(certificateNumber);
+  } = await generateQrCode(verifyId);
 
   /* ---------------------------------------------------------
      Request metadata
@@ -834,6 +840,16 @@ export const createCertificateDraft = async (requestId) => {
     await Certificate.create({
       certificateNumber,
 
+      verifyId,
+
+      recipientName:
+        user.fullName || '',
+
+      certificateTitle,
+
+      issuedAt:
+        new Date(),
+
       userId:
         user._id,
 
@@ -877,6 +893,17 @@ export const createCertificateDraft = async (requestId) => {
     certificate._id;
 
   await request.save();
+
+  await logAction({
+    actor: request.reviewedBy ? { id: request.reviewedBy, role: 'admin' } : null,
+    action: 'CERTIFICATE_DRAFT_CREATED',
+    targetType: 'Certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber,
+      certificateType: certificate.certificateType
+    }
+  });
 
   return certificate;
 };
@@ -976,6 +1003,16 @@ export const updateCertificateDraft = async (
     htmlContent;
 
   await certificate.save();
+
+  await logAction({
+    action: 'CERTIFICATE_EDITED',
+    targetType: 'Certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber,
+      certificateType: certificate.certificateType
+    }
+  });
 
   return certificate;
 };
@@ -1213,12 +1250,39 @@ export const finalizeCertificate = async (
   }
 
   /* -------------------------------------------------------
+     Ensure verifyId, snapshot fields, and final QR code
+  ------------------------------------------------------- */
+
+  if (!certificate.verifyId) {
+    certificate.verifyId = generateVerifyId();
+  }
+
+  const finalizedAt = new Date();
+  certificate.recipientName = certificate.recipientName || certificate.userId?.fullName || 'Intern';
+  certificate.certificateTitle = certificate.certificateTitle || getCertificateTitle(certificate.certificateType);
+  certificate.domain = certificate.domain || certificate.userId?.domain || '';
+  certificate.issuedAt = finalizedAt;
+
+  const { qrCodeDataUrl, verificationUrl } = await generateQrCode(certificate.verifyId);
+
+  let finalHtml = certificate.htmlContent;
+  if (finalHtml.includes('{{qrCodeUrl}}')) {
+    finalHtml = finalHtml.replaceAll('{{qrCodeUrl}}', qrCodeDataUrl);
+  } else {
+    finalHtml = finalHtml.replace(/src=["']data:image\/png;base64,[^"']*["']/gi, `src="${qrCodeDataUrl}"`);
+  }
+  finalHtml = finalHtml.replaceAll('{{certificateNumber}}', certificate.certificateNumber);
+  finalHtml = finalHtml.replaceAll('{{CertificateNumber}}', certificate.certificateNumber);
+  finalHtml = finalHtml.replaceAll('{{verificationUrl}}', verificationUrl);
+  certificate.htmlContent = finalHtml;
+
+  /* -------------------------------------------------------
      Render PDF
   ------------------------------------------------------- */
 
   const pdfBuffer =
     await renderCertificatePdf(
-      certificate.htmlContent
+      finalHtml
     );
 
   /* -------------------------------------------------------
@@ -1290,9 +1354,6 @@ export const finalizeCertificate = async (
      Update certificate
   ------------------------------------------------------- */
 
-  const finalizedAt =
-    new Date();
-
   certificate.status =
     'finalized';
 
@@ -1326,6 +1387,17 @@ export const finalizeCertificate = async (
 
     await request.save();
   }
+
+  await logAction({
+    actor: certificate.generatedBy ? { id: certificate.generatedBy, role: 'admin' } : null,
+    action: 'CERTIFICATE_FINALIZED',
+    targetType: 'Certificate',
+    targetId: certificate._id,
+    meta: {
+      certificateNumber: certificate.certificateNumber,
+      certificateType: certificate.certificateType
+    }
+  });
 
   return {
     certificate,

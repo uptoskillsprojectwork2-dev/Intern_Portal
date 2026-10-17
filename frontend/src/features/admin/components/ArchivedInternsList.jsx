@@ -17,7 +17,7 @@ export default function ArchivedInternsList() {
     setRestoringId(intern._id);
     try {
       const message = await restore(intern);
-      setToast({ type: 'success', message });
+      setToast({ type: 'success', message: typeof message === 'string' ? message : `${intern.fullName} has been restored.` });
     } catch (requestError) {
       setToast({ type: 'error', message: requestError.message || 'Unable to restore this intern.' });
     } finally {
@@ -48,7 +48,7 @@ export default function ArchivedInternsList() {
                 <td>{intern.internCode || '—'}</td>
                 <td>{intern.domain || '—'}</td>
                 <td>{dateLabel(intern.archivedAt)}</td>
-                <td>{intern.daysLeftBeforePurge}</td>
+                <td>{intern.daysLeftBeforePurge ?? '—'}</td>
                 <td><button type="button" onClick={() => handleRestore(intern)} disabled={restoringId === intern._id}>{restoringId === intern._id ? 'Restoring…' : 'Restore'}</button></td>
               </tr>
             ))}</tbody>

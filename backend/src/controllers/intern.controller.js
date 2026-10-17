@@ -8,6 +8,8 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.model.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
+import logAction from '../utils/logAction.js';
+import { notify } from '../services/notification.service.js';
 
 const ALLOWED_TYPES = [
   'offer_letter',
@@ -119,6 +121,48 @@ export const submitCertificateRequest = async (req, res) => {
       metadata: safeMetadata
     });
 
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'REQUEST_SUBMITTED',
+      targetType: 'CertificateRequest',
+      targetId: request._id,
+      meta: { certificateType, reason }
+    });
+
+    // Trigger notification to intern's TL (in-app and email)
+    try {
+      const tlEmail = user.internshipDetails?.teamleaderEmail;
+      if (tlEmail && typeof tlEmail === 'string') {
+        const tl = await User.findOne({
+          email: tlEmail.trim().toLowerCase(),
+          role: 'teamleader'
+        });
+        if (tl) {
+          const typeName = (certificateType || '').replace(/_/g, ' ');
+          await notify(tl._id, 'REQUEST_SUBMITTED', {
+            title: 'New Certificate Request Submitted',
+            message: `${user.fullName || 'An intern'} (${user.internCode || 'ID'}) has submitted a request for ${typeName}.`,
+            requestId: request._id,
+            email: true
+          });
+        } else {
+          console.warn(
+            `[notification] No team leader found matching email "${tlEmail}" for intern ${user._id}. Skipping TL notification.`
+          );
+        }
+      } else {
+        console.warn(
+          `[notification] Intern ${user._id} has no teamleaderEmail configured. Skipping TL notification.`
+        );
+      }
+    } catch (notifyErr) {
+      console.error(
+        '[notification] Failed to send REQUEST_SUBMITTED notification:',
+        notifyErr.message || notifyErr
+      );
+    }
+
     return res.status(201).json({ request });
   } catch (err) {
     return res.status(500).json({
@@ -166,7 +210,7 @@ export const getMyRequests = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .select('-password');
+      .select('-password -resetPasswordToken -resetPasswordExpires');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -179,6 +223,7 @@ export const getProfile = async (req, res) => {
 
     const graceDays = policy?.graceDays ?? 30;
     let archiveNotice = null;
+    let daysUntilArchival = null;
 
     if (user.endDate && user.role === 'intern' && !user.isArchived) {
       const archiveDate = new Date(user.endDate);
@@ -192,6 +237,8 @@ export const getProfile = async (req, res) => {
         (archiveDate.getTime() - today.getTime()) / 86400000
       );
 
+      daysUntilArchival = Math.max(0, daysUntilArchive);
+
       if (daysUntilArchive >= 0 && daysUntilArchive <= 7) {
         archiveNotice = {
           archiveDate,
@@ -200,7 +247,12 @@ export const getProfile = async (req, res) => {
       }
     }
 
-    return res.json({ user, archiveNotice });
+    const userData = user.toObject();
+    if (daysUntilArchival !== null) {
+      userData.daysUntilArchival = daysUntilArchival;
+    }
+
+    return res.json({ user: userData, archiveNotice });
   } catch (err) {
     return res.status(500).json({
       message: 'Server error',

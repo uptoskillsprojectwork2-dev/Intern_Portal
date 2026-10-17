@@ -6,6 +6,7 @@ import MyInternsList from '../components/MyInternsList';
 import UpcomingCompletions from '../components/UpcomingCompletions';
 import PendingReviewList from '../components/PendingReviewList';
 import { getUpcomingCompletions } from '../services/tl.service';
+import NotificationBell from '../../../shared/components/NotificationBell';
 import './TLDashboard.css';
 
 const TLDashboard = () => {
@@ -44,6 +45,10 @@ const TLDashboard = () => {
       <header className="admin-topbar">
         <div className="admin-brand"><span className="admin-brand-icon">UP</span><strong>uptoskills</strong></div>
         <div className="admin-topbar-user">
+          <NotificationBell
+            role="teamleader"
+            onNavigate={(targetView) => setActiveView(targetView)}
+          />
           <div className="admin-avatar">{initials}</div>
           <div><strong>{user?.fullName || 'Team Leader'}</strong><small>{user?.email || 'Loading profile...'}</small></div>
           <button className="admin-logout" onClick={logout} title="Sign out"><span>↩</span> Logout</button>

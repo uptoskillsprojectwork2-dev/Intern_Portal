@@ -19,7 +19,10 @@ import {
   sendCertificateEmail
 } from '../services/certificate.service.js';
 import { logAudit } from '../utils/auditLogger.js';
+import AuditLog from '../models/AuditLog.model.js';
+import logAction from '../utils/logAction.js';
 import { invalidateAnalyticsCache } from '../utils/redisCache.js';
+import { notify } from '../services/notification.service.js';
 
 dotenv.config();
 
@@ -77,6 +80,14 @@ export async function createIntern(req, res) {
             }
         });
 
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'USER_CREATED',
+            targetType: 'User',
+            targetId: user._id,
+            meta: { role: 'intern', email: user.email, domain: user.domain }
+        });
 
         res.status(200).json({
             message: "User registered successfully",
@@ -121,6 +132,15 @@ export async function createTeamLeader(req, res) {
             endDate,
             role: "teamleader",
             password
+        });
+
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'USER_CREATED',
+            targetType: 'User',
+            targetId: user._id,
+            meta: { role: 'teamleader', email: user.email }
         });
 
         const token = jwt.sign({
@@ -313,6 +333,38 @@ export async function updateIntern(req, res) {
     }
 }
 
+export async function deleteIntern(req, res) {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid intern ID format' });
+        }
+
+        const intern = await User.findOne({ _id: id, role: 'intern' });
+        if (!intern) {
+            return res.status(404).json({ message: 'Intern not found' });
+        }
+
+        await User.findByIdAndDelete(id);
+        await CertificateRequest.deleteMany({ userId: id });
+
+        await logAudit({
+            userId: req.user.id,
+            action: 'DELETE_INTERN_BY_ADMIN',
+            entityType: 'User',
+            entityId: intern._id,
+            description: { email: intern.email, internCode: intern.internCode },
+            req
+        });
+
+        return res.status(200).json({
+            message: 'Intern deleted successfully'
+        });
+    } catch (err) {
+        return res.status(500).json({ message: 'Server error', error: err.message });
+    }
+}
+
 export async function assignInternTeamLeader(req, res) {
     try {
         const { id } = req.params;
@@ -499,6 +551,54 @@ export async function updateTeamLeader(req, res) {
     }
 }
 
+export async function deleteTeamLeader(req, res) {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: 'Invalid team leader ID format' });
+        }
+
+        const tl = await User.findOne({ _id: id, role: 'teamleader' });
+        if (!tl) {
+            return res.status(404).json({ message: 'Team leader not found' });
+        }
+
+        // Unassign interns who were assigned to this Team Leader
+        await User.updateMany(
+            {
+                role: 'intern',
+                $or: [
+                    { 'internshipDetails.teamLeader': tl._id },
+                    { 'internshipDetails.teamleaderEmail': tl.email.toLowerCase() }
+                ]
+            },
+            {
+                $unset: {
+                    'internshipDetails.teamLeader': 1,
+                    'internshipDetails.teamleaderEmail': 1
+                }
+            }
+        );
+
+        await User.findByIdAndDelete(id);
+
+        await logAudit({
+            userId: req.user.id,
+            action: 'DELETE_TEAM_LEADER_BY_ADMIN',
+            entityType: 'User',
+            entityId: tl._id,
+            description: { email: tl.email, fullName: tl.fullName },
+            req
+        });
+
+        return res.status(200).json({
+            message: 'Team leader deleted successfully'
+        });
+    } catch (err) {
+        return res.status(500).json({ message: 'Server error', error: err.message });
+    }
+}
+
 export async function getInternsByTeamLeader(req, res) {
     try {
         if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -580,6 +680,52 @@ export const finalizeRequest = async (req, res) => {
 
     await request.save();
 
+    if (action === 'approve') {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'REQUEST_APPROVED',
+        targetType: 'CertificateRequest',
+        targetId: request._id,
+        meta: { certificateType: request.certificateType }
+      });
+
+      // Notify intern (in-app and email)
+      try {
+        const typeName = (request.certificateType || '').replace(/_/g, ' ');
+        await notify(request.userId, 'REQUEST_APPROVED', {
+          title: 'Certificate Request Approved',
+          message: `Your certificate request for ${typeName} has been approved by administrator.`,
+          requestId: request._id,
+          email: true,
+        });
+      } catch (notifyErr) {
+        console.error('[notification] Failed to send REQUEST_APPROVED notification:', notifyErr);
+      }
+    } else {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'REQUEST_REJECTED',
+        targetType: 'CertificateRequest',
+        targetId: request._id,
+        meta: { rejectionReason, certificateType: request.certificateType }
+      });
+
+      // Notify intern (in-app and email)
+      try {
+        const typeName = (request.certificateType || '').replace(/_/g, ' ');
+        await notify(request.userId, 'REQUEST_REJECTED', {
+          title: 'Certificate Request Rejected',
+          message: `Your certificate request for ${typeName} was rejected by administrator. Reason: ${rejectionReason}`,
+          requestId: request._id,
+          email: true,
+        });
+      } catch (notifyErr) {
+        console.error('[notification] Failed to send REQUEST_REJECTED notification:', notifyErr);
+      }
+    }
+
     let certificate = null;
     if (action === 'approve') {
       certificate = await createCertificateDraft(request._id);
@@ -622,6 +768,19 @@ export const finalizeCertificate = async (req, res) => {
     // 1. Finalize certificate and render PDF
     const { certificate, request, absolutePdfPath } = await finalizeCertificateService(id);
     await invalidateAnalyticsCache();
+
+    // Trigger in-app notification for intern (email already handled via sendCertificateEmail)
+    try {
+      const typeName = (certificate.certificateType || '').replace(/_/g, ' ');
+      await notify(certificate.userId, 'CERTIFICATE_SENT', {
+        title: 'Certificate Finalized & Issued',
+        message: `Your certificate (${certificate.certificateNumber || typeName}) has been finalized and issued. You can view or download it directly from your portal.`,
+        requestId: certificate.requestId || request?._id,
+        email: false,
+      });
+    } catch (notifyErr) {
+      console.error('[notification] Failed to send CERTIFICATE_SENT in-app notification:', notifyErr);
+    }
 
     // 2. Send email with PDF attachment
     let emailSent = false;
@@ -667,12 +826,119 @@ export const getAllCertificates = async (req, res) => {
   try {
     const certificates = await Certificate.find()
       .populate('userId', 'fullName email internCode domain')
-      .select('certificateNumber certificateType domain issuedDate status pdfPath internCode userId createdAt')
+      .select('certificateNumber certificateType domain issuedDate issuedAt status pdfPath internCode userId createdAt isRevoked revokedAt revokedReason verifyId recipientName certificateTitle')
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ certificates });
   } catch (err) {
     return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Task F: Revoke certificate
+ * PATCH /api/admin/certificates/:id/revoke
+ * Sets revocation fields, logs CERTIFICATE_REVOKED, and notifies the intern.
+ */
+export const revokeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID format' });
+    }
+
+    if (!reason || typeof reason !== 'string' || !reason.trim()) {
+      return res.status(400).json({ message: 'Revocation reason is required' });
+    }
+
+    const certificate = await Certificate.findById(id).populate('userId', 'fullName email internCode');
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    certificate.isRevoked = true;
+    certificate.revokedAt = new Date();
+    certificate.revokedBy = req.user.id || req.user._id;
+    certificate.revokedReason = reason.trim();
+    await certificate.save();
+
+    await logAudit({
+      userId: req.user.id || req.user._id,
+      action: 'CERTIFICATE_REVOKED',
+      entityType: 'Certificate',
+      entityId: certificate._id,
+      description: {
+        certificateNumber: certificate.certificateNumber,
+        reason: certificate.revokedReason,
+        revokedBy: req.user.id || req.user._id
+      },
+      req
+    });
+
+    if (certificate.userId) {
+      const recipientId = certificate.userId._id || certificate.userId;
+      await notify(recipientId, 'CERTIFICATE_REVOKED', {
+        title: 'Certificate Revoked',
+        message: `Your certificate (${certificate.certificateNumber}) has been revoked by an administrator. Reason: ${certificate.revokedReason}`,
+        email: true
+      }).catch((notifErr) => {
+        console.error('Failed to notify intern of certificate revocation:', notifErr.message);
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Certificate revoked successfully',
+      certificate
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
+/**
+ * Task F: Unrevoke certificate
+ * PATCH /api/admin/certificates/:id/unrevoke
+ * Reverses a mistaken revoke, also logged.
+ */
+export const unrevokeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID format' });
+    }
+
+    const certificate = await Certificate.findById(id);
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    certificate.isRevoked = false;
+    certificate.revokedAt = null;
+    certificate.revokedBy = null;
+    certificate.revokedReason = null;
+    await certificate.save();
+
+    await logAudit({
+      userId: req.user.id || req.user._id,
+      action: 'CERTIFICATE_UNREVOKED',
+      entityType: 'Certificate',
+      entityId: certificate._id,
+      description: {
+        certificateNumber: certificate.certificateNumber,
+        unrevokedBy: req.user.id || req.user._id
+      },
+      req
+    });
+
+    return res.status(200).json({
+      message: 'Certificate unrevoked successfully',
+      certificate
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
 
@@ -817,6 +1083,7 @@ function validateTemplateContent(content) {
     placeholders
   };
 }
+
 export const getTemplatePlaceholders = async (req, res) => {
   return res.status(200).json({
     placeholders: REQUIRED_TEMPLATE_PLACEHOLDERS
@@ -1074,7 +1341,7 @@ export const updateRetentionPolicy = async (req, res) => {
   if (!Number.isInteger(graceDays) || graceDays < 1 ||
       !Number.isInteger(purgeDays) || purgeDays <= graceDays) {
     return res.status(400).json({
-      message: 'Grace days must be at least 1, and purge days must be greater than grace days.',
+      message: 'Grace days must be at least 1, and purge days must be greater than graceDays.',
     });
   }
 
@@ -1092,7 +1359,18 @@ export const updateRetentionPolicy = async (req, res) => {
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
     console.log(`[retention] policy updated by admin ${req.user.id}: grace=${graceDays}, purge=${purgeDays}`);
-    // TODO: logAction for the retention-policy change.
+    try {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'RETENTION_POLICY_UPDATED',
+        targetType: 'RetentionPolicy',
+        targetId: policy._id,
+        meta: { graceDays, purgeDays }
+      });
+    } catch (logErr) {
+      // silent
+    }
     return res.status(200).json({ message: 'Retention policy saved.', policy });
   } catch (error) {
     console.error('Update retention policy error:', error);
@@ -1153,7 +1431,18 @@ export const restoreArchivedIntern = async (req, res) => {
     intern.archiveRestoredAt = new Date();
     await intern.save();
     console.log(`[retention] admin ${req.user.id} restored intern ${intern._id}`);
-    // TODO: logAction for the restore.
+    try {
+      await logAction({
+        req,
+        actor: req.user,
+        action: 'INTERN_RESTORED',
+        targetType: 'User',
+        targetId: intern._id,
+        meta: { email: intern.email }
+      });
+    } catch (logErr) {
+      // silent
+    }
     return res.status(200).json({ message: 'Intern restored.', intern: {
       _id: intern._id,
       fullName: intern.fullName,
@@ -1165,4 +1454,289 @@ export const restoreArchivedIntern = async (req, res) => {
     console.error('Restore archived intern error:', error);
     return res.status(500).json({ message: 'Unable to restore intern.' });
   }
+};
+
+/**
+ * Admin Overview Stats: Real metrics queried directly from database.
+ */
+export const getOverviewStats = async (req, res) => {
+    try {
+        const [
+            totalInterns,
+            ongoingInterns,
+            completedInterns,
+            archivedInterns,
+            teamLeadersCount,
+            issuedCertificatesCount,
+            pendingRequestsCount
+        ] = await Promise.all([
+            User.countDocuments({ role: 'intern' }),
+            User.countDocuments({ role: 'intern', isArchived: { $ne: true }, 'internshipDetails.status': 'ongoing' }),
+            User.countDocuments({ role: 'intern', 'internshipDetails.status': 'completed' }),
+            User.countDocuments({ role: 'intern', isArchived: true }),
+            User.countDocuments({ role: 'teamleader' }),
+            Certificate.countDocuments({ status: { $in: ['finalized', 'issued', 'generated'] } }),
+            CertificateRequest.countDocuments({ status: 'pending' })
+        ]);
+
+        const completionRate = totalInterns > 0
+            ? Math.round((completedInterns / totalInterns) * 100)
+            : 0;
+
+        return res.status(200).json({
+            success: true,
+            stats: {
+                totalInterns,
+                ongoingInterns,
+                completedInterns,
+                archivedInterns,
+                teamLeadersCount,
+                issuedCertificatesCount,
+                pendingRequestsCount,
+                completionRate
+            }
+        });
+    } catch (err) {
+        return res.status(500).json({ message: "Failed to fetch overview stats", error: err.message });
+    }
+};
+
+/**
+ * Task D: Audit Logs
+ * GET /api/admin/audit-logs
+ * Paginated list. Filters: actor, action, targetType, from, to, page, limit (max 100), sort.
+ * Populates actor name and email.
+ */
+export const getAuditLogs = async (req, res) => {
+    try {
+        const { actor, action, targetType, from, to, page = 1, limit = 20, sort = 'desc' } = req.query;
+
+        const query = {};
+
+        // Validate limit within range
+        const parsedLimit = parseInt(limit, 10);
+        if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 100) {
+            return res.status(400).json({ message: 'limit must be a number between 1 and 100' });
+        }
+
+        const parsedPage = parseInt(page, 10);
+        if (isNaN(parsedPage) || parsedPage < 1) {
+            return res.status(400).json({ message: 'page must be a positive integer' });
+        }
+
+        // Validate dates
+        let fromDate = null;
+        let toDate = null;
+        if (from) {
+            fromDate = new Date(from);
+            if (isNaN(fromDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid "from" date parameter' });
+            }
+        }
+
+        if (to) {
+            toDate = new Date(to);
+            if (isNaN(toDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid "to" date parameter' });
+            }
+            if (typeof to === 'string' && to.length === 10) {
+                toDate.setHours(23, 59, 59, 999);
+            }
+        }
+
+        if (fromDate && toDate && fromDate > toDate) {
+            return res.status(400).json({ message: '"from" date must be before or equal to "to" date' });
+        }
+
+        if (fromDate || toDate) {
+            query.createdAt = {};
+            if (fromDate) query.createdAt.$gte = fromDate;
+            if (toDate) query.createdAt.$lte = toDate;
+        }
+
+        // Filter by action
+        if (action && typeof action === 'string' && action.trim()) {
+            query.action = action.trim();
+        }
+
+        // Filter by targetType
+        if (targetType && typeof targetType === 'string' && targetType.trim()) {
+            query.targetType = targetType.trim();
+        }
+
+        // Filter by actor
+        if (actor && typeof actor === 'string' && actor.trim()) {
+            const actorVal = actor.trim();
+            const validRoles = ['admin', 'teamleader', 'intern', 'system'];
+            if (validRoles.includes(actorVal.toLowerCase())) {
+                query.actorRole = actorVal.toLowerCase();
+            } else if (mongoose.Types.ObjectId.isValid(actorVal)) {
+                query.actorId = new mongoose.Types.ObjectId(actorVal);
+            } else {
+                const matchedUsers = await User.find({
+                    $or: [
+                        { email: { $regex: actorVal, $options: 'i' } },
+                        { fullName: { $regex: actorVal, $options: 'i' } }
+                    ]
+                }).select('_id');
+                const userIds = matchedUsers.map(u => u._id);
+                query.actorId = { $in: userIds };
+            }
+        }
+
+        const sortDirection = sort === 'asc' ? 1 : -1;
+        const sortObj = { createdAt: sortDirection };
+
+        const total = await AuditLog.countDocuments(query);
+        const totalPages = Math.ceil(total / parsedLimit) || 1;
+
+        const logs = await AuditLog.find(query)
+            .sort(sortObj)
+            .skip((parsedPage - 1) * parsedLimit)
+            .limit(parsedLimit)
+            .populate('actorId', 'fullName email role');
+
+        return res.status(200).json({
+            logs,
+            page: parsedPage,
+            totalPages,
+            total
+        });
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to fetch audit logs', error: error.message });
+    }
+};
+
+/**
+ * Task D: Audit Logs Export
+ * GET /api/admin/audit-logs/export
+ * Downloads CSV of the current filter and logs this download itself as EXPORT.
+ */
+export const exportAuditLogs = async (req, res) => {
+    try {
+        const { actor, action, targetType, from, to, sort = 'desc' } = req.query;
+
+        const query = {};
+
+        let fromDate = null;
+        let toDate = null;
+        if (from) {
+            fromDate = new Date(from);
+            if (isNaN(fromDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid "from" date parameter' });
+            }
+        }
+
+        if (to) {
+            toDate = new Date(to);
+            if (isNaN(toDate.getTime())) {
+                return res.status(400).json({ message: 'Invalid "to" date parameter' });
+            }
+            if (typeof to === 'string' && to.length === 10) {
+                toDate.setHours(23, 59, 59, 999);
+            }
+        }
+
+        if (fromDate && toDate && fromDate > toDate) {
+            return res.status(400).json({ message: '"from" date must be before or equal to "to" date' });
+        }
+
+        if (fromDate || toDate) {
+            query.createdAt = {};
+            if (fromDate) query.createdAt.$gte = fromDate;
+            if (toDate) query.createdAt.$lte = toDate;
+        }
+
+        if (action && typeof action === 'string' && action.trim()) {
+            query.action = action.trim();
+        }
+
+        if (targetType && typeof targetType === 'string' && targetType.trim()) {
+            query.targetType = targetType.trim();
+        }
+
+        if (actor && typeof actor === 'string' && actor.trim()) {
+            const actorVal = actor.trim();
+            const validRoles = ['admin', 'teamleader', 'intern', 'system'];
+            if (validRoles.includes(actorVal.toLowerCase())) {
+                query.actorRole = actorVal.toLowerCase();
+            } else if (mongoose.Types.ObjectId.isValid(actorVal)) {
+                query.actorId = new mongoose.Types.ObjectId(actorVal);
+            } else {
+                const matchedUsers = await User.find({
+                    $or: [
+                        { email: { $regex: actorVal, $options: 'i' } },
+                        { fullName: { $regex: actorVal, $options: 'i' } }
+                    ]
+                }).select('_id');
+                const userIds = matchedUsers.map(u => u._id);
+                query.actorId = { $in: userIds };
+            }
+        }
+
+        const sortDirection = sort === 'asc' ? 1 : -1;
+        const logs = await AuditLog.find(query)
+            .sort({ createdAt: sortDirection })
+            .limit(10000)
+            .populate('actorId', 'fullName email role');
+
+        // Requirement: "This download is itself logged as EXPORT."
+        await logAction({
+            req,
+            actor: req.user,
+            action: 'EXPORT',
+            targetType: 'AuditLog',
+            meta: {
+                filter: { actor, action, targetType, from, to },
+                exportedCount: logs.length
+            }
+        });
+
+        const escapeCsv = (str) => {
+            if (str === null || str === undefined) return '""';
+            const s = String(str).replace(/"/g, '""');
+            return `"${s}"`;
+        };
+
+        const headers = [
+            'Timestamp (ISO)',
+            'Actor Name',
+            'Actor Email',
+            'Actor Role',
+            'Action',
+            'Target Type',
+            'Target ID',
+            'IP Address',
+            'User Agent',
+            'Metadata'
+        ];
+
+        const rows = logs.map(log => {
+            const actorName = log.actorId?.fullName || (log.actorRole === 'system' ? 'System' : 'Unknown');
+            const actorEmail = log.actorId?.email || (log.actorRole === 'system' ? 'system@internal' : 'N/A');
+            const actorRole = log.actorRole || log.actorId?.role || 'system';
+            const metaStr = log.meta ? JSON.stringify(log.meta) : '{}';
+
+            return [
+                escapeCsv(log.createdAt?.toISOString() || ''),
+                escapeCsv(actorName),
+                escapeCsv(actorEmail),
+                escapeCsv(actorRole),
+                escapeCsv(log.action),
+                escapeCsv(log.targetType || ''),
+                escapeCsv(log.targetId || ''),
+                escapeCsv(log.ip || ''),
+                escapeCsv(log.userAgent || ''),
+                escapeCsv(metaStr)
+            ].join(',');
+        });
+
+        const csvContent = [headers.join(','), ...rows].join('\r\n');
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="audit-logs.csv"');
+        return res.status(200).send(csvContent);
+    } catch (error) {
+        return res.status(500).json({ message: 'Failed to export audit logs', error: error.message });
+    }
 };

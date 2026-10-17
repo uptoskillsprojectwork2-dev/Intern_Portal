@@ -8,6 +8,14 @@ const adminApi = axios.create({
   withCredentials: true,
 });
 
+adminApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 const request = async (method, url, payload) => {
   try {
     const response = await adminApi({
@@ -44,19 +52,10 @@ const request = async (method, url, payload) => {
 */
 
 export const createIntern = (payload) =>
-  request(
-    'post',
-    '/api/admin/create-intern',
-    payload
-  );
+  request('post', '/api/admin/create-intern', payload);
 
 export const createTeamLeader = (payload) =>
-  request(
-    'post',
-    '/api/admin/create-tl',
-    payload
-  );
-
+  request('post', '/api/admin/create-tl', payload);
 
 /*
 |--------------------------------------------------------------------------
@@ -67,46 +66,28 @@ export const createTeamLeader = (payload) =>
 export const getAllInterns = (params = {}) => {
   const query = new URLSearchParams(
     Object.entries(params).filter(
-      ([, value]) =>
-        value !== undefined && value !== ''
+      ([, value]) => value !== undefined && value !== ''
     )
   );
 
-  const qs = query.toString()
-    ? `?${query.toString()}`
-    : '';
+  const qs = query.toString() ? `?${query.toString()}` : '';
 
-  return request(
-    'get',
-    `/api/admin/interns${qs}`
-  );
+  return request('get', `/api/admin/interns${qs}`);
 };
 
 export const getInternById = (id) =>
-  request(
-    'get',
-    `/api/admin/interns/${id}`
-  );
+  request('get', `/api/admin/interns/${id}`);
 
 export const updateIntern = (id, payload) =>
-  request(
-    'patch',
-    `/api/admin/interns/${id}`,
-    payload
-  );
+  request('patch', `/api/admin/interns/${id}`, payload);
 
-export const assignInternTeamLeader = (
-  id,
-  teamLeaderId
-) =>
-  request(
-    'patch',
-    `/api/admin/interns/${id}/assignment`,
-    {
-      teamLeaderId,
-    }
-  );
+export const deleteIntern = (id) =>
+  request('delete', `/api/admin/interns/${id}`);
 
+export const assignInternTeamLeader = (id, teamLeaderId) =>
+  request('patch', `/api/admin/interns/${id}/assignment`, {
+    teamLeaderId,
+  });
 
 /*
 |--------------------------------------------------------------------------
@@ -117,43 +98,26 @@ export const assignInternTeamLeader = (
 export const getAllTeamLeaders = (params = {}) => {
   const query = new URLSearchParams(
     Object.entries(params).filter(
-      ([, value]) =>
-        value !== undefined && value !== ''
+      ([, value]) => value !== undefined && value !== ''
     )
   );
 
-  const qs = query.toString()
-    ? `?${query.toString()}`
-    : '';
+  const qs = query.toString() ? `?${query.toString()}` : '';
 
-  return request(
-    'get',
-    `/api/admin/teamleaders${qs}`
-  );
+  return request('get', `/api/admin/teamleaders${qs}`);
 };
 
 export const getTeamLeaderById = (id) =>
-  request(
-    'get',
-    `/api/admin/teamleaders/${id}`
-  );
+  request('get', `/api/admin/teamleaders/${id}`);
 
-export const updateTeamLeader = (
-  id,
-  payload
-) =>
-  request(
-    'patch',
-    `/api/admin/teamleaders/${id}`,
-    payload
-  );
+export const updateTeamLeader = (id, payload) =>
+  request('patch', `/api/admin/teamleaders/${id}`, payload);
+
+export const deleteTeamLeader = (id) =>
+  request('delete', `/api/admin/teamleaders/${id}`);
 
 export const getInternsByTeamLeader = (id) =>
-  request(
-    'get',
-    `/api/admin/teamleaders/${id}/interns`
-  );
-
+  request('get', `/api/admin/teamleaders/${id}/interns`);
 
 /*
 |--------------------------------------------------------------------------
@@ -162,16 +126,9 @@ export const getInternsByTeamLeader = (id) =>
 */
 
 export const getForwardedRequests = () =>
-  request(
-    'get',
-    '/api/admin/forwarded-requests'
-  );
+  request('get', '/api/admin/forwarded-requests');
 
-export const finalizeRequest = (
-  id,
-  action,
-  rejectionReason
-) =>
+export const finalizeRequest = (id, action, rejectionReason) =>
   request(
     'patch',
     `/api/admin/requests/${id}/finalize`,
@@ -185,7 +142,6 @@ export const finalizeRequest = (
         }
   );
 
-
 /*
 |--------------------------------------------------------------------------
 | Certificate Draft Management
@@ -193,29 +149,15 @@ export const finalizeRequest = (
 */
 
 export const getCertificateDraft = (id) =>
-  request(
-    'get',
-    `/api/admin/certificates/${id}`
-  );
+  request('get', `/api/admin/certificates/${id}`);
 
-export const updateCertificateDraft = (
-  id,
-  htmlContent
-) =>
-  request(
-    'patch',
-    `/api/admin/certificates/${id}`,
-    {
-      htmlContent,
-    }
-  );
+export const updateCertificateDraft = (id, htmlContent) =>
+  request('patch', `/api/admin/certificates/${id}`, {
+    htmlContent,
+  });
 
 export const finalizeCertificate = (id) =>
-  request(
-    'post',
-    `/api/admin/certificates/${id}/finalize`
-  );
-
+  request('post', `/api/admin/certificates/${id}/finalize`);
 
 /*
 |--------------------------------------------------------------------------
@@ -224,23 +166,12 @@ export const finalizeCertificate = (id) =>
 */
 
 export const getAllCertificates = () =>
-  request(
-    'get',
-    '/api/admin/certificates'
-  );
+  request('get', '/api/admin/certificates');
 
-export const retryCertificateGeneration = (
-  id
-) =>
-  request(
-    'post',
-    `/api/admin/requests/${id}/retry-generation`
-  );
+export const retryCertificateGeneration = (id) =>
+  request('post', `/api/admin/requests/${id}/retry-generation`);
 
-export const downloadAdminCertificate = async (
-  id,
-  fileName
-) => {
+export const downloadAdminCertificate = async (id, fileName) => {
   try {
     const response = await adminApi.get(
       `/api/admin/certificates/${id}/download`,
@@ -249,39 +180,23 @@ export const downloadAdminCertificate = async (
       }
     );
 
-    const blob = new Blob(
-      [response.data],
-      {
-        type: 'application/pdf',
-      }
-    );
+    const blob = new Blob([response.data], {
+      type: 'application/pdf',
+    });
 
-    const url =
-      window.URL.createObjectURL(blob);
-
-    const link =
-      document.createElement('a');
-
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
     link.href = url;
-
-    link.setAttribute(
-      'download',
-      fileName || 'certificate.pdf'
-    );
-
+    link.setAttribute('download', fileName || 'certificate.pdf');
     document.body.appendChild(link);
-
     link.click();
-
     link.remove();
-
     window.URL.revokeObjectURL(url);
   } catch (error) {
     const data = error.response?.data;
 
     throw new Error(
-      data?.message ||
-        'Failed to download certificate.',
+      data?.message || 'Failed to download certificate.',
       {
         cause: error,
       }
@@ -289,6 +204,11 @@ export const downloadAdminCertificate = async (
   }
 };
 
+export const revokeCertificate = (id, reason) =>
+  request('patch', `/api/admin/certificates/${id}/revoke`, { reason });
+
+export const unrevokeCertificate = (id) =>
+  request('patch', `/api/admin/certificates/${id}/unrevoke`);
 
 /*
 |--------------------------------------------------------------------------
@@ -296,60 +216,17 @@ export const downloadAdminCertificate = async (
 |--------------------------------------------------------------------------
 */
 
-/**
- * Get all certificate templates.
- *
- * GET /api/admin/templates
- */
 export const getCertificateTemplates = () =>
-  request(
-    'get',
-    '/api/admin/templates'
-  );
+  request('get', '/api/admin/templates');
 
-
-/**
- * Get supported certificate placeholders.
- *
- * GET /api/admin/templates/placeholders
- */
 export const getTemplatePlaceholders = () =>
-  request(
-    'get',
-    '/api/admin/templates/placeholders'
-  );
+  request('get', '/api/admin/templates/placeholders');
 
+export const createCertificateTemplate = (payload) =>
+  request('post', '/api/admin/templates', payload);
 
-/**
- * Create a certificate template.
- *
- * POST /api/admin/templates
- */
-export const createCertificateTemplate = (
-  payload
-) =>
-  request(
-    'post',
-    '/api/admin/templates',
-    payload
-  );
-
-
-/**
- * Update a certificate template.
- *
- * PATCH /api/admin/templates/:id
- */
-export const updateCertificateTemplate = (
-  id,
-  payload
-) =>
-  request(
-    'patch',
-    `/api/admin/templates/${id}`,
-    payload
-  );
-
+export const updateCertificateTemplate = (id, payload) =>
+  request('patch', `/api/admin/templates/${id}`, payload);
 
 /*
 |--------------------------------------------------------------------------
@@ -357,32 +234,11 @@ export const updateCertificateTemplate = (
 |--------------------------------------------------------------------------
 */
 
-/**
- * Get retention policy.
- *
- * GET /api/admin/retention-policy
- */
 export const getRetentionPolicy = () =>
-  request(
-    'get',
-    '/api/admin/retention-policy'
-  );
+  request('get', '/api/admin/retention-policy');
 
-
-/**
- * Update retention policy.
- *
- * PATCH /api/admin/retention-policy
- */
-export const updateRetentionPolicy = (
-  payload
-) =>
-  request(
-    'patch',
-    '/api/admin/retention-policy',
-    payload
-  );
-
+export const updateRetentionPolicy = (payload) =>
+  request('patch', '/api/admin/retention-policy', payload);
 
 /*
 |--------------------------------------------------------------------------
@@ -390,25 +246,56 @@ export const updateRetentionPolicy = (
 |--------------------------------------------------------------------------
 */
 
-/**
- * Get archived interns.
- *
- * GET /api/admin/interns/archived
- */
 export const getArchivedInterns = () =>
-  request(
-    'get',
-    '/api/admin/interns/archived'
-  );
+  request('get', '/api/admin/interns/archived');
 
-
-/**
- * Restore archived intern.
- *
- * PATCH /api/admin/interns/:id/restore
- */
 export const restoreIntern = (id) =>
-  request(
-    'patch',
-    `/api/admin/interns/${id}/restore`
+  request('patch', `/api/admin/interns/${id}/restore`);
+
+export const restoreArchivedIntern = restoreIntern;
+
+/*
+|--------------------------------------------------------------------------
+| Overview Analytics
+|--------------------------------------------------------------------------
+*/
+
+export const getOverviewStats = () =>
+  request('get', '/api/admin/overview-stats');
+
+/*
+|--------------------------------------------------------------------------
+| Task D: Audit Logs
+|--------------------------------------------------------------------------
+*/
+
+export const getAuditLogs = (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ''
+    )
   );
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return request('get', `/api/admin/audit-logs${qs}`);
+};
+
+export const exportAuditLogs = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ''
+    )
+  );
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const response = await adminApi.get(`/api/admin/audit-logs/export${qs}`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', 'audit-logs.csv');
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};

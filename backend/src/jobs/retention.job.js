@@ -2,6 +2,8 @@ import cron from 'node-cron';
 import User from '../models/User.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import logAction from '../utils/logAction.js';
+import { notify } from '../services/notification.service.js';
 
 const BATCH_SIZE = 100;
 const DAY_MS = 86400000;
@@ -52,26 +54,36 @@ async function sendArchiveWarnings({ graceDays, dryRun, today }) {
       const archiveDate = plusDays(intern.endDate, graceDays);
       const daysUntilArchive = Math.round((archiveDate - today) / DAY_MS);
       if (daysUntilArchive !== 7) continue;
-      if (intern.archiveWarningSentAt && startOfUtcDay(intern.archiveWarningSentAt).getTime() === today.getTime()) continue;
+      if (intern.archiveWarningSentAt) continue;
 
       if (dryRun) {
         console.log(`[retention] DRY RUN: would email ${intern.email} that account archives on ${archiveDate.toISOString().slice(0, 10)}`);
       } else {
         try {
-          await sendEmail({
-            to: intern.email,
-            subject: 'Your UPTOSKILL internship account will be archived in 7 days',
-            html: `<p>Hello ${escapeHtml(intern.fullName || 'Intern')},</p><p>Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then. Contact an administrator if you need help.</p>`,
+          await notify(intern._id, 'ARCHIVE_WARNING', {
+            title: 'Account Archival Warning',
+            message: `Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then.`,
+            email: true,
           });
           intern.archiveWarningSentAt = new Date();
           await intern.save();
         } catch (error) {
-          console.error(`[retention] warning email failed for ${intern._id}:`, error.message);
+          console.error(`[retention] warning notification failed for ${intern._id}:`, error.message);
           continue;
         }
       }
       warnings += 1;
-      // TODO: logAction for the archive warning.
+      try {
+        await logAction({
+          actor: { role: 'system' },
+          action: 'ARCHIVE_WARNING_SENT',
+          targetType: 'User',
+          targetId: intern._id,
+          meta: { email: intern.email, archiveDate }
+        });
+      } catch (logErr) {
+        // silent
+      }
     }
   });
   return warnings;
@@ -90,7 +102,17 @@ async function archiveCompletedInterns({ graceDays, dryRun, today }) {
       plusDays(intern.endDate, graceDays) < today);
     for (const intern of eligible) {
       console.log(`[retention] ${dryRun ? 'DRY RUN: would archive' : 'archiving'} ${intern._id}`);
-      // TODO: logAction for the archive.
+      try {
+        await logAction({
+          actor: { role: 'system' },
+          action: 'INTERN_ARCHIVED',
+          targetType: 'User',
+          targetId: intern._id,
+          meta: { email: intern.email }
+        });
+      } catch (logErr) {
+        // silent
+      }
     }
     if (eligible.length && !dryRun) {
       await User.updateMany(
@@ -115,7 +137,16 @@ async function purgeArchivedInterns({ purgeDays, dryRun, today }) {
     for (const intern of batch) {
       const id = intern._id.toString();
       console.log(`[retention] ${dryRun ? 'DRY RUN: would anonymize' : 'anonymizing'} ${id}`);
-      // TODO: logAction for personal-data purge. Certificate records and files remain intact.
+      try {
+        await logAction({
+          actor: { role: 'system' },
+          action: 'INTERN_PURGED',
+          targetType: 'User',
+          targetId: intern._id
+        });
+      } catch (logErr) {
+        // silent
+      }
       if (!dryRun) {
         await User.updateOne({ _id: intern._id, isArchived: true, personalDataPurged: { $ne: true } }, {
           $set: {
@@ -151,3 +182,5 @@ export function scheduleRetentionJob() {
     runRetentionJob().catch((error) => console.error('[retention] job failed:', error));
   }, { timezone: process.env.JOBS_TIMEZONE || 'Asia/Kolkata' });
 }
+
+export const initRetentionJob = scheduleRetentionJob;
