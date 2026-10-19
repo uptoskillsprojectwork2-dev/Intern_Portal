@@ -12,16 +12,16 @@ export default function Toast({ type = 'info', message, onClose }) {
   if (!message) return null;
 
   const icons = {
-    success: '✓',
-    error: '✕',
-    info: 'ℹ',
-    loading: '⏳'
+    success: <i className="bi bi-check-circle-fill" />,
+    error: <i className="bi bi-x-circle-fill" />,
+    info: <i className="bi bi-info-circle-fill" />,
+    loading: <i className="bi bi-hourglass-split" />
   };
 
   return (
     <div className={`shared-toast shared-toast-${type}`} role="alert" aria-live="polite">
       <span className="shared-toast-icon" aria-hidden="true">
-        {icons[type] || 'ℹ'}
+        {icons[type] || <i className="bi bi-info-circle-fill" />}
       </span>
       <span className="shared-toast-message">{message}</span>
       {onClose && (
@@ -31,7 +31,7 @@ export default function Toast({ type = 'info', message, onClose }) {
           onClick={onClose}
           aria-label="Dismiss message"
         >
-          ×
+          <i className="bi bi-x-lg" style={{ fontSize: '0.85em' }}></i>
         </button>
       )}
     </div>

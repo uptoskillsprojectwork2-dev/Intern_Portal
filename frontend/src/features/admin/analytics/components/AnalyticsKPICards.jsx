@@ -16,7 +16,7 @@ export default function AnalyticsKPICards({ overviewData, loading, error, onRetr
   if (error) {
     return (
       <div className="widget-error-box">
-        <p>⚠️ Failed to load Overview KPIs: {error}</p>
+        <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Failed to load Overview KPIs: {error}</p>
         <button type="button" className="retry-btn" onClick={onRetry}>
           Retry KPI Data
         </button>
@@ -39,7 +39,7 @@ export default function AnalyticsKPICards({ overviewData, loading, error, onRetr
       <div className="kpi-card accent-blue">
         <div className="kpi-header">
           <span className="kpi-title">Total Interns</span>
-          <span className="kpi-icon">👥</span>
+          <span className="kpi-icon"><i className="bi bi-people-fill"></i></span>
         </div>
         <div className="kpi-value">{kpis.totalInterns || 0}</div>
         <div className="kpi-sub">
@@ -53,7 +53,7 @@ export default function AnalyticsKPICards({ overviewData, loading, error, onRetr
       <div className="kpi-card accent-green">
         <div className="kpi-header">
           <span className="kpi-title">Active Interns</span>
-          <span className="kpi-icon">⚡</span>
+          <span className="kpi-icon"><i className="bi bi-lightning-charge-fill"></i></span>
         </div>
         <div className="kpi-value">{kpis.activeInterns || 0}</div>
         <div className="kpi-sub">
@@ -65,7 +65,7 @@ export default function AnalyticsKPICards({ overviewData, loading, error, onRetr
       <div className="kpi-card accent-amber">
         <div className="kpi-header">
           <span className="kpi-title">Pending Requests</span>
-          <span className="kpi-icon">⏳</span>
+          <span className="kpi-icon"><i className="bi bi-hourglass-split"></i></span>
         </div>
         <div className="kpi-value">{kpis.pendingRequests || 0}</div>
         <div className="kpi-sub">
@@ -77,7 +77,7 @@ export default function AnalyticsKPICards({ overviewData, loading, error, onRetr
       <div className="kpi-card accent-purple">
         <div className="kpi-header">
           <span className="kpi-title">Certificates Issued</span>
-          <span className="kpi-icon">📜</span>
+          <span className="kpi-icon"><i className="bi bi-file-earmark-check-fill"></i></span>
         </div>
         <div className="kpi-value">{kpis.certificatesIssuedThisMonth || 0}</div>
         <div className="kpi-sub">
@@ -93,7 +93,7 @@ export default function AnalyticsKPICards({ overviewData, loading, error, onRetr
       <div className="kpi-card accent-cyan">
         <div className="kpi-header">
           <span className="kpi-title">Avg Turnaround</span>
-          <span className="kpi-icon">⏱️</span>
+          <span className="kpi-icon"><i className="bi bi-stopwatch-fill"></i></span>
         </div>
         <div className="kpi-value">{formatHours(kpis.avgTurnaroundHours)}</div>
         <div className="kpi-sub">

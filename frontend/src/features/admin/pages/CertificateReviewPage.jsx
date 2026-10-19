@@ -119,7 +119,7 @@ export default function CertificateReviewPage() {
             onClick={onLogout}
             title="Sign out"
           >
-            <span>↩</span> Logout
+            <span><i className="bi bi-box-arrow-right"></i></span> Logout
           </button>
         </div>
       </header>
@@ -166,8 +166,8 @@ export default function CertificateReviewPage() {
               type={finalizeSuccess.emailSent ? 'success' : 'info'}
               message={
                 finalizeSuccess.emailSent
-                  ? '✓ Certificate finalized, PDF generated, and email sent to intern successfully!'
-                  : `✓ Certificate finalized & PDF generated. (Email notice: ${finalizeSuccess.emailError})`
+                  ? 'Certificate finalized, PDF generated, and email sent to intern successfully!'
+                  : `Certificate finalized & PDF generated. (Email notice: ${finalizeSuccess.emailError})`
               }
             />
           </div>
@@ -193,7 +193,7 @@ export default function CertificateReviewPage() {
         {/* Fetch Error State */}
         {!loading && error && (
           <div className="certificate-review-state-panel error" role="alert">
-            <div className="certificate-error-icon" aria-hidden="true">⚠</div>
+            <div className="certificate-error-icon" aria-hidden="true"><i className="bi bi-exclamation-triangle-fill"></i></div>
             <div className="certificate-error-content">
               <h3>Unable to load certificate draft.</h3>
               <p>{error}</p>
@@ -257,7 +257,7 @@ export default function CertificateReviewPage() {
                       onClick={handleCopyHtml}
                       title="Copy HTML to clipboard"
                     >
-                      <span>{copied ? '✓ Copied' : '📋 Copy HTML'}</span>
+                      <span>{copied ? <><i className="bi bi-check2 me-1"></i>Copied</> : <><i className="bi bi-clipboard me-1"></i>Copy HTML</>}</span>
                     </button>
                     {!isFinalized && (
                       <button
@@ -266,7 +266,7 @@ export default function CertificateReviewPage() {
                         onClick={handleResetDraft}
                         title="Reset to last saved draft content"
                       >
-                        <span>↺ Revert to Saved</span>
+                        <span><i className="bi bi-arrow-counterclockwise me-1"></i>Revert to Saved</span>
                       </button>
                     )}
                   </div>
@@ -319,7 +319,7 @@ export default function CertificateReviewPage() {
                           : 'Render PDF, finalize document, and send email to intern'
                       }
                     >
-                      {finalizing ? 'Finalizing & Sending...' : isFinalized ? '✓ Finalized' : 'Finalize & Send'}
+                      {finalizing ? 'Finalizing & Sending...' : isFinalized ? <><i className="bi bi-check2-all me-1"></i>Finalized</> : 'Finalize & Send'}
                     </button>
 
                     {saveSuccess && (

@@ -51,19 +51,19 @@ const TLDashboard = () => {
           />
           <div className="admin-avatar">{initials}</div>
           <div><strong>{user?.fullName || 'Team Leader'}</strong><small>{user?.email || 'Loading profile...'}</small></div>
-          <button className="admin-logout" onClick={logout} title="Sign out"><span>↩</span> Logout</button>
+          <button className="admin-logout" onClick={logout} title="Sign out"><span><i className="bi bi-box-arrow-right"></i></span> Logout</button>
         </div>
       </header>
 
       <aside className="admin-sidebar" aria-label="Team leader navigation">
         <p className="admin-sidebar-label">Workspace</p>
         <nav className="admin-sidebar-nav">
-          <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}><span>▦</span> Overview</button>
-          <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => setActiveView('requests')}><span>▤</span> Certificate Requests</button>
-          <button className={`admin-nav-item ${activeView === 'myInterns' ? 'active' : ''}`} onClick={() => setActiveView('myInterns')}><span>♙</span> My Interns</button>
-          <button className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`} onClick={() => setActiveView('intern')}><span>＋</span> Create Intern</button>
+          <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}><span><i className="bi bi-grid-fill"></i></span> Overview</button>
+          <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => setActiveView('requests')}><span><i className="bi bi-card-checklist"></i></span> Certificate Requests</button>
+          <button className={`admin-nav-item ${activeView === 'myInterns' ? 'active' : ''}`} onClick={() => setActiveView('myInterns')}><span><i className="bi bi-people-fill"></i></span> My Interns</button>
+          <button className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`} onClick={() => setActiveView('intern')}><span><i className="bi bi-person-plus-fill"></i></span> Create Intern</button>
         </nav>
-        <div className="admin-sidebar-note"><span>●</span> Team leader access enabled</div>
+        <div className="admin-sidebar-note"><span><i className="bi bi-shield-check"></i></span> Team leader access enabled</div>
       </aside>
 
       <main className="admin-dashboard-main">
@@ -82,7 +82,7 @@ const TLDashboard = () => {
               <div><span>Mobile number</span><strong>{user?.mobileNo || 'Not provided'}</strong></div>
               <div><span>Member since</span><strong>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</strong></div>
             </div>
-            <div className="admin-quick-actions"><button onClick={() => setActiveView('intern')}><span>＋</span><strong>Create Intern</strong><small>Register an intern for your team</small></button></div>
+            <div className="admin-quick-actions"><button onClick={() => setActiveView('intern')}><span><i className="bi bi-person-plus-fill"></i></span><strong>Create Intern</strong><small>Register an intern for your team</small></button></div>
           </section>
           <div><UpcomingCompletions interns={upcomingCompletions} /></div>
           </>

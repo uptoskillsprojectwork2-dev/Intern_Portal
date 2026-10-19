@@ -102,7 +102,7 @@ export default function VerifyPage({ theme, onToggleTheme }) {
 
         {status === 'error' && (
           <div className="verify-card error-card" role="alert">
-            <div className="verify-status-icon error-icon">⚠️</div>
+            <div className="verify-status-icon error-icon"><i className="bi bi-exclamation-triangle-fill"></i></div>
             <h2>Verification Unavailable</h2>
             <p className="verify-desc">{errorMessage || 'A temporary connection issue occurred while verifying this certificate.'}</p>
             <button
@@ -117,7 +117,7 @@ export default function VerifyPage({ theme, onToggleTheme }) {
 
         {status === 'not_found' && (
           <div className="verify-card not-found-card" role="region" aria-label="Certificate Not Found">
-            <div className="verify-status-icon not-found-icon">❓</div>
+            <div className="verify-status-icon not-found-icon"><i className="bi bi-question-circle-fill"></i></div>
             <span className="verify-pill not-found-pill">Not Found</span>
             <h2>Certificate Not Found</h2>
             <p className="verify-desc">
@@ -132,7 +132,7 @@ export default function VerifyPage({ theme, onToggleTheme }) {
 
         {status === 'revoked' && (
           <div className="verify-card revoked-card" role="region" aria-label="Certificate Revoked">
-            <div className="verify-status-icon revoked-icon">✕</div>
+            <div className="verify-status-icon revoked-icon"><i className="bi bi-x-circle-fill"></i></div>
             <span className="verify-pill revoked-pill">Certificate Revoked</span>
             <h2 className="verify-revoked-title">This Certificate Is No Longer Valid</h2>
             <p className="verify-revoked-notice">
@@ -165,14 +165,14 @@ export default function VerifyPage({ theme, onToggleTheme }) {
             </div>
 
             <div className="verify-footer-badge">
-              <span className="verify-shield-icon">🛡️</span> UptoSkills Security &amp; Compliance Verified
+              <span className="verify-shield-icon"><i className="bi bi-shield-lock-fill"></i></span> UptoSkills Security &amp; Compliance Verified
             </div>
           </div>
         )}
 
         {status === 'valid' && (
           <div className="verify-card valid-card" role="region" aria-label="Certificate Valid">
-            <div className="verify-status-icon valid-icon">✓</div>
+            <div className="verify-status-icon valid-icon"><i className="bi bi-check-circle-fill"></i></div>
             <span className="verify-pill valid-pill">Official Verified Credential</span>
             <h2 className="verify-valid-title">Certificate is Genuine &amp; Valid</h2>
             <p className="verify-valid-sub">
@@ -207,7 +207,7 @@ export default function VerifyPage({ theme, onToggleTheme }) {
             </div>
 
             <div className="verify-footer-badge">
-              <span className="verify-shield-icon">🛡️</span> Cryptographically Verified • UptoSkills Registry
+              <span className="verify-shield-icon"><i className="bi bi-shield-check"></i></span> Cryptographically Verified • UptoSkills Registry
             </div>
           </div>
         )}

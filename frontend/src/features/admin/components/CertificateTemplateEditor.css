@@ -536,3 +536,113 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── SELECTED ELEMENT POSITION & NUDGE BAR ── */
+.certificate-nudge-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--accent-light, #c7d2fe);
+  border-radius: var(--r-full);
+  padding: 3px 6px 3px 12px;
+  animation: fade-in 0.2s ease-out;
+}
+
+.certificate-nudge-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+}
+
+.certificate-nudge-label svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.certificate-nudge-label strong {
+  color: var(--accent);
+  font-weight: 700;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.certificate-nudge-label span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--surface-1);
+  padding: 1px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.certificate-nudge-arrows {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.certificate-nudge-arrows button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: var(--r-full);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  line-height: 1;
+}
+
+.certificate-nudge-arrows button:hover {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  transform: scale(1.08);
+}
+
+/* ── GRAPESJS TOOLBAR & CANVAS MOVE CURSOR ENHANCEMENTS ── */
+.gjs-toolbar {
+  border-radius: 6px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+  overflow: hidden !important;
+}
+
+.gjs-toolbar .gjs-toolbar-item {
+  transition: background-color var(--dur-fast) !important;
+}
+
+.gjs-toolbar .gjs-toolbar-item:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Explicit grab / grabbing cursor for the move handle */
+.gjs-toolbar .gjs-toolbar-item[class*="tlb-move"],
+.gjs-toolbar [data-command="tlb-move"],
+.gjs-toolbar-item__tlb-move {
+  cursor: grab !important;
+}
+
+.gjs-toolbar .gjs-toolbar-item[class*="tlb-move"]:active,
+.gjs-toolbar [data-command="tlb-move"]:active,
+.gjs-toolbar-item__tlb-move:active {
+  cursor: grabbing !important;
+}
+
+/* When dragging on canvas */
+body.gjs-dragging,
+.gjs-cv-canvas.gjs-grabbing {
+  cursor: grabbing !important;
+}

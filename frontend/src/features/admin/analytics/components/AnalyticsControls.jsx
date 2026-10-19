@@ -126,7 +126,7 @@ export default function AnalyticsControls({
           onClick={() => onExport('overview')}
           title="Export Analytics to CSV"
         >
-          <span>📥</span> Export CSV
+          <span><i className="bi bi-download" style={{ marginRight: 6 }}></i></span> Export CSV
         </button>
 
         <button
@@ -144,7 +144,7 @@ export default function AnalyticsControls({
           onClick={onRefresh}
           title="Refresh Data"
         >
-          <span>🔄</span> Refresh
+          <span><i className="bi bi-arrow-clockwise" style={{ marginRight: 6 }}></i></span> Refresh
         </button>
 
         {lastUpdated && (

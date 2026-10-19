@@ -52,7 +52,7 @@ export default function AnalyticsTables({
             className="table-export-btn"
             onClick={() => onExport('team-leaders')}
           >
-            <span>📥</span> Export CSV
+            <span><i className="bi bi-download" style={{ marginRight: 6 }}></i></span> Export CSV
           </button>
         </div>
 
@@ -60,7 +60,7 @@ export default function AnalyticsTables({
           <div className="table-skeleton">Loading performance matrix...</div>
         ) : errorMap.teamLeaders ? (
           <div className="widget-error-box">
-            <p>⚠️ Error: {errorMap.teamLeaders}</p>
+            <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Error: {errorMap.teamLeaders}</p>
             <button className="retry-btn" onClick={() => onRetry('teamLeaders')}>Retry</button>
           </div>
         ) : sortedTeamLeaders.length === 0 ? (
@@ -112,10 +112,10 @@ export default function AnalyticsTables({
                     <td>
                       {tl.hasOverdueRequests ? (
                         <span className="status-badge alert" title={`Longest pending request: ${tl.maxPendingDays} days`}>
-                          ⚠️ Overdue ({tl.maxPendingDays}d)
+                          <i className="bi bi-exclamation-circle-fill" style={{ marginRight: 4 }}></i>Overdue ({tl.maxPendingDays}d)
                         </span>
                       ) : (
-                        <span className="status-badge ok">✓ On Track</span>
+                        <span className="status-badge ok"><i className="bi bi-check-circle-fill" style={{ marginRight: 4 }}></i>On Track</span>
                       )}
                     </td>
                   </tr>
@@ -141,7 +141,7 @@ export default function AnalyticsTables({
               className="table-export-btn"
               onClick={() => onExport('stuck-requests')}
             >
-              <span>📥</span> Export CSV
+              <span><i className="bi bi-download" style={{ marginRight: 6 }}></i></span> Export CSV
             </button>
           </div>
 
@@ -149,11 +149,11 @@ export default function AnalyticsTables({
             <div className="table-skeleton">Loading stuck requests...</div>
           ) : errorMap.stuck ? (
             <div className="widget-error-box">
-              <p>⚠️ Error: {errorMap.stuck}</p>
+              <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Error: {errorMap.stuck}</p>
               <button className="retry-btn" onClick={() => onRetry('stuck')}>Retry</button>
             </div>
           ) : !stuckData || stuckData.length === 0 ? (
-            <div className="empty-state">🎉 No stuck requests! All requests are up to date.</div>
+            <div className="empty-state"><i className="bi bi-check2-circle" style={{ marginRight: 8, fontSize: '1.2rem', color: 'var(--success, #10b981)' }}></i>No stuck requests! All requests are up to date.</div>
           ) : (
             <div className="table-wrapper">
               <table className="analytics-table mini">
@@ -178,7 +178,7 @@ export default function AnalyticsTables({
                       </td>
                       <td>
                         <span className="days-pending-badge">
-                          ⏳ {item.daysPending} days
+                          <i className="bi bi-hourglass-split" style={{ marginRight: 4 }}></i>{item.daysPending} days
                         </span>
                       </td>
                       <td>
@@ -218,7 +218,7 @@ export default function AnalyticsTables({
               className="table-export-btn"
               onClick={() => onExport('upcoming-completions')}
             >
-              <span>📥</span> Export CSV
+              <span><i className="bi bi-download" style={{ marginRight: 6 }}></i></span> Export CSV
             </button>
           </div>
 
@@ -226,7 +226,7 @@ export default function AnalyticsTables({
             <div className="table-skeleton">Loading upcoming completions...</div>
           ) : errorMap.upcoming ? (
             <div className="widget-error-box">
-              <p>⚠️ Error: {errorMap.upcoming}</p>
+              <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Error: {errorMap.upcoming}</p>
               <button className="retry-btn" onClick={() => onRetry('upcoming')}>Retry</button>
             </div>
           ) : !upcomingData || upcomingData.length === 0 ? (
@@ -259,7 +259,7 @@ export default function AnalyticsTables({
                       </td>
                       <td>
                         {item.hasRequestedCertificate ? (
-                          <span className="status-badge ok">✓ {item.certificateStatus}</span>
+                          <span className="status-badge ok"><i className="bi bi-check2" style={{ marginRight: 4 }}></i>{item.certificateStatus}</span>
                         ) : (
                           <span className="status-badge not-requested">Not Requested Yet</span>
                         )}

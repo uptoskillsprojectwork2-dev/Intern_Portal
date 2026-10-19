@@ -27,19 +27,19 @@ function formatNotificationTime(dateString) {
 function getTypeIcon(type) {
   switch (type) {
     case 'REQUEST_SUBMITTED':
-      return { icon: '📝', className: 'notif-badge-submitted' };
+      return { icon: <i className="bi bi-file-earmark-text-fill" />, className: 'notif-badge-submitted' };
     case 'REQUEST_FORWARDED':
-      return { icon: '↗️', className: 'notif-badge-forwarded' };
+      return { icon: <i className="bi bi-send-fill" />, className: 'notif-badge-forwarded' };
     case 'REQUEST_APPROVED':
-      return { icon: '✅', className: 'notif-badge-approved' };
+      return { icon: <i className="bi bi-check-circle-fill" />, className: 'notif-badge-approved' };
     case 'REQUEST_REJECTED':
-      return { icon: '✕', className: 'notif-badge-rejected' };
+      return { icon: <i className="bi bi-x-circle-fill" />, className: 'notif-badge-rejected' };
     case 'CERTIFICATE_SENT':
-      return { icon: '🎓', className: 'notif-badge-sent' };
+      return { icon: <i className="bi bi-mortarboard-fill" />, className: 'notif-badge-sent' };
     case 'ARCHIVE_WARNING':
-      return { icon: '⚠️', className: 'notif-badge-warning' };
+      return { icon: <i className="bi bi-exclamation-triangle-fill" />, className: 'notif-badge-warning' };
     default:
-      return { icon: '🔔', className: 'notif-badge-default' };
+      return { icon: <i className="bi bi-bell-fill" />, className: 'notif-badge-default' };
   }
 }
 
@@ -122,7 +122,7 @@ export default function NotificationDropdown({
 
         {!loading && error && (
           <div className="notif-state notif-error-state" role="alert">
-            <span className="notif-state-icon">⚠️</span>
+            <span className="notif-state-icon"><i className="bi bi-exclamation-triangle-fill"></i></span>
             <p className="notif-error-msg">{error}</p>
             {onRefresh && (
               <button
@@ -138,7 +138,7 @@ export default function NotificationDropdown({
 
         {!loading && !error && notifications.length === 0 && (
           <div className="notif-state notif-empty-state">
-            <span className="notif-state-icon">🎉</span>
+            <span className="notif-state-icon"><i className="bi bi-check2-circle"></i></span>
             <strong className="notif-empty-title">You're all caught up</strong>
             <p className="notif-empty-desc">
               No new notifications right now. Any updates on requests or accounts will appear here.

@@ -108,7 +108,7 @@ export default function MyRequestsList() {
                               <span>Downloading…</span>
                             </>
                           ) : (
-                            <span>📥 Download Certificate</span>
+                            <span><i className="bi bi-download" style={{ marginRight: 6 }}></i>Download Certificate</span>
                           )}
                         </button>
                       ) : (

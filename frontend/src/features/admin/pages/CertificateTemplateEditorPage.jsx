@@ -75,6 +75,7 @@ export default function CertificateTemplateEditorPage({ embedded = false }) {
   const [isDirty, setIsDirty] = useState(false);
   const [workingHtml, setWorkingHtml] = useState("");
   const [editorController, setEditorController] = useState(null);
+  const [selectedElement, setSelectedElement] = useState(null);
   const [templateDetails, setTemplateDetails] = useState({
     templateCode: "",
     templateName: "",
@@ -454,7 +455,7 @@ export default function CertificateTemplateEditorPage({ embedded = false }) {
               className="btn-template-secondary"
               onClick={() => setPreviewMode((value) => !value)}
             >
-              <span>{previewMode ? "✏️" : "👁️"}</span>
+              <i className={previewMode ? "bi bi-pencil-square" : "bi bi-eye-fill"} style={{ marginRight: 6 }}></i>
               {previewMode ? "Edit Template" : "Preview with Sample Data"}
             </button>
           </div>
@@ -603,6 +604,55 @@ export default function CertificateTemplateEditorPage({ embedded = false }) {
                 </button>
               </div>
 
+              {/* Selected Element Nudge & Position Bar */}
+              {selectedElement && !previewMode && (
+                <div className="certificate-nudge-bar" title="Position & Nudge Selected Element">
+                  <span className="certificate-nudge-label">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <polyline points="5 9 2 12 5 15"></polyline>
+                      <polyline points="9 5 12 2 15 5"></polyline>
+                      <polyline points="15 19 12 22 9 19"></polyline>
+                      <polyline points="19 9 22 12 19 15"></polyline>
+                      <line x1="2" y1="12" x2="22" y2="12"></line>
+                      <line x1="12" y1="2" x2="12" y2="22"></line>
+                    </svg>
+                    <strong>{selectedElement.name}</strong>
+                    {selectedElement.left !== "auto" && <span>X: {selectedElement.left}</span>}
+                    {selectedElement.top !== "auto" && <span>Y: {selectedElement.top}</span>}
+                  </span>
+                  <div className="certificate-nudge-arrows">
+                    <button
+                      type="button"
+                      title="Move Left (ArrowLeft)"
+                      onClick={() => editorController?.nudgeSelected?.(-5, 0)}
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      title="Move Up (ArrowUp)"
+                      onClick={() => editorController?.nudgeSelected?.(0, -5)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      title="Move Down (ArrowDown)"
+                      onClick={() => editorController?.nudgeSelected?.(0, 5)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      title="Move Right (ArrowRight)"
+                      onClick={() => editorController?.nudgeSelected?.(5, 0)}
+                    >
+                      →
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Primary Save Button in Header */}
               {!previewMode && (
                 <button
@@ -662,8 +712,10 @@ export default function CertificateTemplateEditorPage({ embedded = false }) {
                     onChange={handleEditorChange}
                     onDirtyChange={handleEditorDirtyChange}
                     onEditorReady={handleEditorReady}
+                    onComponentSelect={setSelectedElement}
                     saving={saving}
                     hideSaveButton={true}
+                    zoom={zoom}
                   />
                 )}
               </div>

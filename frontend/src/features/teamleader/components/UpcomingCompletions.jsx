@@ -1,4 +1,4 @@
-﻿import './UpcomingCompletions.css';
+import './UpcomingCompletions.css';
 const UpcomingCompletions = ({ interns }) => {
   if (!interns || interns.length === 0) {
     return (
@@ -11,7 +11,7 @@ const UpcomingCompletions = ({ interns }) => {
         </div>
 
         <div className="upcoming-empty-state">
-          <span>✓</span>
+          <span><i className="bi bi-check-circle-fill" style={{ fontSize: '1.5rem', color: 'var(--success, #10b981)' }}></i></span>
           <p>No interns are completing their internship within the next 3 days.</p>
         </div>
       </section>

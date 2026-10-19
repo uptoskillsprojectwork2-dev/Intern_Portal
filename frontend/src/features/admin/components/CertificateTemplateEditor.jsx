@@ -62,6 +62,8 @@ export default function CertificateTemplateEditor({
   readOnly = false,
   saving = false,
   hideSaveButton = false,
+  zoom = 1,
+  onComponentSelect,
 }) {
   const editorContainerRef = useRef(null);
   const editorRef = useRef(null);
@@ -69,13 +71,21 @@ export default function CertificateTemplateEditor({
   const onChangeRef = useRef(onChange);
   const onDirtyChangeRef = useRef(onDirtyChange);
   const onEditorReadyRef = useRef(onEditorReady);
+  const onComponentSelectRef = useRef(onComponentSelect);
   const initialHtmlRef = useRef(initialHtml);
   const savedHtmlRef = useRef(initialHtml);
   const readOnlyRef = useRef(readOnly);
+  const zoomRef = useRef(zoom);
   const hasUnsavedChangesRef = useRef(false);
   const serializeRef = useRef(() => initialHtmlRef.current);
   const [initializing, setInitializing] = useState(true);
   const [saveError, setSaveError] = useState("");
+
+  // Keep refs up-to-date
+  useEffect(() => {
+    zoomRef.current = zoom;
+    onComponentSelectRef.current = onComponentSelect;
+  }, [zoom, onComponentSelect]);
 
   // Always keep the latest onSave function
   useEffect(() => {
@@ -154,6 +164,8 @@ export default function CertificateTemplateEditor({
       const editor = grapesjs.init({
         container: editorContainerRef.current,
 
+        dragMode: "absolute",
+
         height: `${A4_HEIGHT}px`,
 
         width: `${A4_WIDTH}px`,
@@ -231,6 +243,44 @@ export default function CertificateTemplateEditor({
         styleManager: {
           sectors: [
             {
+              name: "Position & Coordinates",
+              open: true,
+              properties: [
+                {
+                  name: "Position",
+                  property: "position",
+                  type: "select",
+                  defaults: "static",
+                  options: [
+                    { value: "static", name: "Static" },
+                    { value: "relative", name: "Relative" },
+                    { value: "absolute", name: "Absolute (Movable)" },
+                  ],
+                },
+                {
+                  name: "Top (Y)",
+                  property: "top",
+                  type: "integer",
+                  units: ["px", "%"],
+                  defaults: "auto",
+                },
+                {
+                  name: "Left (X)",
+                  property: "left",
+                  type: "integer",
+                  units: ["px", "%"],
+                  defaults: "auto",
+                },
+                {
+                  name: "Z-Index",
+                  property: "z-index",
+                  type: "integer",
+                  defaults: "auto",
+                },
+              ],
+            },
+
+            {
               name: "Dimension",
               open: false,
               properties: [
@@ -289,6 +339,101 @@ export default function CertificateTemplateEditor({
       // --------------------------------------------------
       editor.setComponents(editorHtml);
 
+      // Helper to ensure component is positioned absolutely without jumping
+      const ensureComponentAbsolute = (component) => {
+        if (!component) return;
+        const el = component.getEl?.();
+        if (!el || el.tagName === "BODY" || el.tagName === "HTML") return;
+
+        component.set("dmode", "absolute");
+        component.set("draggable", true);
+
+        const style = component.getStyle?.() || {};
+        if (style.position !== "absolute") {
+          const win = el.ownerDocument?.defaultView || window;
+          const targetRect = el.getBoundingClientRect();
+          const offsetParent = el.offsetParent || el.ownerDocument?.body;
+          if (!offsetParent) return;
+          const parentRect = offsetParent.getBoundingClientRect();
+          const parentComp = win.getComputedStyle(offsetParent);
+          const borderLeft = parseFloat(parentComp.borderLeftWidth) || 0;
+          const borderTop = parseFloat(parentComp.borderTopWidth) || 0;
+
+          const relLeft = Math.round(targetRect.left - parentRect.left - borderLeft);
+          const relTop = Math.round(targetRect.top - parentRect.top - borderTop);
+          const curWidth = Math.round(targetRect.width);
+          const curHeight = Math.round(targetRect.height);
+
+          component.addStyle({
+            position: "absolute",
+            left: `${relLeft}px`,
+            top: `${relTop}px`,
+            width: `${curWidth}px`,
+            height: `${curHeight}px`,
+            margin: "0px",
+          });
+        }
+      };
+
+      // Wrap core:component-drag to dynamically compensate for canvas zoom scale
+      // and ensure elements have absolute coordinates relative to their container before drag
+      const origCompDrag = editor.Commands.get("core:component-drag");
+      if (origCompDrag) {
+        editor.Commands.add("core:component-drag", {
+          ...origCompDrag,
+          run(ed, sender, options = {}) {
+            const target = options.target || ed.getSelected();
+            if (target) {
+              const targets = Array.isArray(target) ? target : [target];
+              targets.forEach((t) => ensureComponentAbsolute(t));
+            }
+            options.dragger = {
+              ...options.dragger,
+              scale: () => 1 / (zoomRef.current || 1),
+            };
+            return origCompDrag.run.call(origCompDrag, ed, sender, options);
+          },
+        });
+      }
+
+      // Notify parent of selected component and keep draggable
+      const reportSelectedComponent = (component) => {
+        if (typeof onComponentSelectRef.current !== "function") return;
+        if (!component) {
+          onComponentSelectRef.current(null);
+          return;
+        }
+        const el = component.getEl?.();
+        const tag = el?.tagName?.toLowerCase() || "";
+        const text = (el?.innerText || "").trim().slice(0, 24);
+        const name = component.getName?.() || text || tag || "Element";
+        const st = component.getStyle?.() || {};
+        onComponentSelectRef.current({
+          name,
+          left: st.left || "auto",
+          top: st.top || "auto",
+          position: st.position || "absolute",
+        });
+      };
+
+      editor.on("component:selected", (component) => {
+        if (!component) return;
+        component.set("dmode", "absolute");
+        component.set("draggable", true);
+        reportSelectedComponent(component);
+      });
+
+      editor.on("component:deselected", () => {
+        reportSelectedComponent(null);
+      });
+
+      editor.on("component:styleUpdate", (component) => {
+        const selected = editor.getSelected();
+        if (selected === component) {
+          reportSelectedComponent(component);
+        }
+      });
+
       const serialize = () => {
         let html = editor.getHtml();
         if (qrDataUrl) {
@@ -326,12 +471,30 @@ export default function CertificateTemplateEditor({
       onEditorReadyRef.current?.({
         insertPlaceholder,
         getHtml: serialize,
+        getEditor: () => editor,
+        nudgeSelected: (dx, dy) => {
+          if (readOnlyRef.current) return;
+          const selected = editor.getSelected();
+          if (!selected) return;
+          ensureComponentAbsolute(selected);
+          const curStyle = selected.getStyle?.() || {};
+          const curLeft = parseFloat(curStyle.left) || 0;
+          const curTop = parseFloat(curStyle.top) || 0;
+          selected.addStyle({
+            left: `${curLeft + dx}px`,
+            top: `${curTop + dy}px`,
+          });
+          reportSelectedComponent(selected);
+          emitChange();
+        },
         markSaved: () => {
           savedHtmlRef.current = serialize();
           hasUnsavedChangesRef.current = false;
           onDirtyChangeRef.current?.(false);
         },
       });
+
+      let cleanupListeners = () => {};
 
       // --------------------------------------------------
       // Force A4 white canvas after GrapesJS loads
@@ -381,6 +544,94 @@ export default function CertificateTemplateEditor({
             bodyElement.style.color = "#111827";
             bodyElement.style.overflow = "visible";
           }
+
+          // Keyboard nudge support (arrow keys)
+          const handleKeyDown = (e) => {
+            if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+            const selected = editor.getSelected();
+            if (!selected) return;
+            const el = selected.getEl?.();
+            if (!el || el.tagName === "BODY" || el.tagName === "HTML") return;
+
+            const activeEl = el.ownerDocument?.activeElement || document.activeElement;
+            if (activeEl?.isContentEditable || activeEl?.tagName === "INPUT" || activeEl?.tagName === "TEXTAREA") {
+              return;
+            }
+
+            e.preventDefault();
+            ensureComponentAbsolute(selected);
+            const curStyle = selected.getStyle?.() || {};
+            const curLeft = parseFloat(curStyle.left) || 0;
+            const curTop = parseFloat(curStyle.top) || 0;
+            const step = e.shiftKey ? 10 : 1;
+
+            let newLeft = curLeft;
+            let newTop = curTop;
+            if (e.key === "ArrowUp") newTop -= step;
+            if (e.key === "ArrowDown") newTop += step;
+            if (e.key === "ArrowLeft") newLeft -= step;
+            if (e.key === "ArrowRight") newLeft += step;
+
+            selected.addStyle({
+              left: `${newLeft}px`,
+              top: `${newTop}px`,
+            });
+            reportSelectedComponent(selected);
+            emitChange();
+          };
+
+          frameDocument.addEventListener("keydown", handleKeyDown);
+          window.addEventListener("keydown", handleKeyDown);
+
+          // Direct mousedown dragging support for selected element
+          let isMouseDownOnSelected = false;
+          let dragInitiated = false;
+          let startMousePos = { x: 0, y: 0 };
+
+          const onFrameMouseDown = (e) => {
+            const selected = editor.getSelected();
+            if (!selected) return;
+            const selectedEl = selected.getEl?.();
+            if (!selectedEl || selectedEl.tagName === "BODY" || selectedEl.tagName === "HTML") return;
+
+            if (selectedEl.contains(e.target) && !e.target.isContentEditable) {
+              isMouseDownOnSelected = true;
+              dragInitiated = false;
+              startMousePos = { x: e.clientX, y: e.clientY };
+            }
+          };
+
+          const onFrameMouseMove = (e) => {
+            if (!isMouseDownOnSelected || dragInitiated) return;
+            const dist = Math.hypot(e.clientX - startMousePos.x, e.clientY - startMousePos.y);
+            if (dist > 3) {
+              dragInitiated = true;
+              const selected = editor.getSelected();
+              if (selected) {
+                ensureComponentAbsolute(selected);
+                editor.runCommand("tlb-move", { target: selected, event: e });
+              }
+            }
+          };
+
+          const resetDrag = () => {
+            isMouseDownOnSelected = false;
+            dragInitiated = false;
+          };
+
+          frameDocument.addEventListener("mousedown", onFrameMouseDown);
+          frameDocument.addEventListener("mousemove", onFrameMouseMove);
+          frameDocument.addEventListener("mouseup", resetDrag);
+          window.addEventListener("mouseup", resetDrag);
+
+          cleanupListeners = () => {
+            frameDocument.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("keydown", handleKeyDown);
+            frameDocument.removeEventListener("mousedown", onFrameMouseDown);
+            frameDocument.removeEventListener("mousemove", onFrameMouseMove);
+            frameDocument.removeEventListener("mouseup", resetDrag);
+            window.removeEventListener("mouseup", resetDrag);
+          };
         }
       });
 
@@ -412,6 +663,7 @@ export default function CertificateTemplateEditor({
     return () => {
       cancelled = true;
       window.clearTimeout(changeTimer);
+      cleanupListeners();
 
       if (editorRef.current) {
         try {

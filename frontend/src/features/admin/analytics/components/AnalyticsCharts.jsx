@@ -55,7 +55,7 @@ export default function AnalyticsCharts({
           <div className="chart-skeleton">Loading trend visualization...</div>
         ) : errorMap.trend ? (
           <div className="widget-error-box">
-            <p>⚠️ Error loading trend: {errorMap.trend}</p>
+            <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Error loading trend: {errorMap.trend}</p>
             <button className="retry-btn" onClick={() => onRetry('trend')}>Retry</button>
           </div>
         ) : !trendData?.raw || trendData.raw.length === 0 ? (
@@ -105,7 +105,7 @@ export default function AnalyticsCharts({
           <div className="chart-skeleton">Loading types...</div>
         ) : errorMap.types ? (
           <div className="widget-error-box">
-            <p>⚠️ Error loading types: {errorMap.types}</p>
+            <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Error loading types: {errorMap.types}</p>
             <button className="retry-btn" onClick={() => onRetry('types')}>Retry</button>
           </div>
         ) : !typesData?.breakdown || typesData.breakdown.length === 0 ? (
@@ -150,7 +150,7 @@ export default function AnalyticsCharts({
           <div className="chart-skeleton">Loading domains...</div>
         ) : errorMap.domains ? (
           <div className="widget-error-box">
-            <p>⚠️ Error loading domains: {errorMap.domains}</p>
+            <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Error loading domains: {errorMap.domains}</p>
             <button className="retry-btn" onClick={() => onRetry('domains')}>Retry</button>
           </div>
         ) : !domainsData?.domains || domainsData.domains.length === 0 ? (
@@ -233,7 +233,7 @@ export default function AnalyticsCharts({
           <AnalyticsExportActions onExport={onExport} type="pipeline" />
           {pipelineData?.failedGenerations > 0 && (
             <span className="status-badge alert" title="Approved requests missing a generated certificate draft; retry is available in the request queue">
-              ⚠️ {pipelineData.failedGenerations} Failed Draft Generations
+              <i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>{pipelineData.failedGenerations} Failed Draft Generations
             </span>
           )}
         </div>
@@ -241,7 +241,7 @@ export default function AnalyticsCharts({
           <div className="chart-skeleton">Loading pipeline...</div>
         ) : errorMap.pipeline ? (
           <div className="widget-error-box">
-            <p>⚠️ Error loading pipeline: {errorMap.pipeline}</p>
+            <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Error loading pipeline: {errorMap.pipeline}</p>
             <button className="retry-btn" onClick={() => onRetry('pipeline')}>Retry</button>
           </div>
         ) : !pipelineData?.pipeline || pipelineData.pipeline.length === 0 ? (
@@ -292,7 +292,7 @@ export default function AnalyticsCharts({
           <div className="chart-skeleton">Loading TL turnaround...</div>
         ) : errorMap.teamLeaders ? (
           <div className="widget-error-box">
-            <p>⚠️ Error loading TL data: {errorMap.teamLeaders}</p>
+            <p><i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>Error loading TL data: {errorMap.teamLeaders}</p>
             <button className="retry-btn" onClick={() => onRetry('teamLeaders')}>Retry</button>
           </div>
         ) : !teamLeadersData || teamLeadersData.length === 0 ? (

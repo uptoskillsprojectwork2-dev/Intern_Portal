@@ -260,7 +260,7 @@ export default function CertificatesOverview() {
                                 <span>Downloading…</span>
                               </>
                             ) : (
-                              <span>📥 PDF</span>
+                              <span><i className="bi bi-file-earmark-pdf-fill" style={{ marginRight: 4 }}></i>PDF</span>
                             )}
                           </button>
                         )}
@@ -295,7 +295,7 @@ export default function CertificatesOverview() {
                             className="cert-verify-link"
                             title="Open public verification page"
                           >
-                            Verify ↗
+                            Verify <i className="bi bi-box-arrow-up-right" style={{ fontSize: '0.8em', marginLeft: 2 }}></i>
                           </a>
                         )}
 
@@ -306,7 +306,7 @@ export default function CertificatesOverview() {
                             onClick={() => navigate(`/admin/certificates/${cert._id}/review`)}
                             title="Open draft in review editor"
                           >
-                            Review Draft →
+                            Review Draft <i className="bi bi-arrow-right" style={{ marginLeft: 2 }}></i>
                           </button>
                         )}
                       </div>
@@ -331,7 +331,7 @@ export default function CertificatesOverview() {
           <div className="cert-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="cert-modal-header">
               <h3 id="revoke-modal-title" className="cert-modal-title">
-                ⚠️ Revoke Certificate
+                <i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6, color: 'var(--error, #ef4444)' }}></i>Revoke Certificate
               </h3>
               <button
                 type="button"

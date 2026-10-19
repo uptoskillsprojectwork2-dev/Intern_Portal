@@ -43,8 +43,8 @@ const calcDaysLeft = (end) => {
 
 /* ── nav items ── */
 const NAV_ITEMS = [
-  { icon: '🏠', label: 'Dashboard', id: 'dashboard' },
-  { icon: '📄', label: 'Certificates', id: 'certificates' },
+  { icon: 'bi bi-grid-1x2-fill', label: 'Dashboard', id: 'dashboard' },
+  { icon: 'bi bi-award-fill', label: 'Certificates', id: 'certificates' },
 ];
 
 /* ============================================================
@@ -75,7 +75,7 @@ export default function InternDashboard() {
       {/* ─── Top Navbar ─── */}
       <nav className="id-navbar">
         <div className="id-brand">
-          <span className="id-brand-icon">🚀</span>
+          <span className="id-brand-icon"><i className="bi bi-rocket-takeoff-fill"></i></span>
           uptoskills
         </div>
 
@@ -98,7 +98,7 @@ export default function InternDashboard() {
             onClick={onLogout}
             title="Sign out"
           >
-            <span>↩</span> Logout
+            <span><i className="bi bi-box-arrow-right"></i></span> Logout
           </button>
         </div>
       </nav>
@@ -114,7 +114,7 @@ export default function InternDashboard() {
               className={`id-nav-item ${activeNav === item.id ? 'active' : ''}`}
               onClick={() => setActiveNav(item.id)}
             >
-              <span className="id-nav-icon">{item.icon}</span>
+              <span className="id-nav-icon"><i className={item.icon}></i></span>
               {item.label}
             </button>
           ))}
@@ -127,7 +127,7 @@ export default function InternDashboard() {
         <header className="id-page-header">
           <h1 className="id-greeting">
             Hello,{' '}
-            <em>{profile?.fullName ?? '…'}</em> 👋
+            <em>{profile?.fullName ?? '…'}</em> <i className="bi bi-hand-thumbs-up" style={{ marginLeft: 6, fontSize: '0.85em' }}></i>
           </h1>
           <p className="id-subtext">
             Here's your internship overview for today.
@@ -174,7 +174,7 @@ export default function InternDashboard() {
         {/* ── Error state ── */}
         {activeNav === 'dashboard' && !loading && error && (
           <div className="id-error" role="alert">
-            <span className="id-error-icon">⚠️</span>
+            <span className="id-error-icon"><i className="bi bi-exclamation-triangle-fill"></i></span>
             <span>{error}</span>
             <button
               id="retry-profile-btn"
@@ -197,19 +197,19 @@ export default function InternDashboard() {
                 </div>
                 <div className="id-profile-identity">
                   <h2 className="id-profile-name">{profile.fullName}</h2>
-                  <p className="id-profile-email">✉️ {profile.email}</p>
+                  <p className="id-profile-email"><i className="bi bi-envelope-fill" style={{ marginRight: 6 }}></i>{profile.email}</p>
                   <div className="id-badge-row">
                     <span className="id-badge id-badge-code">
-                      🔑 {profile.internCode}
+                      <i className="bi bi-key-fill" style={{ marginRight: 4 }}></i>{profile.internCode}
                     </span>
                     <span className="id-badge id-badge-domain">
-                      💻 {profile.domain}
+                      <i className="bi bi-laptop" style={{ marginRight: 4 }}></i>{profile.domain}
                     </span>
                     <span className="id-badge id-badge-role">
-                      🎓 {profile.role}
+                      <i className="bi bi-mortarboard-fill" style={{ marginRight: 4 }}></i>{profile.role}
                     </span>
                     <span className="id-badge id-badge-active">
-                      ✅ Active
+                      <i className="bi bi-check-circle-fill" style={{ marginRight: 4 }}></i>Active
                     </span>
                   </div>
                 </div>
@@ -218,22 +218,22 @@ export default function InternDashboard() {
               {/* Detail grid */}
               <div className="id-detail-grid">
                 <div className="id-detail-item">
-                  <div className="id-detail-label">📱 Mobile</div>
+                  <div className="id-detail-label"><i className="bi bi-phone-fill" style={{ marginRight: 6 }}></i>Mobile</div>
                   <div className="id-detail-value">{profile.mobileNo}</div>
                 </div>
 
                 <div className="id-detail-item">
-                  <div className="id-detail-label">🏷️ Intern Code</div>
+                  <div className="id-detail-label"><i className="bi bi-tag-fill" style={{ marginRight: 6 }}></i>Intern Code</div>
                   <div className="id-detail-value">{profile.internCode}</div>
                 </div>
 
                 <div className="id-detail-item">
-                  <div className="id-detail-label">🖥️ Domain</div>
+                  <div className="id-detail-label"><i className="bi bi-display" style={{ marginRight: 6 }}></i>Domain</div>
                   <div className="id-detail-value">{profile.domain}</div>
                 </div>
 
                 <div className="id-detail-item">
-                  <div className="id-detail-label">📅 Member Since</div>
+                  <div className="id-detail-label"><i className="bi bi-calendar3" style={{ marginRight: 6 }}></i>Member Since</div>
                   <div className="id-detail-value">
                     {formatDate(profile.createdAt)}
                   </div>
@@ -243,20 +243,20 @@ export default function InternDashboard() {
 
             {/* Internship Timeline */}
             <section aria-label="Internship timeline">
-              <h3 className="id-section-title">📆 Internship Timeline</h3>
+              <h3 className="id-section-title"><i className="bi bi-calendar-range" style={{ marginRight: 8 }}></i>Internship Timeline</h3>
               <div className="id-timeline-card">
                 <div className="id-date-row">
                   <div className="id-date-block start">
-                    <div className="id-date-label">🟢 Start Date</div>
+                    <div className="id-date-label"><i className="bi bi-record-circle-fill" style={{ color: 'var(--success, #10b981)', marginRight: 6 }}></i>Start Date</div>
                     <div className="id-date-value">
                       {formatDate(profile.startDate)}
                     </div>
                   </div>
 
-                  <div className="id-arrow" aria-hidden="true">→</div>
+                  <div className="id-arrow" aria-hidden="true"><i className="bi bi-arrow-right"></i></div>
 
                   <div className="id-date-block end">
-                    <div className="id-date-label">🔵 End Date</div>
+                    <div className="id-date-label"><i className="bi bi-record-circle-fill" style={{ color: 'var(--accent, #6366f1)', marginRight: 6 }}></i>End Date</div>
                     <div className="id-date-value">
                       {formatDate(profile.endDate)}
                     </div>
@@ -287,25 +287,25 @@ export default function InternDashboard() {
             {/* Stat Grid */}
             <div className="id-stat-grid" aria-label="Quick stats">
               <div className="id-stat-card">
-                <div className="id-stat-icon accent">🎭</div>
+                <div className="id-stat-icon accent"><i className="bi bi-person-badge-fill"></i></div>
                 <div className="id-stat-label">Role</div>
                 <div className="id-stat-value accent">{profile.role}</div>
               </div>
 
               <div className="id-stat-card">
-                <div className="id-stat-icon success">💻</div>
+                <div className="id-stat-icon success"><i className="bi bi-laptop-fill"></i></div>
                 <div className="id-stat-label">Domain</div>
                 <div className="id-stat-value success">{profile.domain}</div>
               </div>
 
               <div className="id-stat-card">
-                <div className="id-stat-icon warning">⏳</div>
+                <div className="id-stat-icon warning"><i className="bi bi-hourglass-split"></i></div>
                 <div className="id-stat-label">Days Remaining</div>
                 <div className="id-stat-value warning">{daysLeft}</div>
               </div>
 
               <div className="id-stat-card">
-                <div className="id-stat-icon info">📊</div>
+                <div className="id-stat-icon info"><i className="bi bi-bar-chart-line-fill"></i></div>
                 <div className="id-stat-label">Completion</div>
                 <div className="id-stat-value info">{progress}%</div>
               </div>
