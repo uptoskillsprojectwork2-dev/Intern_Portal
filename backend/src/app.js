@@ -8,12 +8,17 @@ import internRouter from './routes/intern.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import teamleaderRouter from './routes/teamleader.routes.js';
 import analyticsRouter from './routes/adminAnalytics.routes.js';
+import notificationRouter from './routes/notification.routes.js';
+import verifyRouter from './routes/verify.routes.js';
 
 // Use public DNS providers (Cloudflare and Google) to avoid local DNS issues.
 // Remove or modify if you rely on system DNS or have internal DNS requirements.
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const app = express();
+
+// Trust the first proxy so req.ip returns the real client IP.
+app.set('trust proxy', 1);
 
 // Allow the frontend to send and receive the authentication cookie.
 app.use(cors({
@@ -30,6 +35,9 @@ app.use(cookieParser());
 // Mount authentication routes at `/api/auth` (e.g., `/api/auth/login`).
 app.use('/api/auth', authRouter);
 
+// Public certificate verification (no auth) — must be mounted before protected routes
+app.use('/api/verify', verifyRouter);
+
 app.use('/api/intern', internRouter);
 
 app.use('/api/admin/analytics', analyticsRouter);
@@ -37,5 +45,7 @@ app.use('/api/admin/analytics', analyticsRouter);
 app.use('/api/admin', adminRouter);
 
 app.use('/api/teamleader', teamleaderRouter);
+
+app.use('/api/notifications', notificationRouter);
 
 export default app;

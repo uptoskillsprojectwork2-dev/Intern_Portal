@@ -161,10 +161,10 @@ export const getInternsByTeamLeader = (id) =>
 |--------------------------------------------------------------------------
 */
 
-export const getForwardedRequests = () =>
+export const getForwardedRequests = (status) =>
   request(
     'get',
-    '/api/admin/forwarded-requests'
+    status ? `/api/admin/forwarded-requests?status=${status}` : '/api/admin/forwarded-requests'
   );
 
 export const finalizeRequest = (
@@ -289,6 +289,19 @@ export const downloadAdminCertificate = async (
   }
 };
 
+export const revokeCertificate = (id, reason) =>
+  request(
+    'patch',
+    `/api/admin/certificates/${id}/revoke`,
+    { reason }
+  );
+
+export const unrevokeCertificate = (id) =>
+  request(
+    'patch',
+    `/api/admin/certificates/${id}/unrevoke`
+  );
+
 
 /*
 |--------------------------------------------------------------------------
@@ -412,3 +425,93 @@ export const restoreIntern = (id) =>
     'patch',
     `/api/admin/interns/${id}/restore`
   );
+
+
+/*
+|--------------------------------------------------------------------------
+| Audit Logs
+|--------------------------------------------------------------------------
+*/
+
+/**
+ * Get audit logs with filters and pagination.
+ *
+ * GET /api/admin/audit-logs
+ */
+export const getAuditLogs = (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(
+      ([, value]) =>
+        value !== undefined && value !== ''
+    )
+  );
+
+  const qs = query.toString()
+    ? `?${query.toString()}`
+    : '';
+
+  return request(
+    'get',
+    `/api/admin/audit-logs${qs}`
+  );
+};
+
+
+/**
+ * Export audit logs as CSV.
+ *
+ * GET /api/admin/audit-logs/export
+ */
+export const exportAuditLogs = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(
+      ([, value]) =>
+        value !== undefined && value !== ''
+    )
+  );
+
+  const qs = query.toString()
+    ? `?${query.toString()}`
+    : '';
+
+  try {
+    const response = await adminApi.get(
+      `/api/admin/audit-logs/export${qs}`,
+      { responseType: 'blob' }
+    );
+
+    const blob = new Blob(
+      [response.data],
+      { type: 'text/csv' }
+    );
+
+    const url =
+      window.URL.createObjectURL(blob);
+
+    const link =
+      document.createElement('a');
+
+    link.href = url;
+
+    link.setAttribute(
+      'download',
+      `audit-logs-${Date.now()}.csv`
+    );
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    const data = error.response?.data;
+
+    throw new Error(
+      data?.message ||
+        'Failed to export audit logs.',
+      { cause: error }
+    );
+  }
+};

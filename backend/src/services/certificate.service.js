@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import Handlebars from 'handlebars';
@@ -7,9 +8,12 @@ import puppeteer from 'puppeteer';
 import QRCode from 'qrcode';
 
 import Certificate from '../models/Certificate.js';
+import Counter from '../models/Counter.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import { logAction } from '../utils/logAction.js';
+import { CERTIFICATE_DRAFT_CREATED, CERTIFICATE_EDITED, CERTIFICATE_FINALIZED } from '../utils/auditActions.js';
 
 /* =========================================================
    CONSTANTS
@@ -59,18 +63,12 @@ const getCertificateTitle = (certificateType) => {
 
 const generateCertificateNumber = async () => {
   const year = new Date().getFullYear();
-
-  let count = await Certificate.countDocuments();
-
-  let candidate = `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
-
-  while (await Certificate.exists({ certificateNumber: candidate })) {
-    count += 1;
-
-    candidate = `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
-  }
-
-  return candidate;
+  const counter = await Counter.findOneAndUpdate(
+    { _id: 'certificateNumber' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  );
+  return `UTS-${year}-${String(counter.seq).padStart(6, '0')}`;
 };
 
 /* =========================================================
@@ -82,6 +80,19 @@ const generateVerificationCode = () => {
     .toString(36)
     .substring(2, 8)
     .toUpperCase()}`;
+};
+
+/* =========================================================
+   VERIFY ID  (random, unguessable)
+========================================================= */
+
+/**
+ * Generates a 12-character URL-safe random string using
+ * crypto.randomBytes so the public verify link cannot be
+ * enumerated.
+ */
+export const generateVerifyId = () => {
+  return crypto.randomBytes(9).toString('base64url').slice(0, 12);
 };
 
 /* =========================================================
@@ -116,9 +127,9 @@ const formatDate = (date) => {
  * Example output:
  * data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...
  */
-const generateQrCode = async (certificateNumber) => {
+const generateQrCode = async (verifyId) => {
   const verificationUrl =
-    `${FRONTEND_URL}/verify/${encodeURIComponent(certificateNumber)}`;
+    `${FRONTEND_URL}/verify/${encodeURIComponent(verifyId)}`;
 
   const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
     errorCorrectionLevel: 'M',
@@ -295,6 +306,12 @@ export const createCertificateDraft = async (requestId) => {
     generateVerificationCode();
 
   /* ---------------------------------------------------------
+     Verify ID (unguessable public link)
+  --------------------------------------------------------- */
+
+  const verifyId = generateVerifyId();
+
+  /* ---------------------------------------------------------
      Certificate title
   --------------------------------------------------------- */
 
@@ -308,7 +325,7 @@ export const createCertificateDraft = async (requestId) => {
   const {
     qrCodeDataUrl,
     verificationUrl,
-  } = await generateQrCode(certificateNumber);
+  } = await generateQrCode(verifyId);
 
   /* ---------------------------------------------------------
      Request metadata
@@ -834,6 +851,8 @@ export const createCertificateDraft = async (requestId) => {
     await Certificate.create({
       certificateNumber,
 
+      verifyId,
+
       userId:
         user._id,
 
@@ -848,6 +867,11 @@ export const createCertificateDraft = async (requestId) => {
 
       domain:
         user.domain,
+
+      recipientName:
+        user.fullName,
+
+      certificateTitle,
 
       startDate:
         user.startDate,
@@ -877,6 +901,8 @@ export const createCertificateDraft = async (requestId) => {
     certificate._id;
 
   await request.save();
+
+  logAction({ actor: null, action: CERTIFICATE_DRAFT_CREATED, targetType: 'Certificate', targetId: certificate._id, meta: { certificateNumber, requestId: request._id, userId: user._id } });
 
   return certificate;
 };
@@ -976,6 +1002,8 @@ export const updateCertificateDraft = async (
     htmlContent;
 
   await certificate.save();
+
+  logAction({ actor: null, action: CERTIFICATE_EDITED, targetType: 'Certificate', targetId: certificate._id, meta: { certificateId: certificate._id } });
 
   return certificate;
 };
@@ -1287,7 +1315,7 @@ export const finalizeCertificate = async (
   }
 
   /* -------------------------------------------------------
-     Update certificate
+     Update certificate with snapshot fields
   ------------------------------------------------------- */
 
   const finalizedAt =
@@ -1304,6 +1332,22 @@ export const finalizeCertificate = async (
 
   certificate.issuedDate =
     finalizedAt;
+
+  // Snapshot fields — verification must work even after user data purge
+  certificate.recipientName =
+    certificate.userId?.fullName || certificate.recipientName || '';
+
+  certificate.certificateTitle =
+    getCertificateTitle(certificate.certificateType);
+
+  if (!certificate.domain && certificate.userId?.domain) {
+    certificate.domain = certificate.userId.domain;
+  }
+
+  // Generate verifyId if missing (e.g. drafts created before Task F)
+  if (!certificate.verifyId) {
+    certificate.verifyId = generateVerifyId();
+  }
 
   await certificate.save();
 
@@ -1326,6 +1370,8 @@ export const finalizeCertificate = async (
 
     await request.save();
   }
+
+  logAction({ actor: null, action: CERTIFICATE_FINALIZED, targetType: 'Certificate', targetId: certificate._id, meta: { certificateNumber: certificate.certificateNumber, userId: certificate.userId?._id } });
 
   return {
     certificate,

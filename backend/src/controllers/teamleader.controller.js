@@ -4,6 +4,13 @@ import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import { logAudit } from '../utils/auditLogger.js';
+import { logAction } from '../utils/logAction.js';
+import { REQUEST_FORWARDED, REQUEST_REJECTED } from '../utils/auditActions.js';
+import {
+  notify,
+  REQUEST_FORWARDED as NOTIF_REQUEST_FORWARDED,
+  REQUEST_REJECTED as NOTIF_REQUEST_REJECTED,
+} from '../services/notification.service.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -280,6 +287,32 @@ export const reviewRequestAsTL = async (req, res) => {
     }
 
     await request.save();
+
+    if (action === 'reject') {
+      logAction({ req, actor: { id: req.user.id, role: 'teamleader' }, action: REQUEST_REJECTED, targetType: 'CertificateRequest', targetId: request._id, meta: { requestId: request._id, rejectionReason } });
+
+      // Trigger 3: Request rejected by TL -> notify intern (in-app and email)
+      await notify(request.userId, NOTIF_REQUEST_REJECTED, {
+        title: 'Certificate Request Rejected',
+        message: `Your certificate request (${request.requestNumber || 'Request'}) was rejected by your Team Leader. Reason: ${rejectionReason}`,
+        requestId: request._id,
+        email: true,
+      });
+    } else {
+      logAction({ req, actor: { id: req.user.id, role: 'teamleader' }, action: REQUEST_FORWARDED, targetType: 'CertificateRequest', targetId: request._id, meta: { requestId: request._id } });
+
+      // Trigger 2: Request forwarded by TL -> notify all admins (in-app)
+      const admins = await User.find({ role: 'admin' }).select('_id');
+      for (const admin of admins) {
+        await notify(admin._id, NOTIF_REQUEST_FORWARDED, {
+          title: 'Certificate Request Forwarded',
+          message: `Certificate request (${request.requestNumber || 'Request'}) has been forwarded by Team Leader for admin finalization.`,
+          requestId: request._id,
+          email: false,
+        });
+      }
+    }
+
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

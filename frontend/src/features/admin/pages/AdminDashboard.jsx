@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
+import NotificationBell from '../../../shared/components/NotificationBell';
 
 import CreateIntern from '../components/CreateIntern';
 import CreateTl from '../components/CreateTl';
@@ -18,8 +19,15 @@ import './AdminDashboard.css';
 const AdminDashboard = () => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [activeView, setActiveView] = useState(() => searchParams.get('view') || 'overview');
 
-  const [activeView, setActiveView] = useState('overview');
+  useEffect(() => {
+    const viewParam = searchParams.get('view');
+    if (viewParam) {
+      setActiveView(viewParam);
+    }
+  }, [searchParams]);
 
   const initials = (user?.fullName || 'Admin')
     .split(' ')
@@ -131,7 +139,7 @@ const AdminDashboard = () => {
         </div>
 
         <div className="admin-topbar-user">
-
+          <NotificationBell role="admin" />
           <div className="admin-avatar">
             {initials}
           </div>
@@ -297,6 +305,18 @@ const AdminDashboard = () => {
           >
             <span>🎨</span>
             Certificate Templates
+          </button>
+
+          {/* =====================================================
+              AUDIT LOGS
+          ====================================================== */}
+          <button
+            type="button"
+            className="admin-nav-item"
+            onClick={() => navigate('/admin/audit-logs')}
+          >
+            <span>🛡️</span>
+            Audit Logs
           </button>
 
         </nav>
@@ -530,6 +550,24 @@ const AdminDashboard = () => {
                   <small>
                     Design & manage certificate
                     templates
+                  </small>
+                </button>
+
+                {/* =================================================
+                    AUDIT LOGS CARD
+                ================================================== */}
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/audit-logs')}
+                >
+                  <span>🛡️</span>
+
+                  <strong>
+                    Audit Logs
+                  </strong>
+
+                  <small>
+                    Inspect system activity & security trails
                   </small>
                 </button>
 

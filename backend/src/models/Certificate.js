@@ -9,6 +9,18 @@ const certificateSchema = new mongoose.Schema(
         trim: true
     },
 
+    /**
+     * Random, unguessable identifier used in the public verification URL.
+     * Prevents certificate enumeration (unlike sequential certificateNumber).
+     */
+    verifyId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+        index: true
+    },
+
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user",
@@ -94,6 +106,45 @@ const certificateSchema = new mongoose.Schema(
     generatedBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "user"
+    },
+
+    /* ─── Snapshot fields (saved at finalization) ──────────────────────
+       Verification must NOT depend on the live User record because
+       Task C anonymizes purged interns.
+    ────────────────────────────────────────────────────────────────── */
+
+    recipientName: {
+        type: String,
+        trim: true
+    },
+
+    certificateTitle: {
+        type: String,
+        trim: true
+    },
+
+    /* ─── Revocation fields ───────────────────────────────────────────
+       A revoked certificate stays "finalized" but isRevoked = true.
+    ────────────────────────────────────────────────────────────────── */
+
+    isRevoked: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+
+    revokedAt: {
+        type: Date
+    },
+
+    revokedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user"
+    },
+
+    revokedReason: {
+        type: String,
+        trim: true
     }
 },
 {
@@ -133,3 +184,4 @@ const certificateModel = mongoose.model(
 );
 
 export default certificateModel;
+

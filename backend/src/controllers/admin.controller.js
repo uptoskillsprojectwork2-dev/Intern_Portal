@@ -20,6 +20,25 @@ import {
 } from '../services/certificate.service.js';
 import { logAudit } from '../utils/auditLogger.js';
 import { invalidateAnalyticsCache } from '../utils/redisCache.js';
+import { logAction } from '../utils/logAction.js';
+import {
+  USER_CREATED,
+  REQUEST_APPROVED,
+  REQUEST_REJECTED,
+  TEMPLATE_CREATED,
+  TEMPLATE_UPDATED,
+  RETENTION_POLICY_UPDATED,
+  INTERN_RESTORED,
+  CERTIFICATE_REVOKED,
+  CERTIFICATE_UNREVOKED,
+} from '../utils/auditActions.js';
+import {
+  notify,
+  REQUEST_APPROVED as NOTIF_REQUEST_APPROVED,
+  REQUEST_REJECTED as NOTIF_REQUEST_REJECTED,
+  CERTIFICATE_SENT as NOTIF_CERTIFICATE_SENT,
+  CERTIFICATE_REVOKED as NOTIF_CERTIFICATE_REVOKED,
+} from '../services/notification.service.js';
 
 dotenv.config();
 
@@ -78,6 +97,8 @@ export async function createIntern(req, res) {
         });
 
 
+        logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: USER_CREATED, targetType: 'User', targetId: user._id, meta: { role: 'intern', email: user.email, fullName } });
+
         res.status(200).json({
             message: "User registered successfully",
             user: {
@@ -129,6 +150,8 @@ export async function createTeamLeader(req, res) {
         }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
         res.cookie("token", token);
+
+        logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: USER_CREATED, targetType: 'User', targetId: user._id, meta: { role: 'teamleader', email: user.email, fullName } });
 
         res.status(201).json({
             message: "Team leader created successfully",
@@ -539,16 +562,49 @@ export async function getInternsByTeamLeader(req, res) {
 // Admin sees requests TL has forwarded, plus approved requests missing certificateId for recovery
 export const getForwardedRequests = async (req, res) => {
   try {
-    const requests = await CertificateRequest.find({
-      $or: [
-        { status: 'processing' },
-        { status: 'approved', certificateId: { $in: [null, undefined] } }
-      ]
-    })
-      .populate('userId', 'fullName email internCode domain')
-      .sort({ requestedAt: -1 });
+    const { status = 'forwarded' } = req.query;
+    let query = {};
 
-    res.json({ requests });
+    if (status === 'pending') {
+      query = { status: 'pending' };
+    } else if (status === 'all') {
+      query = {};
+    } else if (status === 'processing') {
+      query = { status: 'processing' };
+    } else {
+      // Default: processing + approved awaiting certificate recovery
+      query = {
+        $or: [
+          { status: 'processing' },
+          { status: 'approved', certificateId: { $in: [null, undefined] } }
+        ]
+      };
+    }
+
+    const [requests, pendingCount, forwardedCount, totalCount] = await Promise.all([
+      CertificateRequest.find(query)
+        .populate('userId', 'fullName email internCode domain')
+        .populate('forwardedBy', 'fullName email')
+        .populate('reviewedBy', 'fullName email')
+        .sort({ requestedAt: -1 }),
+      CertificateRequest.countDocuments({ status: 'pending' }),
+      CertificateRequest.countDocuments({
+        $or: [
+          { status: 'processing' },
+          { status: 'approved', certificateId: { $in: [null, undefined] } }
+        ]
+      }),
+      CertificateRequest.countDocuments({}),
+    ]);
+
+    res.json({
+      requests,
+      counts: {
+        forwarded: forwardedCount,
+        pending: pendingCount,
+        all: totalCount,
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
@@ -565,7 +621,7 @@ export const finalizeRequest = async (req, res) => {
     const request = await CertificateRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
-    if (request.status !== 'processing') {
+    if (!['processing', 'pending'].includes(request.status)) {
       return res.status(409).json({ message: 'This request is not awaiting admin decision' });
     }
 
@@ -586,6 +642,28 @@ export const finalizeRequest = async (req, res) => {
     }
 
     await invalidateAnalyticsCache();
+
+    if (action === 'approve') {
+      logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: REQUEST_APPROVED, targetType: 'CertificateRequest', targetId: request._id, meta: { requestId: request._id } });
+
+      // Trigger 4: Request approved -> notify intern (in-app and email)
+      await notify(request.userId, NOTIF_REQUEST_APPROVED, {
+        title: 'Certificate Request Approved',
+        message: `Your certificate request (${request.requestNumber || 'Request'}) has been approved by the Admin.`,
+        requestId: request._id,
+        email: true,
+      });
+    } else {
+      logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: REQUEST_REJECTED, targetType: 'CertificateRequest', targetId: request._id, meta: { requestId: request._id, rejectionReason } });
+
+      // Trigger 3: Request rejected by Admin -> notify intern (in-app and email)
+      await notify(request.userId, NOTIF_REQUEST_REJECTED, {
+        title: 'Certificate Request Rejected',
+        message: `Your certificate request (${request.requestNumber || 'Request'}) was rejected by the Admin. Reason: ${rejectionReason}`,
+        requestId: request._id,
+        email: true,
+      });
+    }
 
     res.json({ request, certificate });
   } catch (err) {
@@ -638,6 +716,14 @@ export const finalizeCertificate = async (req, res) => {
       emailError = mailErr.message || 'Email delivery failed';
     }
 
+    // Trigger 5: Certificate finalized and sent -> notify intern (in-app only)
+    await notify(certificate.userId?._id || certificate.userId, NOTIF_CERTIFICATE_SENT, {
+      title: 'Certificate Issued',
+      message: `Your certificate (${certificate.certificateNumber || 'Certificate'}) has been finalized and issued.`,
+      requestId: request?._id,
+      email: false,
+    });
+
     if (emailError) {
       return res.status(207).json({
         message: 'Certificate finalized and PDF generated successfully, but email delivery could not be completed.',
@@ -667,7 +753,7 @@ export const getAllCertificates = async (req, res) => {
   try {
     const certificates = await Certificate.find()
       .populate('userId', 'fullName email internCode domain')
-      .select('certificateNumber certificateType domain issuedDate status pdfPath internCode userId createdAt')
+      .select('certificateNumber verifyId certificateType domain issuedDate status pdfPath internCode userId createdAt isRevoked revokedAt revokedReason recipientName certificateTitle')
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ certificates });
@@ -884,6 +970,8 @@ export const createCertificateTemplate = async (req, res) => {
       createdBy: req.user.id
     });
 
+    logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: TEMPLATE_CREATED, targetType: 'CertificateTemplate', targetId: template._id, meta: { templateCode: template.templateCode, certificateType: template.certificateType } });
+
     return res.status(201).json({
       message: "Certificate template created successfully",
       template
@@ -1015,6 +1103,8 @@ export const updateCertificateTemplate = async (req, res) => {
 
     await template.save();
 
+    logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: TEMPLATE_UPDATED, targetType: 'CertificateTemplate', targetId: template._id, meta: { templateCode: template.templateCode, version: template.version } });
+
     return res.status(200).json({
       message: "Certificate template updated successfully",
       template
@@ -1092,7 +1182,7 @@ export const updateRetentionPolicy = async (req, res) => {
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );
     console.log(`[retention] policy updated by admin ${req.user.id}: grace=${graceDays}, purge=${purgeDays}`);
-    // TODO: logAction for the retention-policy change.
+    logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: RETENTION_POLICY_UPDATED, targetType: 'RetentionPolicy', targetId: policy._id, meta: { graceDays, purgeDays } });
     return res.status(200).json({ message: 'Retention policy saved.', policy });
   } catch (error) {
     console.error('Update retention policy error:', error);
@@ -1153,7 +1243,7 @@ export const restoreArchivedIntern = async (req, res) => {
     intern.archiveRestoredAt = new Date();
     await intern.save();
     console.log(`[retention] admin ${req.user.id} restored intern ${intern._id}`);
-    // TODO: logAction for the restore.
+    logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: INTERN_RESTORED, targetType: 'User', targetId: intern._id, meta: { email: intern.email, internCode: intern.internCode } });
     return res.status(200).json({ message: 'Intern restored.', intern: {
       _id: intern._id,
       fullName: intern.fullName,
@@ -1164,5 +1254,189 @@ export const restoreArchivedIntern = async (req, res) => {
   } catch (error) {
     console.error('Restore archived intern error:', error);
     return res.status(500).json({ message: 'Unable to restore intern.' });
+  }
+};
+
+/* =========================================================
+   REVOKE CERTIFICATE
+========================================================= */
+
+/**
+ * PATCH /api/admin/certificates/:id/revoke
+ * Sets isRevoked, revokedAt, revokedBy, revokedReason.
+ * Logs CERTIFICATE_REVOKED and notifies the intern.
+ */
+export const revokeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID' });
+    }
+
+    if (!reason || typeof reason !== 'string' || !reason.trim()) {
+      return res.status(400).json({ message: 'A revocation reason is required.' });
+    }
+
+    const certificate = await Certificate.findById(id);
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    if (certificate.status !== 'finalized') {
+      return res.status(400).json({
+        message: `Only finalized certificates can be revoked. Current status: ${certificate.status}`,
+      });
+    }
+
+    if (certificate.isRevoked) {
+      return res.status(409).json({ message: 'Certificate is already revoked.' });
+    }
+
+    certificate.isRevoked = true;
+    certificate.revokedAt = new Date();
+    certificate.revokedBy = req.user.id;
+    certificate.revokedReason = reason.trim();
+    await certificate.save();
+
+    // Audit log
+    logAction({
+      req,
+      actor: { id: req.user.id, role: 'admin' },
+      action: CERTIFICATE_REVOKED,
+      targetType: 'Certificate',
+      targetId: certificate._id,
+      meta: {
+        certificateNumber: certificate.certificateNumber,
+        reason: reason.trim(),
+        userId: certificate.userId,
+      },
+    });
+
+    // Notify intern
+    await notify(certificate.userId, NOTIF_CERTIFICATE_REVOKED, {
+      title: 'Certificate Revoked',
+      message: `Your certificate (${certificate.certificateNumber}) has been revoked. Reason: ${reason.trim()}`,
+      email: true,
+    });
+
+    return res.status(200).json({
+      message: 'Certificate revoked successfully.',
+      certificate: {
+        _id: certificate._id,
+        certificateNumber: certificate.certificateNumber,
+        isRevoked: certificate.isRevoked,
+        revokedAt: certificate.revokedAt,
+        revokedReason: certificate.revokedReason,
+      },
+    });
+  } catch (err) {
+    console.error('Revoke certificate error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/* =========================================================
+   UNREVOKE CERTIFICATE
+========================================================= */
+
+/**
+ * PATCH /api/admin/certificates/:id/unrevoke
+ * Reverses a mistaken revocation.
+ */
+export const unrevokeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID' });
+    }
+
+    const certificate = await Certificate.findById(id);
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    if (!certificate.isRevoked) {
+      return res.status(409).json({ message: 'Certificate is not currently revoked.' });
+    }
+
+    certificate.isRevoked = false;
+    certificate.revokedAt = null;
+    certificate.revokedBy = null;
+    certificate.revokedReason = null;
+    await certificate.save();
+
+    // Audit log
+    logAction({
+      req,
+      actor: { id: req.user.id, role: 'admin' },
+      action: CERTIFICATE_UNREVOKED,
+      targetType: 'Certificate',
+      targetId: certificate._id,
+      meta: {
+        certificateNumber: certificate.certificateNumber,
+        userId: certificate.userId,
+      },
+    });
+
+    return res.status(200).json({
+      message: 'Certificate revocation reversed successfully.',
+      certificate: {
+        _id: certificate._id,
+        certificateNumber: certificate.certificateNumber,
+        isRevoked: certificate.isRevoked,
+      },
+    });
+  } catch (err) {
+    console.error('Unrevoke certificate error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/* =========================================================
+   PUBLIC CERTIFICATE VERIFICATION
+========================================================= */
+
+/**
+ * GET /api/verify/:verifyId   (NO authentication)
+ *
+ * Returns ONLY safe public fields. Never returns email,
+ * mobile number, intern code, or internal Mongo _ids.
+ * Uses snapshot fields so verification survives user data purge.
+ */
+export const verifyCertificatePublic = async (req, res) => {
+  try {
+    const { verifyId } = req.params;
+
+    // Treat short / missing IDs and non-existent certificates the same way.
+    if (!verifyId || verifyId.length < 8) {
+      return res.status(404).json({ message: 'Certificate not found.' });
+    }
+
+    const certificate = await Certificate.findOne({ verifyId }).lean();
+
+    if (!certificate || certificate.status === 'draft') {
+      return res.status(404).json({ message: 'Certificate not found.' });
+    }
+
+    const responseData = {
+      certificateNumber: certificate.certificateNumber,
+      recipientName: certificate.recipientName || '',
+      certificateTitle: certificate.certificateTitle || '',
+      domain: certificate.domain || '',
+      issuedAt: certificate.issuedDate || certificate.finalizedAt || null,
+      status: certificate.isRevoked ? 'revoked' : 'valid',
+    };
+
+    if (certificate.isRevoked) {
+      responseData.revokedAt = certificate.revokedAt;
+    }
+
+    return res.status(200).json(responseData);
+  } catch (err) {
+    console.error('Verify certificate error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };
