@@ -9,6 +9,7 @@ import adminRouter from './routes/admin.routes.js';
 import teamleaderRouter from './routes/teamleader.routes.js';
 import analyticsRouter from './routes/adminAnalytics.routes.js';
 import notificationRouter from './routes/notification.routes.js';
+import verifyRouter from './routes/verify.routes.js';
 
 // Use public DNS providers (Cloudflare and Google) to avoid local DNS issues.
 // Remove or modify if you rely on system DNS or have internal DNS requirements.
@@ -41,7 +42,8 @@ app.use('/api/admin/analytics', analyticsRouter);
 app.use('/api/admin', adminRouter);
 
 app.use('/api/teamleader', teamleaderRouter);
- 
 app.use('/api/notifications', notificationRouter);
+
+app.use('/api/verify', verifyRouter);
 
 export default app;

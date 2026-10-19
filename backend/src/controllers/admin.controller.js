@@ -728,11 +728,135 @@ export const getAllCertificates = async (req, res) => {
   try {
     const certificates = await Certificate.find()
       .populate('userId', 'fullName email internCode domain')
-      .select('certificateNumber certificateType domain issuedDate status pdfPath internCode userId createdAt')
+      .select('certificateNumber certificateType domain issuedDate issuedAt status pdfPath internCode userId createdAt isRevoked revokedAt revokedReason verifyId recipientName certificateTitle')
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ certificates });
   } catch (err) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Task F: Revoke Certificate
+ * PATCH /api/admin/certificates/:id/revoke
+ * Body: { reason } (required)
+ * Sets revocation fields, logs CERTIFICATE_REVOKED, and notifies the intern.
+ */
+export const revokeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID' });
+    }
+
+    if (!reason || typeof reason !== 'string' || !reason.trim()) {
+      return res.status(400).json({ message: 'Revocation reason is required' });
+    }
+
+    const certificate = await Certificate.findById(id).populate('userId', 'fullName email internCode');
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    if (certificate.status !== 'finalized') {
+      return res.status(400).json({ message: 'Only finalized certificates can be revoked' });
+    }
+
+    if (certificate.isRevoked) {
+      return res.status(400).json({ message: 'Certificate is already revoked' });
+    }
+
+    certificate.isRevoked = true;
+    certificate.revokedAt = new Date();
+    certificate.revokedBy = req.user?.id || req.user?._id;
+    certificate.revokedReason = reason.trim();
+    await certificate.save();
+
+    // Log CERTIFICATE_REVOKED action
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'CERTIFICATE_REVOKED',
+      targetType: 'certificate',
+      targetId: certificate._id,
+      meta: {
+        certificateNumber: certificate.certificateNumber,
+        reason: reason.trim()
+      }
+    });
+
+    // Notify the intern (in-app and email)
+    const recipientId = certificate.userId?._id || certificate.userId;
+    if (recipientId) {
+      try {
+        await notify(recipientId, 'CERTIFICATE_REVOKED', {
+          title: 'Certificate Revoked',
+          message: `Your certificate (${certificate.certificateNumber || ''}) has been revoked. Reason: ${reason.trim()}`,
+          email: true
+        });
+      } catch (notifErr) {
+        console.error('[Notification] Error sending revoke notification:', notifErr.message);
+      }
+    }
+
+    return res.status(200).json({
+      message: 'Certificate revoked successfully',
+      certificate
+    });
+  } catch (error) {
+    console.error('[RevokeCertificate] Error:', error.message);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/**
+ * Task F: Unrevoke Certificate (Optional: reverses a mistaken revoke, also logged)
+ * PATCH /api/admin/certificates/:id/unrevoke
+ */
+export const unrevokeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID' });
+    }
+
+    const certificate = await Certificate.findById(id).populate('userId', 'fullName email internCode');
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    if (!certificate.isRevoked) {
+      return res.status(400).json({ message: 'Certificate is not revoked' });
+    }
+
+    certificate.isRevoked = false;
+    certificate.revokedAt = null;
+    certificate.revokedBy = null;
+    certificate.revokedReason = null;
+    await certificate.save();
+
+    // Log action
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'CERTIFICATE_UNREVOKED',
+      targetType: 'certificate',
+      targetId: certificate._id,
+      meta: {
+        certificateNumber: certificate.certificateNumber
+      }
+    });
+
+    return res.status(200).json({
+      message: 'Certificate unrevoked successfully',
+      certificate
+    });
+  } catch (error) {
+    console.error('[UnrevokeCertificate] Error:', error.message);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

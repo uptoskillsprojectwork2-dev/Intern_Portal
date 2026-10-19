@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -9,6 +10,7 @@ import QRCode from 'qrcode';
 import Certificate from '../models/Certificate.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
+import Counter from '../models/Counter.model.js';
 import { sendEmail } from '../utils/sendEmail.js';
 import { logAction } from '../utils/logAction.js';
 
@@ -55,20 +57,40 @@ const getCertificateTitle = (certificateType) => {
 };
 
 /* =========================================================
+   VERIFY ID GENERATOR
+========================================================= */
+
+export const generateVerifyId = () => {
+  return crypto.randomBytes(6).toString('hex');
+};
+
+/* =========================================================
    CERTIFICATE NUMBER
 ========================================================= */
 
-const generateCertificateNumber = async () => {
+export const generateCertificateNumber = async () => {
   const year = new Date().getFullYear();
 
-  let count = await Certificate.countDocuments();
+  try {
+    const counter = await Counter.findOneAndUpdate(
+      { _id: 'certificateNumber' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
 
-  let candidate = `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
+    if (counter && typeof counter.seq === 'number') {
+      return `UTS-${year}-${String(counter.seq).padStart(6, '0')}`;
+    }
+  } catch (err) {
+    // Fallback if Counter model query fails or in mock environments
+  }
+
+  let count = await Certificate.countDocuments();
+  let candidate = `UTS-${year}-${String(count + 1).padStart(6, '0')}`;
 
   while (await Certificate.exists({ certificateNumber: candidate })) {
     count += 1;
-
-    candidate = `CERT-${year}-${String(count + 1).padStart(5, '0')}`;
+    candidate = `UTS-${year}-${String(count + 1).padStart(6, '0')}`;
   }
 
   return candidate;
@@ -117,9 +139,9 @@ const formatDate = (date) => {
  * Example output:
  * data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...
  */
-const generateQrCode = async (certificateNumber) => {
+export const generateQrCode = async (verifyId) => {
   const verificationUrl =
-    `${FRONTEND_URL}/verify/${encodeURIComponent(certificateNumber)}`;
+    `${FRONTEND_URL}/verify/${encodeURIComponent(verifyId)}`;
 
   const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
     errorCorrectionLevel: 'M',
@@ -132,6 +154,58 @@ const generateQrCode = async (certificateNumber) => {
     qrCodeDataUrl,
     verificationUrl,
   };
+};
+
+/**
+ * Ensures a real, high-contrast scannable <img> tag is rendered
+ * for the verification QR code instead of a dummy icon or placeholder box.
+ */
+export const injectQrCodeImage = (html, qrCodeDataUrl = '') => {
+  if (!html || typeof html !== 'string') return html;
+
+  let updated = html;
+
+  // 1. If there is a qr-placeholder-box or dummy qr-box, replace its inner placeholder with the real <img> tag
+  if (/<div[^>]*class=["'][^"']*qr-placeholder-box[^"']*["']/i.test(updated)) {
+    updated = updated.replace(
+      /(<div[^>]*class=["'][^"']*qr-placeholder-box[^"']*["'][^>]*>)([\s\S]*?)(<\/div>)/gi,
+      (match, openTag, innerContent, closeTag) => {
+        let effectiveUrl = qrCodeDataUrl;
+        if (!effectiveUrl) {
+          const existingImg = innerContent.match(/<img[^>]+src=["'](data:image\/[^"']+|https?:\/\/[^"']+)["']/i);
+          if (existingImg && existingImg[1]) {
+            effectiveUrl = existingImg[1];
+          }
+        }
+        if (!effectiveUrl) {
+          const titleMatch = openTag.match(/title=["'](?:Verification:\s*)?(data:image\/[^"']+)["']/i);
+          if (titleMatch) effectiveUrl = titleMatch[1];
+        }
+
+        // If innerContent already has a valid image and no new url provided, don't touch it
+        if (!effectiveUrl && /<img[^>]+src=["']data:image/i.test(innerContent)) {
+          return match;
+        }
+
+        const cleanOpen = openTag
+          .replace(/\s*style=["'][^"']*["']/gi, '')
+          .replace(/\s*title=["'][^"']*["']/gi, '')
+          .replace(
+            /class=["']([^"']*)["']/i,
+            'class="$1" style="width: 68px; height: 68px; border: 1px solid #d4af37; border-radius: 4px; background: #ffffff; padding: 2px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;"'
+          );
+
+        return `${cleanOpen}<img src="${effectiveUrl || ''}" alt="Scan to Verify" class="certificate-qr-code" style="width: 100%; height: 100%; object-fit: contain; display: block;" />${closeTag}`;
+      }
+    );
+  }
+
+  // 2. Also replace standard {{qrCodeUrl}} template placeholders
+  if (qrCodeDataUrl) {
+    updated = updated.replace(/\{\{\s*qrCodeUrl\s*\}\}/gi, qrCodeDataUrl);
+  }
+
+  return updated;
 };
 
 /* =========================================================
@@ -289,8 +363,11 @@ export const createCertificateDraft = async (requestId) => {
     await generateCertificateNumber();
 
   /* ---------------------------------------------------------
-     Verification code
+     Verification ID and Code
   --------------------------------------------------------- */
+
+  const verifyId =
+    generateVerifyId();
 
   const verificationCode =
     generateVerificationCode();
@@ -309,7 +386,7 @@ export const createCertificateDraft = async (requestId) => {
   const {
     qrCodeDataUrl,
     verificationUrl,
-  } = await generateQrCode(certificateNumber);
+  } = await generateQrCode(verifyId);
 
   /* ---------------------------------------------------------
      Request metadata
@@ -710,6 +787,8 @@ export const createCertificateDraft = async (requestId) => {
        QR verification information
     ------------------------------------------------------- */
 
+    verifyId,
+
     verificationUrl,
 
     /* -------------------------------------------------------
@@ -803,6 +882,8 @@ export const createCertificateDraft = async (requestId) => {
   try {
     htmlContent =
       compiledTemplate(templateData);
+    htmlContent =
+      injectQrCodeImage(htmlContent, qrCodeDataUrl);
   } catch (renderError) {
     const error = new Error(
       `Certificate template rendering failed: ${renderError.message}`
@@ -835,6 +916,8 @@ export const createCertificateDraft = async (requestId) => {
     await Certificate.create({
       certificateNumber,
 
+      verifyId,
+
       userId:
         user._id,
 
@@ -846,6 +929,11 @@ export const createCertificateDraft = async (requestId) => {
 
       certificateType:
         request.certificateType,
+
+      recipientName:
+        user.fullName || '',
+
+      certificateTitle,
 
       domain:
         user.domain,
@@ -1035,6 +1123,8 @@ export const renderCertificatePdf = async (
     throw error;
   }
 
+  const processedHtml = injectQrCodeImage(htmlContent);
+
   let page = null;
 
   try {
@@ -1059,7 +1149,7 @@ export const renderCertificatePdf = async (
     ------------------------------------------------------- */
 
     await page.setContent(
-      htmlContent,
+      processedHtml,
       {
         waitUntil: [
           'load',
@@ -1235,12 +1325,31 @@ export const finalizeCertificate = async (
   }
 
   /* -------------------------------------------------------
+     Ensure verifyId and QR Code Data URI
+  ------------------------------------------------------- */
+
+  if (!certificate.verifyId) {
+    certificate.verifyId = generateVerifyId();
+  }
+
+  const { qrCodeDataUrl, verificationUrl } = await generateQrCode(
+    certificate.verifyId
+  );
+
+  let htmlContentToRender = injectQrCodeImage(
+    certificate.htmlContent,
+    qrCodeDataUrl
+  )
+    .replace(/\{\{\s*certificateNumber\s*\}\}/gi, certificate.certificateNumber)
+    .replace(/\{\{\s*verificationUrl\s*\}\}/gi, verificationUrl);
+
+  /* -------------------------------------------------------
      Render PDF
   ------------------------------------------------------- */
 
   const pdfBuffer =
     await renderCertificatePdf(
-      certificate.htmlContent
+      htmlContentToRender
     );
 
   /* -------------------------------------------------------
@@ -1326,6 +1435,26 @@ export const finalizeCertificate = async (
 
   certificate.issuedDate =
     finalizedAt;
+
+  certificate.issuedAt =
+    finalizedAt;
+
+  certificate.recipientName =
+    certificate.recipientName ||
+    certificate.userId?.fullName ||
+    'Intern';
+
+  certificate.certificateTitle =
+    certificate.certificateTitle ||
+    getCertificateTitle(certificate.certificateType);
+
+  certificate.domain =
+    certificate.domain ||
+    certificate.userId?.domain ||
+    '';
+
+  certificate.htmlContent =
+    htmlContentToRender;
 
   await certificate.save();
 

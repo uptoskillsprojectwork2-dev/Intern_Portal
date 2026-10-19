@@ -19,6 +19,8 @@ import {
   getAllCertificates,
   retryCertificateGeneration,
   downloadCertificatePdf,
+  revokeCertificate,
+  unrevokeCertificate,
   getTemplatePlaceholders,
   createCertificateTemplate,
   updateCertificateTemplate,
@@ -108,5 +110,9 @@ adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finaliz
 adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
 adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
+
+// Task F Certificate Revocation routes
+adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
+adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
 
 export default adminRouter;

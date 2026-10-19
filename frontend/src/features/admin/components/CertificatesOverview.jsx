@@ -1,6 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllCertificates, downloadAdminCertificate } from '../services/admin.service';
+import {
+  getAllCertificates,
+  downloadAdminCertificate,
+  revokeCertificate,
+  unrevokeCertificate
+} from '../services/admin.service';
 import Toast from '../../../shared/components/Toast';
 import './CertificatesOverview.css';
 
@@ -21,6 +26,13 @@ export default function CertificatesOverview() {
   const [downloadingId, setDownloadingId] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Revocation Modal State
+  const [revokingCert, setRevokingCert] = useState(null);
+  const [revokeReason, setRevokeReason] = useState('');
+  const [revokingLoading, setRevokingLoading] = useState(false);
+  const [modalError, setModalError] = useState(null);
+  const reasonInputRef = useRef(null);
+
   const fetchCertificates = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -35,25 +47,35 @@ export default function CertificatesOverview() {
   }, []);
 
   useEffect(() => {
-    let isMounted = true;
-    getAllCertificates()
-      .then((data) => {
-        if (isMounted) {
-          setCertificates(data.certificates || []);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          setError(err.response?.data?.message || err.message || 'Failed to load certificates');
-          setLoading(false);
-        }
-      });
+    fetchCertificates();
+  }, [fetchCertificates]);
 
-    return () => {
-      isMounted = false;
+  // Focus the input when modal opens
+  useEffect(() => {
+    if (revokingCert) {
+      setModalError(null);
+      setRevokeReason('');
+      setTimeout(() => {
+        reasonInputRef.current?.focus();
+      }, 50);
+    }
+  }, [revokingCert]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && revokingCert && !revokingLoading) {
+        closeRevokeModal();
+      }
     };
-  }, []);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [revokingCert, revokingLoading]);
+
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   const handleDownload = async (cert) => {
     if (!cert._id || downloadingId) return;
@@ -62,15 +84,74 @@ export default function CertificatesOverview() {
     try {
       const safeName = `${(cert.certificateNumber || 'Certificate').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
       await downloadAdminCertificate(cert._id, safeName);
-      setToast({ type: 'success', message: `Downloaded ${cert.certificateNumber} successfully.` });
+      showToast('success', `Downloaded ${cert.certificateNumber} successfully.`);
     } catch (err) {
-      setToast({
-        type: 'error',
-        message: err.response?.data?.message || err.message || 'Unable to download certificate PDF.'
-      });
+      showToast('error', err.response?.data?.message || err.message || 'Unable to download certificate PDF.');
     } finally {
       setDownloadingId(null);
-      setTimeout(() => setToast(null), 5000);
+    }
+  };
+
+  const openRevokeModal = (cert) => {
+    setRevokingCert(cert);
+    setRevokeReason('');
+    setModalError(null);
+  };
+
+  const closeRevokeModal = () => {
+    if (revokingLoading) return;
+    setRevokingCert(null);
+    setRevokeReason('');
+    setModalError(null);
+  };
+
+  const handleConfirmRevoke = async (e) => {
+    e?.preventDefault();
+    if (!revokeReason.trim()) {
+      setModalError('Please provide a reason for revoking this certificate.');
+      reasonInputRef.current?.focus();
+      return;
+    }
+
+    setRevokingLoading(true);
+    setModalError(null);
+
+    try {
+      const result = await revokeCertificate(revokingCert._id, revokeReason.trim());
+      showToast('success', `Certificate ${revokingCert.certificateNumber} has been revoked successfully.`);
+
+      // Update state locally to refresh the row immediately
+      setCertificates((prev) =>
+        prev.map((c) =>
+          c._id === revokingCert._id
+            ? { ...c, ...result.certificate, isRevoked: true, status: 'finalized' }
+            : c
+        )
+      );
+
+      closeRevokeModal();
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Failed to revoke certificate.';
+      setModalError(errMsg);
+      showToast('error', errMsg);
+    } finally {
+      setRevokingLoading(false);
+    }
+  };
+
+  const handleUnrevoke = async (cert) => {
+    try {
+      const result = await unrevokeCertificate(cert._id);
+      showToast('success', `Certificate ${cert.certificateNumber} has been unrevoked.`);
+      setCertificates((prev) =>
+        prev.map((c) =>
+          c._id === cert._id
+            ? { ...c, ...result.certificate, isRevoked: false }
+            : c
+        )
+      );
+    } catch (err) {
+      showToast('error', err.response?.data?.message || err.message || 'Failed to unrevoke certificate.');
     }
   };
 
@@ -81,7 +162,7 @@ export default function CertificatesOverview() {
           <p className="admin-eyebrow">AUDIT & COMPLIANCE</p>
           <h2 id="cert-overview-title">Issued Certificates Overview</h2>
           <p className="cert-overview-subtext">
-            Oversight of all certificates generated and finalized across the organization.
+            Oversight of all certificates generated, finalized, and verified across the organization.
           </p>
         </div>
         <div className="cert-overview-actions">
@@ -103,20 +184,30 @@ export default function CertificatesOverview() {
         </div>
       )}
 
+      {/* Loading Skeleton */}
       {loading && (
-        <div className="cert-overview-state" role="status">
-          <div className="cert-overview-spinner" aria-hidden="true" />
-          <p>Loading certificate records…</p>
+        <div className="cert-overview-skeleton-wrap" aria-busy="true" aria-label="Loading certificates">
+          <div className="cert-skeleton-row shimmer" />
+          <div className="cert-skeleton-row shimmer" />
+          <div className="cert-skeleton-row shimmer" />
+          <div className="cert-skeleton-row shimmer" />
         </div>
       )}
 
+      {/* Error State with Retry */}
       {!loading && error && (
         <div className="cert-overview-error" role="alert">
-          <p>⚠ {error}</p>
-          <button type="button" onClick={fetchCertificates}>Retry</button>
+          <div>
+            <p className="error-title">⚠ Failed to load certificates</p>
+            <p className="error-desc">{error}</p>
+          </div>
+          <button type="button" onClick={fetchCertificates} className="cert-retry-btn">
+            Retry
+          </button>
         </div>
       )}
 
+      {/* Empty State */}
       {!loading && !error && certificates.length === 0 && (
         <div className="cert-overview-empty">
           <div className="cert-empty-icon" aria-hidden="true">📜</div>
@@ -125,6 +216,7 @@ export default function CertificatesOverview() {
         </div>
       )}
 
+      {/* Table */}
       {!loading && !error && certificates.length > 0 && (
         <div className="cert-overview-table-wrap">
           <table className="cert-overview-table">
@@ -136,76 +228,232 @@ export default function CertificatesOverview() {
                 <th>Type</th>
                 <th>Issued Date</th>
                 <th>Status</th>
-                <th>PDF Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {certificates.map((cert) => {
                 const isFinalized = cert.status === 'finalized';
+                const isRevoked = Boolean(cert.isRevoked || cert.status === 'revoked');
                 const hasPdf = Boolean(cert.pdfPath) && isFinalized;
                 const isDownloading = downloadingId === cert._id;
                 const intern = cert.userId || {};
+                const recipientDisplayName = cert.recipientName || intern.fullName || '—';
 
                 return (
-                  <tr key={cert._id}>
+                  <tr key={cert._id} className={isRevoked ? 'row-revoked' : ''}>
                     <td>
                       <code className="cert-num-code">{cert.certificateNumber}</code>
+                      {cert.verifyId && (
+                        <div className="cert-verify-link-wrap">
+                          <a
+                            href={`/verify/${cert.verifyId}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="cert-verify-link"
+                            title="Open public verification page"
+                          >
+                            Verify ↗
+                          </a>
+                        </div>
+                      )}
                     </td>
                     <td>
-                      <strong>{intern.fullName || '—'}</strong>
+                      <strong>{recipientDisplayName}</strong>
                     </td>
                     <td>
                       <span className="cert-intern-code">{cert.internCode || intern.internCode || '—'}</span>
                     </td>
                     <td>
                       <span className="cert-type-text">
-                        {cert.certificateType ? cert.certificateType.replace(/_/g, ' ') : '—'}
+                        {cert.certificateTitle || (cert.certificateType ? cert.certificateType.replace(/_/g, ' ') : '—')}
                       </span>
                     </td>
-                    <td>{formatDate(cert.issuedDate || cert.createdAt)}</td>
+                    <td>{formatDate(cert.issuedAt || cert.issuedDate || cert.createdAt)}</td>
                     <td>
-                      <span className={`cert-status-tag ${isFinalized ? 'is-finalized' : 'is-draft'}`}>
-                        {cert.status ? cert.status.toUpperCase() : 'UNKNOWN'}
-                      </span>
-                    </td>
-                    <td>
-                      {hasPdf ? (
-                        <button
-                          type="button"
-                          className="cert-pdf-btn"
-                          onClick={() => handleDownload(cert)}
-                          disabled={isDownloading}
-                          title="Download official finalized PDF"
+                      {isRevoked ? (
+                        <span
+                          className="cert-status-tag is-revoked"
+                          title={cert.revokedReason ? `Reason: ${cert.revokedReason}` : 'Certificate is revoked'}
                         >
-                          {isDownloading ? (
-                            <>
-                              <span className="cert-mini-spinner" aria-hidden="true" />
-                              <span>Downloading…</span>
-                            </>
-                          ) : (
-                            <span>📥 Download PDF</span>
-                          )}
-                        </button>
-                      ) : cert.status === 'draft' ? (
-                        <button
-                          type="button"
-                          className="cert-review-link-btn"
-                          onClick={() => navigate(`/admin/certificates/${cert._id}/review`)}
-                          title="Open draft in review editor"
-                        >
-                          Review Draft →
-                        </button>
+                          REVOKED
+                        </span>
+                      ) : isFinalized ? (
+                        <span className="cert-status-tag is-valid">
+                          VALID
+                        </span>
                       ) : (
-                        <span className="cert-pdf-unavailable" title="PDF is not available">
-                          Unavailable
+                        <span className="cert-status-tag is-draft">
+                          DRAFT
                         </span>
                       )}
+                    </td>
+                    <td>
+                      <div className="cert-action-btn-group">
+                        {hasPdf && (
+                          <button
+                            type="button"
+                            className="cert-pdf-btn"
+                            onClick={() => handleDownload(cert)}
+                            disabled={isDownloading}
+                            title="Download official finalized PDF"
+                          >
+                            {isDownloading ? (
+                              <>
+                                <span className="cert-mini-spinner" aria-hidden="true" />
+                                <span>Downloading…</span>
+                              </>
+                            ) : (
+                              <span>📥 PDF</span>
+                            )}
+                          </button>
+                        )}
+
+                        {cert.status === 'draft' && (
+                          <button
+                            type="button"
+                            className="cert-review-link-btn"
+                            onClick={() => navigate(`/admin/certificates/${cert._id}/review`)}
+                            title="Open draft in review editor"
+                          >
+                            Review Draft →
+                          </button>
+                        )}
+
+                        {isFinalized && !isRevoked && (
+                          <button
+                            type="button"
+                            className="cert-revoke-btn"
+                            onClick={() => openRevokeModal(cert)}
+                            title="Revoke this certificate"
+                          >
+                            🚫 Revoke
+                          </button>
+                        )}
+
+                        {isFinalized && isRevoked && (
+                          <button
+                            type="button"
+                            className="cert-unrevoke-btn"
+                            onClick={() => handleUnrevoke(cert)}
+                            title="Restore / unrevoke this certificate"
+                          >
+                            ↺ Unrevoke
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ========================================================
+          CONFIRMATION MODAL FOR REVOCATION (Keyboard Accessible)
+      ======================================================== */}
+      {revokingCert && (
+        <div
+          className="revoke-modal-backdrop"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeRevokeModal();
+          }}
+          role="presentation"
+        >
+          <div
+            className="revoke-modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="revoke-modal-title"
+            aria-describedby="revoke-modal-desc"
+          >
+            <div className="revoke-modal-header">
+              <div className="revoke-modal-icon" aria-hidden="true">⚠️</div>
+              <div>
+                <h3 id="revoke-modal-title">Revoke Certificate</h3>
+                <p id="revoke-modal-desc" className="revoke-modal-sub">
+                  This action marks the certificate as permanently revoked on the public verification portal.
+                </p>
+              </div>
+            </div>
+
+            <div className="revoke-modal-cert-summary">
+              <div>
+                <span className="summary-label">Certificate No:</span>
+                <code>{revokingCert.certificateNumber}</code>
+              </div>
+              <div>
+                <span className="summary-label">Recipient:</span>
+                <strong>{revokingCert.recipientName || revokingCert.userId?.fullName || 'Intern'}</strong>
+              </div>
+            </div>
+
+            {modalError && (
+              <div className="revoke-modal-error" role="alert">
+                ⚠ {modalError}
+              </div>
+            )}
+
+            <form onSubmit={handleConfirmRevoke}>
+              <div className="revoke-input-group">
+                <label htmlFor="revoke-reason-input">
+                  Reason for Revocation <span className="required-star">*</span>
+                </label>
+                <div className="revoke-presets">
+                  <span className="presets-label">Quick suggestions:</span>
+                  {[
+                    'Honor code / policy violation',
+                    'Inaccurate tenure dates',
+                    'Issued in error',
+                    'Internship incomplete'
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className="revoke-preset-pill"
+                      onClick={() => {
+                        setRevokeReason(preset);
+                        reasonInputRef.current?.focus();
+                      }}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  id="revoke-reason-input"
+                  ref={reasonInputRef}
+                  className="revoke-textarea"
+                  rows={3}
+                  placeholder="e.g. Terms violation, inaccurate internship duration, issued in error..."
+                  value={revokeReason}
+                  onChange={(e) => setRevokeReason(e.target.value)}
+                  disabled={revokingLoading}
+                  required
+                />
+              </div>
+
+              <div className="revoke-modal-actions">
+                <button
+                  type="button"
+                  className="revoke-cancel-btn"
+                  onClick={closeRevokeModal}
+                  disabled={revokingLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="revoke-confirm-btn"
+                  disabled={revokingLoading || !revokeReason.trim()}
+                >
+                  {revokingLoading ? 'Revoking…' : 'Confirm Revoke'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </section>
