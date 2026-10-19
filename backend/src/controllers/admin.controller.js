@@ -1056,8 +1056,9 @@ function validateTemplateContent(content) {
     };
   }
 
-  const openTokens = (content.match(/\{\{/g) || []).length;
-  const closeTokens = (content.match(/\}\}/g) || []).length;
+  const contentWithoutStyles = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "");
+  const openTokens = (contentWithoutStyles.match(/\{\{/g) || []).length;
+  const closeTokens = (contentWithoutStyles.match(/\}\}/g) || []).length;
   if (openTokens !== closeTokens) {
     return {
       valid: false,

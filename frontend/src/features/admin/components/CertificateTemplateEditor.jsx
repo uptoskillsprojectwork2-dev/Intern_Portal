@@ -166,6 +166,8 @@ export default function CertificateTemplateEditor({
 
         dragMode: "absolute",
 
+        avoidInlineStyle: false,
+
         height: `${A4_HEIGHT}px`,
 
         width: `${A4_WIDTH}px`,
@@ -326,6 +328,9 @@ export default function CertificateTemplateEditor({
       });
 
       editorRef.current = editor;
+      if (typeof window !== "undefined") {
+        window.__grapesjsEditor = editor;
+      }
 
       // --------------------------------------------------
       // Load original CSS
@@ -348,8 +353,8 @@ export default function CertificateTemplateEditor({
         component.set("dmode", "absolute");
         component.set("draggable", true);
 
-        const style = component.getStyle?.() || {};
-        if (style.position !== "absolute") {
+        const curPos = el.style.position || component.getStyle?.()?.position;
+        if (curPos !== "absolute") {
           const win = el.ownerDocument?.defaultView || window;
           const targetRect = el.getBoundingClientRect();
           const offsetParent = el.offsetParent || el.ownerDocument?.body;
@@ -364,6 +369,13 @@ export default function CertificateTemplateEditor({
           const curWidth = Math.round(targetRect.width);
           const curHeight = Math.round(targetRect.height);
 
+          el.style.position = "absolute";
+          el.style.left = `${relLeft}px`;
+          el.style.top = `${relTop}px`;
+          el.style.width = `${curWidth}px`;
+          el.style.height = `${curHeight}px`;
+          el.style.margin = "0px";
+
           component.addStyle({
             position: "absolute",
             left: `${relLeft}px`,
@@ -374,27 +386,6 @@ export default function CertificateTemplateEditor({
           });
         }
       };
-
-      // Wrap core:component-drag to dynamically compensate for canvas zoom scale
-      // and ensure elements have absolute coordinates relative to their container before drag
-      const origCompDrag = editor.Commands.get("core:component-drag");
-      if (origCompDrag) {
-        editor.Commands.add("core:component-drag", {
-          ...origCompDrag,
-          run(ed, sender, options = {}) {
-            const target = options.target || ed.getSelected();
-            if (target) {
-              const targets = Array.isArray(target) ? target : [target];
-              targets.forEach((t) => ensureComponentAbsolute(t));
-            }
-            options.dragger = {
-              ...options.dragger,
-              scale: () => 1 / (zoomRef.current || 1),
-            };
-            return origCompDrag.run.call(origCompDrag, ed, sender, options);
-          },
-        });
-      }
 
       // Notify parent of selected component and keep draggable
       const reportSelectedComponent = (component) => {
@@ -407,19 +398,96 @@ export default function CertificateTemplateEditor({
         const tag = el?.tagName?.toLowerCase() || "";
         const text = (el?.innerText || "").trim().slice(0, 24);
         const name = component.getName?.() || text || tag || "Element";
-        const st = component.getStyle?.() || {};
+        const curLeft = el?.style?.left || component.getStyle?.()?.left || "auto";
+        const curTop = el?.style?.top || component.getStyle?.()?.top || "auto";
         onComponentSelectRef.current({
           name,
-          left: st.left || "auto",
-          top: st.top || "auto",
-          position: st.position || "absolute",
+          left: curLeft,
+          top: curTop,
+          position: el?.style?.position || component.getStyle?.()?.position || "absolute",
         });
       };
+
+      // Direct drag function that uses screen coordinates for precision across iframe and zoom
+      const startDrag = (comp, startEvent) => {
+        if (!comp) return;
+        ensureComponentAbsolute(comp);
+        const el = comp.getEl?.();
+        if (!el || el.tagName === "BODY" || el.tagName === "HTML") return;
+
+        const initialLeft = parseFloat(el.style.left || "0") || 0;
+        const initialTop = parseFloat(el.style.top || "0") || 0;
+
+        const startScreenX = startEvent?.screenX ?? startEvent?.clientX ?? 0;
+        const startScreenY = startEvent?.screenY ?? startEvent?.clientY ?? 0;
+
+        const onPointerMove = (moveEv) => {
+          const currentZoom = zoomRef.current || 1;
+          const currentScreenX = moveEv.screenX ?? moveEv.clientX ?? 0;
+          const currentScreenY = moveEv.screenY ?? moveEv.clientY ?? 0;
+          const dx = (currentScreenX - startScreenX) / currentZoom;
+          const dy = (currentScreenY - startScreenY) / currentZoom;
+          const nextLeft = Math.round(initialLeft + dx);
+          const nextTop = Math.round(initialTop + dy);
+
+          el.style.position = "absolute";
+          el.style.left = `${nextLeft}px`;
+          el.style.top = `${nextTop}px`;
+
+          comp.addStyle({
+            position: "absolute",
+            left: `${nextLeft}px`,
+            top: `${nextTop}px`,
+          }, { avoidStore: true });
+
+          reportSelectedComponent(comp);
+        };
+
+        const onPointerUp = () => {
+          window.removeEventListener("mousemove", onPointerMove, true);
+          window.removeEventListener("mouseup", onPointerUp, true);
+          const frame = editor.Canvas.getFrameEl();
+          const frameDoc = frame?.contentDocument;
+          if (frameDoc) {
+            frameDoc.removeEventListener("mousemove", onPointerMove, true);
+            frameDoc.removeEventListener("mouseup", onPointerUp, true);
+          }
+
+          comp.addStyle({
+            position: "absolute",
+            left: el.style.left,
+            top: el.style.top,
+          });
+          reportSelectedComponent(comp);
+          emitChange();
+        };
+
+        window.addEventListener("mousemove", onPointerMove, true);
+        window.addEventListener("mouseup", onPointerUp, true);
+        const frame = editor.Canvas.getFrameEl();
+        const frameDoc = frame?.contentDocument;
+        if (frameDoc) {
+          frameDoc.addEventListener("mousemove", onPointerMove, true);
+          frameDoc.addEventListener("mouseup", onPointerUp, true);
+        }
+      };
+
+      // Robust direct drag implementation for tlb-move
+      editor.Commands.add("tlb-move", {
+        run(ed, sender, opts = {}) {
+          const target = opts.target || ed.getSelected();
+          if (!target) return;
+          const targets = Array.isArray(target) ? target : [target];
+          const comp = targets[targets.length - 1];
+          startDrag(comp, opts.event);
+        },
+      });
 
       editor.on("component:selected", (component) => {
         if (!component) return;
         component.set("dmode", "absolute");
         component.set("draggable", true);
+        ensureComponentAbsolute(component);
         reportSelectedComponent(component);
       });
 
@@ -436,12 +504,14 @@ export default function CertificateTemplateEditor({
 
       const serialize = () => {
         let html = editor.getHtml();
+        let css = editor.getCss() || "";
+        css = css.replace(/\}\s*\}/g, "}\n}");
         if (qrDataUrl) {
           html = html
             .replace(/<img[^>]*alt=["']QR Code["'][^>]*src=["'][^"']*["'][^>]*\/?>/gi, "{{qrCodeUrl}}")
             .replaceAll(qrDataUrl, "{{qrCodeUrl}}");
         }
-        return `<style>\n${editor.getCss()}\n</style>\n${html}`.trim();
+        return `<style>\n${css}\n</style>\n${html}`.trim();
       };
 
       const emitChange = () => {
@@ -477,13 +547,24 @@ export default function CertificateTemplateEditor({
           const selected = editor.getSelected();
           if (!selected) return;
           ensureComponentAbsolute(selected);
-          const curStyle = selected.getStyle?.() || {};
-          const curLeft = parseFloat(curStyle.left) || 0;
-          const curTop = parseFloat(curStyle.top) || 0;
+          const el = selected.getEl?.();
+          if (!el) return;
+
+          const curLeft = parseFloat(el.style.left || "0") || 0;
+          const curTop = parseFloat(el.style.top || "0") || 0;
+          const nextLeft = Math.round(curLeft + dx);
+          const nextTop = Math.round(curTop + dy);
+
+          el.style.position = "absolute";
+          el.style.left = `${nextLeft}px`;
+          el.style.top = `${nextTop}px`;
+
           selected.addStyle({
-            left: `${curLeft + dx}px`,
-            top: `${curTop + dy}px`,
+            position: "absolute",
+            left: `${nextLeft}px`,
+            top: `${nextTop}px`,
           });
+
           reportSelectedComponent(selected);
           emitChange();
         },
@@ -560,21 +641,25 @@ export default function CertificateTemplateEditor({
 
             e.preventDefault();
             ensureComponentAbsolute(selected);
-            const curStyle = selected.getStyle?.() || {};
-            const curLeft = parseFloat(curStyle.left) || 0;
-            const curTop = parseFloat(curStyle.top) || 0;
+            const curLeft = parseFloat(el.style.left || "0") || 0;
+            const curTop = parseFloat(el.style.top || "0") || 0;
             const step = e.shiftKey ? 10 : 1;
 
-            let newLeft = curLeft;
-            let newTop = curTop;
-            if (e.key === "ArrowUp") newTop -= step;
-            if (e.key === "ArrowDown") newTop += step;
-            if (e.key === "ArrowLeft") newLeft -= step;
-            if (e.key === "ArrowRight") newLeft += step;
+            let nextLeft = curLeft;
+            let nextTop = curTop;
+            if (e.key === "ArrowUp") nextTop -= step;
+            if (e.key === "ArrowDown") nextTop += step;
+            if (e.key === "ArrowLeft") nextLeft -= step;
+            if (e.key === "ArrowRight") nextLeft += step;
+
+            el.style.position = "absolute";
+            el.style.left = `${nextLeft}px`;
+            el.style.top = `${nextTop}px`;
 
             selected.addStyle({
-              left: `${newLeft}px`,
-              top: `${newTop}px`,
+              position: "absolute",
+              left: `${nextLeft}px`,
+              top: `${nextTop}px`,
             });
             reportSelectedComponent(selected);
             emitChange();
@@ -584,10 +669,6 @@ export default function CertificateTemplateEditor({
           window.addEventListener("keydown", handleKeyDown);
 
           // Direct mousedown dragging support for selected element
-          let isMouseDownOnSelected = false;
-          let dragInitiated = false;
-          let startMousePos = { x: 0, y: 0 };
-
           const onFrameMouseDown = (e) => {
             const selected = editor.getSelected();
             if (!selected) return;
@@ -595,42 +676,35 @@ export default function CertificateTemplateEditor({
             if (!selectedEl || selectedEl.tagName === "BODY" || selectedEl.tagName === "HTML") return;
 
             if (selectedEl.contains(e.target) && !e.target.isContentEditable) {
-              isMouseDownOnSelected = true;
-              dragInitiated = false;
-              startMousePos = { x: e.clientX, y: e.clientY };
+              startDrag(selected, e);
             }
-          };
-
-          const onFrameMouseMove = (e) => {
-            if (!isMouseDownOnSelected || dragInitiated) return;
-            const dist = Math.hypot(e.clientX - startMousePos.x, e.clientY - startMousePos.y);
-            if (dist > 3) {
-              dragInitiated = true;
-              const selected = editor.getSelected();
-              if (selected) {
-                ensureComponentAbsolute(selected);
-                editor.runCommand("tlb-move", { target: selected, event: e });
-              }
-            }
-          };
-
-          const resetDrag = () => {
-            isMouseDownOnSelected = false;
-            dragInitiated = false;
           };
 
           frameDocument.addEventListener("mousedown", onFrameMouseDown);
-          frameDocument.addEventListener("mousemove", onFrameMouseMove);
-          frameDocument.addEventListener("mouseup", resetDrag);
-          window.addEventListener("mouseup", resetDrag);
+
+          const toolsEl = editor.Canvas.getGlobalToolsEl?.() || editor.Canvas.getToolsEl?.();
+          const onToolsMouseDown = (e) => {
+            const moveBtn = e.target.closest?.(".gjs-toolbar-item[draggable], [data-command='tlb-move'], .gjs-toolbar-item");
+            if (moveBtn) {
+              const selected = editor.getSelected();
+              if (selected) {
+                e.preventDefault();
+                e.stopPropagation();
+                startDrag(selected, e);
+              }
+            }
+          };
+          if (toolsEl) {
+            toolsEl.addEventListener("mousedown", onToolsMouseDown, true);
+          }
 
           cleanupListeners = () => {
             frameDocument.removeEventListener("keydown", handleKeyDown);
             window.removeEventListener("keydown", handleKeyDown);
             frameDocument.removeEventListener("mousedown", onFrameMouseDown);
-            frameDocument.removeEventListener("mousemove", onFrameMouseMove);
-            frameDocument.removeEventListener("mouseup", resetDrag);
-            window.removeEventListener("mouseup", resetDrag);
+            if (toolsEl) {
+              toolsEl.removeEventListener("mousedown", onToolsMouseDown, true);
+            }
           };
         }
       });
