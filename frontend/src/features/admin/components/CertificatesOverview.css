@@ -154,21 +154,42 @@
   letter-spacing: 0.5px;
 }
 
-.cert-status-tag.is-finalized {
+.cert-status-tag.is-finalized,
+.cert-status-tag.is-valid {
   background: rgba(34, 197, 94, 0.15);
   color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.cert-status-tag.is-revoked {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .cert-status-tag.is-draft {
   background: rgba(234, 179, 8, 0.15);
   color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.cert-row-revoked td {
+  opacity: 0.85;
+  background: rgba(239, 68, 68, 0.02);
+}
+
+.cert-actions-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .cert-pdf-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  gap: 5px;
+  padding: 5px 10px;
   border: 1px solid var(--accent);
   border-radius: 6px;
   background: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -177,6 +198,7 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  text-decoration: none;
 }
 
 .cert-pdf-btn:hover:not(:disabled) {
@@ -187,6 +209,67 @@
 .cert-pdf-btn:disabled {
   opacity: 0.6;
   cursor: wait;
+}
+
+.cert-verify-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.cert-verify-link-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cert-revoke-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cert-revoke-btn:hover:not(:disabled) {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
+
+.cert-unrevoke-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.08);
+  color: #22c55e;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cert-unrevoke-btn:hover:not(:disabled) {
+  background: #22c55e;
+  color: #fff;
+  border-color: #22c55e;
 }
 
 .cert-review-link-btn {
@@ -219,6 +302,82 @@
   border-right-color: transparent;
   border-radius: 50%;
   animation: cert-spin 0.75s linear infinite;
+}
+
+/* ── Revoke modal specializations ── */
+
+.revoke-modal-card {
+  max-width: 520px;
+  animation: revoke-modal-scale 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes revoke-modal-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cert-cancel-btn {
+  padding: 9px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cert-cancel-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--border) 35%, transparent);
+}
+
+.cert-confirm-revoke-btn {
+  padding: 9px 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cert-confirm-revoke-btn:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.cert-confirm-revoke-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cert-confirm-unrevoke-btn {
+  padding: 9px 18px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: #22c55e;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cert-confirm-unrevoke-btn:hover:not(:disabled) {
+  background: #16a34a;
+}
+
+.cert-confirm-unrevoke-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 @keyframes cert-spin {

@@ -1,0 +1,24 @@
+// Agreed audit action names — use these exact constants everywhere.
+export const LOGIN                    = 'LOGIN';
+export const LOGIN_FAILED             = 'LOGIN_FAILED';
+export const LOGOUT                   = 'LOGOUT';
+export const USER_CREATED             = 'USER_CREATED';
+export const PASSWORD_RESET_REQUESTED = 'PASSWORD_RESET_REQUESTED';
+export const PASSWORD_RESET_COMPLETED = 'PASSWORD_RESET_COMPLETED';
+export const REQUEST_SUBMITTED        = 'REQUEST_SUBMITTED';
+export const REQUEST_FORWARDED        = 'REQUEST_FORWARDED';
+export const REQUEST_REJECTED         = 'REQUEST_REJECTED';
+export const REQUEST_APPROVED         = 'REQUEST_APPROVED';
+export const CERTIFICATE_DRAFT_CREATED = 'CERTIFICATE_DRAFT_CREATED';
+export const CERTIFICATE_EDITED       = 'CERTIFICATE_EDITED';
+export const CERTIFICATE_FINALIZED    = 'CERTIFICATE_FINALIZED';
+export const CERTIFICATE_REVOKED      = 'CERTIFICATE_REVOKED';
+export const CERTIFICATE_UNREVOKED    = 'CERTIFICATE_UNREVOKED';
+export const TEMPLATE_CREATED         = 'TEMPLATE_CREATED';
+export const TEMPLATE_UPDATED         = 'TEMPLATE_UPDATED';
+export const TEMPLATE_TOGGLED         = 'TEMPLATE_TOGGLED';
+export const RETENTION_POLICY_UPDATED = 'RETENTION_POLICY_UPDATED';
+export const INTERN_ARCHIVED          = 'INTERN_ARCHIVED';
+export const INTERN_PURGED            = 'INTERN_PURGED';
+export const INTERN_RESTORED          = 'INTERN_RESTORED';
+export const EXPORT                   = 'EXPORT';

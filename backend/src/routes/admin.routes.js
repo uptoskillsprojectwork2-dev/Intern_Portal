@@ -27,10 +27,13 @@ import {
   updateRetentionPolicy,
   getArchivedInterns,
   restoreArchivedIntern,
+  revokeCertificate,
+  unrevokeCertificate,
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
+import { getAuditLogs, exportAuditLogs } from "../controllers/auditLog.controller.js";
 
 const adminRouter = express.Router();
 
@@ -100,5 +103,13 @@ adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finaliz
 adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
 adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
+
+// Certificate Revocation routes
+adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
+adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
+
+// Audit Log routes
+adminRouter.get("/audit-logs/export", verifyAuth, requireAdmin, exportAuditLogs);
+adminRouter.get("/audit-logs", verifyAuth, requireAdmin, getAuditLogs);
 
 export default adminRouter;

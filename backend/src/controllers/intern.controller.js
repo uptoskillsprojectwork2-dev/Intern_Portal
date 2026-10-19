@@ -8,6 +8,9 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.model.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
+import { logAction } from '../utils/logAction.js';
+import { REQUEST_SUBMITTED } from '../utils/auditActions.js';
+import { notify, REQUEST_SUBMITTED as NOTIF_REQUEST_SUBMITTED } from '../services/notification.service.js';
 
 const ALLOWED_TYPES = [
   'offer_letter',
@@ -118,6 +121,26 @@ export const submitCertificateRequest = async (req, res) => {
       reason,
       metadata: safeMetadata
     });
+
+    logAction({ req, actor: { id: req.user.id, role: 'intern' }, action: REQUEST_SUBMITTED, targetType: 'CertificateRequest', targetId: request._id, meta: { certificateType, requestNumber } });
+
+    // Trigger 1: Request submitted -> notify intern's TL (in-app and email)
+    const tlEmail = user.internshipDetails?.teamleaderEmail;
+    if (tlEmail) {
+      const tlUser = await User.findOne({ email: tlEmail.toLowerCase().trim() });
+      if (tlUser) {
+        await notify(tlUser._id, NOTIF_REQUEST_SUBMITTED, {
+          title: 'New Certificate Request Submitted',
+          message: `${user.fullName || 'An intern'} has submitted a request for ${certificateType.replace(/_/g, ' ')} (${requestNumber}).`,
+          requestId: request._id,
+          email: true,
+        });
+      } else {
+        console.warn(`[notify] No team leader found matching email: ${tlEmail}`);
+      }
+    } else {
+      console.warn(`[notify] Intern ${user._id} has no teamleaderEmail in internshipDetails`);
+    }
 
     return res.status(201).json({ request });
   } catch (err) {

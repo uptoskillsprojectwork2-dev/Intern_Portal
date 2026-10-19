@@ -1,18 +1,27 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import CreateIntern from '../components/CreateIntern';
 import MyInternsList from '../components/MyInternsList';
 import UpcomingCompletions from '../components/UpcomingCompletions';
 import PendingReviewList from '../components/PendingReviewList';
 import { getUpcomingCompletions } from '../services/tl.service';
+import NotificationBell from '../../../shared/components/NotificationBell';
 import './TLDashboard.css';
 
 const TLDashboard = () => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState('overview');
+  const [searchParams] = useSearchParams();
+  const [activeView, setActiveView] = useState(() => searchParams.get('view') || 'overview');
   const [upcomingCompletions, setUpcomingCompletions] = useState([]);
+
+  useEffect(() => {
+    const viewParam = searchParams.get('view');
+    if (viewParam) {
+      setActiveView(viewParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchUpcomingCompletions = async () => {
@@ -44,6 +53,7 @@ const TLDashboard = () => {
       <header className="admin-topbar">
         <div className="admin-brand"><span className="admin-brand-icon">UP</span><strong>uptoskills</strong></div>
         <div className="admin-topbar-user">
+          <NotificationBell role="teamleader" />
           <div className="admin-avatar">{initials}</div>
           <div><strong>{user?.fullName || 'Team Leader'}</strong><small>{user?.email || 'Loading profile...'}</small></div>
           <button className="admin-logout" onClick={logout} title="Sign out"><span>↩</span> Logout</button>

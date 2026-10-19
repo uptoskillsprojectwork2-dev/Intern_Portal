@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useIntern } from '../hooks/useIntern';
 import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
 import MyRequestsList from '../components/MyRequestsList';
+import NotificationBell from '../../../shared/components/NotificationBell';
 import './InternDashboard.css';
 import '../../../app/App.css';
 
@@ -53,8 +54,16 @@ export default function InternDashboard() {
   const { profile, archiveNotice, loading, error, fetchProfile } = useIntern();
   const { handleLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState('dashboard');
+  const [searchParams] = useSearchParams();
+  const [activeNav, setActiveNav] = useState(() => searchParams.get('view') || 'dashboard');
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+
+  useEffect(() => {
+    const viewParam = searchParams.get('view');
+    if (viewParam && (viewParam === 'certificates' || viewParam === 'dashboard')) {
+      setActiveNav(viewParam);
+    }
+  }, [searchParams]);
 
   const onLogout = () => {
     handleLogout();
@@ -79,6 +88,7 @@ export default function InternDashboard() {
         </div>
 
         <div className="id-nav-right">
+          <NotificationBell role="intern" />
           <div className="id-avatar" aria-label="User avatar">
             {initials}
           </div>

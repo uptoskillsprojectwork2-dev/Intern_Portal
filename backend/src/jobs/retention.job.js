@@ -2,6 +2,9 @@ import cron from 'node-cron';
 import User from '../models/User.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
 import { sendEmail } from '../utils/sendEmail.js';
+import { logAction } from '../utils/logAction.js';
+import { INTERN_ARCHIVED, INTERN_PURGED } from '../utils/auditActions.js';
+import { notify, ARCHIVE_WARNING } from '../services/notification.service.js';
 
 const BATCH_SIZE = 100;
 const DAY_MS = 86400000;
@@ -57,21 +60,16 @@ async function sendArchiveWarnings({ graceDays, dryRun, today }) {
       if (dryRun) {
         console.log(`[retention] DRY RUN: would email ${intern.email} that account archives on ${archiveDate.toISOString().slice(0, 10)}`);
       } else {
-        try {
-          await sendEmail({
-            to: intern.email,
-            subject: 'Your UPTOSKILL internship account will be archived in 7 days',
-            html: `<p>Hello ${escapeHtml(intern.fullName || 'Intern')},</p><p>Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then. Contact an administrator if you need help.</p>`,
-          });
-          intern.archiveWarningSentAt = new Date();
-          await intern.save();
-        } catch (error) {
-          console.error(`[retention] warning email failed for ${intern._id}:`, error.message);
-          continue;
-        }
+        await notify(intern._id, ARCHIVE_WARNING, {
+          title: 'Account Archival Scheduled in 7 Days',
+          message: `Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then. Contact an administrator if you need help.`,
+          email: true,
+        });
+        intern.archiveWarningSentAt = new Date();
+        await intern.save();
       }
       warnings += 1;
-      // TODO: logAction for the archive warning.
+      logAction({ actor: null, action: 'ARCHIVE_WARNING_SENT', targetType: 'User', targetId: intern._id, meta: { email: intern.email, archiveDate: archiveDate.toISOString(), dryRun } });
     }
   });
   return warnings;
@@ -90,7 +88,7 @@ async function archiveCompletedInterns({ graceDays, dryRun, today }) {
       plusDays(intern.endDate, graceDays) < today);
     for (const intern of eligible) {
       console.log(`[retention] ${dryRun ? 'DRY RUN: would archive' : 'archiving'} ${intern._id}`);
-      // TODO: logAction for the archive.
+      logAction({ actor: null, action: INTERN_ARCHIVED, targetType: 'User', targetId: intern._id, meta: { dryRun } });
     }
     if (eligible.length && !dryRun) {
       await User.updateMany(
@@ -115,7 +113,7 @@ async function purgeArchivedInterns({ purgeDays, dryRun, today }) {
     for (const intern of batch) {
       const id = intern._id.toString();
       console.log(`[retention] ${dryRun ? 'DRY RUN: would anonymize' : 'anonymizing'} ${id}`);
-      // TODO: logAction for personal-data purge. Certificate records and files remain intact.
+      logAction({ actor: null, action: INTERN_PURGED, targetType: 'User', targetId: intern._id, meta: { dryRun } });
       if (!dryRun) {
         await User.updateOne({ _id: intern._id, isArchived: true, personalDataPurged: { $ne: true } }, {
           $set: {
