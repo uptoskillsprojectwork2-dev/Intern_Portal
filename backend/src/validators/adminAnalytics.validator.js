@@ -32,11 +32,25 @@ export const analyticsQueryValidator = [
     .withMessage('range must be one of: 7d, 30d, 6m, 12m, custom, all')
     .bail()
     .custom((range, { req }) => {
-      if (range === 'custom' && (!req.query.from || !req.query.to)) throw new Error('custom range requires both from and to dates');
+      if (range === 'custom' && (!req.query.from || !req.query.to)) {
+        throw new Error('custom range requires both from and to dates');
+      }
       return true;
     }),
-  query('teamLeader').optional().isMongoId().withMessage('teamLeader must be a valid ID'),
-  query('domain').optional().isString().trim().isLength({ max: 100 }).withMessage('domain must be 100 characters or fewer'),
+  query('teamLeaderId')
+    .optional()
+    .isMongoId()
+    .withMessage('teamLeaderId must be a valid ID'),
+  query('teamLeader')
+    .optional()
+    .isMongoId()
+    .withMessage('teamLeader must be a valid ID'),
+  query('domain')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 100 })
+    .withMessage('domain must be 100 characters or fewer'),
   query('groupBy')
     .optional()
     .isIn(['day', 'week', 'month'])
@@ -56,17 +70,28 @@ export const analyticsExportValidator = [
       'team-leaders',
       'domains',
       'pipeline',
+      'stuck',
       'stuck-requests',
+      'upcoming',
       'upcoming-completions'
     ])
     .withMessage('Invalid export type parameter'),
-  query('format').optional().isIn(['csv', 'xlsx']).withMessage('format must be csv or xlsx'),
-  query('days').optional().isInt({ min: 1, max: 365 }).withMessage('days must be an integer between 1 and 365'),
+  query('format')
+    .optional()
+    .isIn(['csv', 'xlsx'])
+    .withMessage('format must be csv or xlsx'),
+  query('days')
+    .optional()
+    .isInt({ min: 1, max: 365 })
+    .withMessage('days must be an integer between 1 and 365'),
   validate
 ];
 
 export const analyticsDaysValidator = [
   ...analyticsQueryValidator.slice(0, -1),
-  query('days').optional().isInt({ min: 1, max: 365 }).withMessage('days must be an integer between 1 and 365'),
+  query('days')
+    .optional()
+    .isInt({ min: 1, max: 365 })
+    .withMessage('days must be an integer between 1 and 365'),
   validate
 ];

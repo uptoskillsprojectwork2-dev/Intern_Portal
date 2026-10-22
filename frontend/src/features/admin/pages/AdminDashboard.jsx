@@ -42,6 +42,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState(initialView || 'overview');
+  const [selectedRequestStatus, setSelectedRequestStatus] = useState('processing');
 
   useEffect(() => {
     if (initialView) {
@@ -285,7 +286,10 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
 
         {activeView === 'analytics' ? (
           <AnalyticsView
-            onOpenRequests={() => changeView('requests')}
+            onOpenRequests={(status) => {
+              if (status) setSelectedRequestStatus(status);
+              changeView('requests');
+            }}
           />
         ) : activeView === 'overview' ? (
           <>
@@ -493,7 +497,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
         ) : activeView === 'audit_logs' ? (
           <AuditLogsPage />
         ) : (
-          <ForwardedRequestsList />
+          <ForwardedRequestsList initialStatus={selectedRequestStatus} />
         )}
       </main>
     </div>

@@ -636,6 +636,68 @@ export async function getInternsByTeamLeader(req, res) {
 }
 
 
+/**
+ * GET /api/admin/requests?status=&page=&limit=
+ * Filtered request list, used when a chart segment is clicked
+ */
+export const getAdminRequests = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20, search } = req.query;
+    const filter = {};
+
+    if (status && status !== 'all') {
+      filter.status = status;
+    }
+
+    if (search && search.trim()) {
+      const s = search.trim();
+      const matchingUsers = await User.find({
+        $or: [
+          { fullName: { $regex: s, $options: 'i' } },
+          { email: { $regex: s, $options: 'i' } },
+          { internCode: { $regex: s, $options: 'i' } }
+        ]
+      }).select('_id');
+      const userIds = matchingUsers.map((u) => u._id);
+
+      filter.$or = [
+        { requestNumber: { $regex: s, $options: 'i' } },
+        { certificateType: { $regex: s, $options: 'i' } },
+        { userId: { $in: userIds } }
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [total, requests] = await Promise.all([
+      CertificateRequest.countDocuments(filter),
+      CertificateRequest.find(filter)
+        .populate('userId', 'fullName email internCode domain internshipDetails')
+        .populate('forwardedBy', 'fullName email')
+        .populate('reviewedBy', 'fullName email')
+        .populate('certificateId', '_id status certificateNumber issuedAt issuedDate pdfPath')
+        .sort({ requestedAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      requests,
+      pagination: {
+        total,
+        page: pageNum,
+        pages: Math.ceil(total / limitNum) || 1,
+        limit: limitNum
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // Admin sees requests TL has forwarded, plus approved requests missing certificateId for recovery
 export const getForwardedRequests = async (req, res) => {
   try {

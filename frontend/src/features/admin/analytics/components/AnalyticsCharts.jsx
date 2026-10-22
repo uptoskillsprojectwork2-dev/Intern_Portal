@@ -18,12 +18,32 @@ import {
 const PIE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'];
 
 const tooltipStyle = {
-  backgroundColor: 'var(--card)',
-  borderColor: 'var(--border)',
-  color: 'var(--text)',
+  backgroundColor: 'var(--card, #1e293b)',
+  borderColor: 'var(--border, rgba(255, 255, 255, 0.1))',
+  color: 'var(--text, #f8fafc)',
   borderRadius: '10px',
-  boxShadow: '0 4px 16px var(--shadow, rgba(0, 0, 0, 0.12))',
+  boxShadow: '0 4px 16px var(--shadow, rgba(0, 0, 0, 0.2))',
   fontSize: '0.8125rem'
+};
+
+const mapPipelineStatus = (rawStatus) => {
+  if (rawStatus === 'rejected_tl' || rawStatus === 'rejected_admin') return 'rejected';
+  if (rawStatus === 'failed_generation') return 'approved';
+  return rawStatus;
+};
+
+const getStageColor = (status) => {
+  switch (status) {
+    case 'pending': return '#f59e0b';
+    case 'processing': return '#6366f1';
+    case 'approved': return '#3b82f6';
+    case 'failed_generation': return '#ef4444';
+    case 'completed': return '#10b981';
+    case 'rejected_tl':
+    case 'rejected_admin':
+    case 'rejected': return '#dc2626';
+    default: return '#8b5cf6';
+  }
 };
 
 export default function AnalyticsCharts({
@@ -32,8 +52,8 @@ export default function AnalyticsCharts({
   domainsData,
   pipelineData,
   teamLeadersData,
-  loadingMap,
-  errorMap,
+  loadingMap = {},
+  errorMap = {},
   onRetry,
   onExport,
   onOpenRequests,
@@ -47,9 +67,9 @@ export default function AnalyticsCharts({
         <div className="chart-header">
           <div>
             <h3>Certificate Requests Trend Over Time</h3>
-            <p className="chart-subtitle">Volume of requests split by status</p>
+            <p className="chart-subtitle">Volume of requests split by status (click segment to inspect)</p>
           </div>
-          <AnalyticsExportActions onExport={onExport} type="requests-trend" />
+          <AnalyticsExportActions onExport={onExport} type="requests-trend" formats={['xlsx', 'csv']} />
         </div>
         {loadingMap.trend ? (
           <div className="chart-skeleton">Loading trend visualization...</div>
@@ -69,6 +89,10 @@ export default function AnalyticsCharts({
                     <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
                     <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
                   </linearGradient>
+                  <linearGradient id="colorProcessing" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                  </linearGradient>
                   <linearGradient id="colorApproved" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
                     <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
@@ -80,12 +104,13 @@ export default function AnalyticsCharts({
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} stroke="var(--border)" />
                 <XAxis dataKey="period" stroke="var(--muted)" fontSize={12} />
-                <YAxis stroke="var(--muted)" fontSize={12} />
+                <YAxis stroke="var(--muted)" fontSize={12} allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
                 <Legend wrapperStyle={{ color: 'var(--text)', fontSize: '0.8125rem' }} />
-                <Area type="monotone" dataKey="pending" name="Pending" stroke="#f59e0b" fillOpacity={1} fill="url(#colorPending)" />
-                <Area type="monotone" dataKey="approved" name="Forwarded" stroke="#3b82f6" fillOpacity={1} fill="url(#colorApproved)" />
-                <Area type="monotone" dataKey="completed" name="Issued" stroke="#10b981" fillOpacity={1} fill="url(#colorCompleted)" />
+                <Area type="monotone" dataKey="pending" name="Pending (TL)" stroke="#f59e0b" fillOpacity={1} fill="url(#colorPending)" onClick={() => onOpenRequests?.('pending')} cursor="pointer" />
+                <Area type="monotone" dataKey="processing" name="Processing (Admin)" stroke="#6366f1" fillOpacity={1} fill="url(#colorProcessing)" onClick={() => onOpenRequests?.('processing')} cursor="pointer" />
+                <Area type="monotone" dataKey="approved" name="Approved" stroke="#3b82f6" fillOpacity={1} fill="url(#colorApproved)" onClick={() => onOpenRequests?.('approved')} cursor="pointer" />
+                <Area type="monotone" dataKey="completed" name="Completed" stroke="#10b981" fillOpacity={1} fill="url(#colorCompleted)" onClick={() => onOpenRequests?.('completed')} cursor="pointer" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -97,9 +122,9 @@ export default function AnalyticsCharts({
         <div className="chart-header">
           <div>
             <h3>Certificate Types Distribution</h3>
-            <p className="chart-subtitle">Breakdown by certificate type</p>
+            <p className="chart-subtitle">Breakdown by certificate type (click to filter)</p>
           </div>
-          <AnalyticsExportActions onExport={onExport} type="certificate-types" />
+          <AnalyticsExportActions onExport={onExport} type="certificate-types" formats={['xlsx', 'csv']} />
         </div>
         {loadingMap.types ? (
           <div className="chart-skeleton">Loading types...</div>
@@ -112,7 +137,7 @@ export default function AnalyticsCharts({
           <div className="empty-state">No certificate data for this period</div>
         ) : (
           <div className="chart-container donut-layout">
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={260}>
               <PieChart>
                 <Pie
                   data={typesData.breakdown}
@@ -123,14 +148,15 @@ export default function AnalyticsCharts({
                   innerRadius={55}
                   outerRadius={85}
                   paddingAngle={4}
-                  label={({ certificateType, percentage }) => `${certificateType} (${percentage}%)`}
-                  onClick={() => onOpenRequests?.()}
+                  cursor="pointer"
+                  onClick={(entry) => onOpenRequests?.('all', entry.certificateType)}
                 >
-                  {typesData.breakdown.map((entry, index) => (
+                  {typesData.breakdown.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
+                <Legend wrapperStyle={{ color: 'var(--text)', fontSize: '0.78125rem' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -142,9 +168,9 @@ export default function AnalyticsCharts({
         <div className="chart-header">
           <div>
             <h3>Interns & Certificates by Domain</h3>
-            <p className="chart-subtitle">Total interns vs issued certificates</p>
+            <p className="chart-subtitle">Click a domain bar to filter analytics</p>
           </div>
-          <AnalyticsExportActions onExport={onExport} type="domains" />
+          <AnalyticsExportActions onExport={onExport} type="domains" formats={['xlsx', 'csv']} />
         </div>
         {loadingMap.domains ? (
           <div className="chart-skeleton">Loading domains...</div>
@@ -156,66 +182,21 @@ export default function AnalyticsCharts({
         ) : !domainsData?.domains || domainsData.domains.length === 0 ? (
           <div className="empty-state">No domain data found</div>
         ) : (() => {
-          const ABBREV = {
-            'Artificial Intelligence & Machine Learning': 'AI & ML',
-            'Artificial Intelligence and Machine Learning': 'AI & ML',
-            'MERN Stack': 'MERN Stack',
-            'Web Development': 'Web Dev',
-            'AI Research': 'AI Research',
-            'Prompt Engineering': 'Prompt Eng.',
-            'Data Science': 'Data Science',
-            'Cloud Computing': 'Cloud',
-            'Cyber Security': 'Cyber Sec.',
-          };
-          const abbreviate = (name = '') =>
-            ABBREV[name] || (name.length > 18 ? name.slice(0, 16) + '\u2026' : name);
-
-          const chartData = domainsData.domains.map(d => ({
+          const chartData = domainsData.domains.map((d) => ({
             ...d,
-            shortDomain: abbreviate(d.domain),
+            shortDomain: d.domain.length > 20 ? d.domain.slice(0, 18) + '…' : d.domain
           }));
-
-          const longestLabel = Math.max(...chartData.map(d => d.shortDomain.length));
-          const yAxisWidth = Math.min(longestLabel * 7 + 16, 140);
-          const chartHeight = Math.max(chartData.length * 52 + 60, 220);
-
           return (
             <div className="chart-container">
-              <ResponsiveContainer width="100%" height={chartHeight}>
-                <BarChart
-                  layout="vertical"
-                  data={chartData}
-                  margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
-                  barCategoryGap="30%"
-                  barGap={3}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.2} stroke="var(--border)" />
-                  <XAxis
-                    type="number"
-                    stroke="var(--muted)"
-                    fontSize={12}
-                    allowDecimals={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="shortDomain"
-                    stroke="var(--muted)"
-                    tick={{ fontSize: 12, fill: 'var(--text)' }}
-                    width={yAxisWidth}
-                    tickLine={false}
-                  />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    itemStyle={{ color: 'var(--text)' }}
-                    labelFormatter={(label) => {
-                      const found = chartData.find(d => d.shortDomain === label);
-                      return found ? found.domain : label;
-                    }}
-                  />
-                  <Legend wrapperStyle={{ color: 'var(--text)', fontSize: '0.8125rem', paddingTop: '8px' }} />
-                  <Bar dataKey="totalInterns" name="Total Interns" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={20} onClick={(entry) => onSelectDomain?.(entry.domain)} cursor="pointer" />
-                  <Bar dataKey="certificatesCount" name="Certificates Issued" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={20} />
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 8 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} stroke="var(--border)" />
+                  <XAxis dataKey="shortDomain" stroke="var(--muted)" fontSize={11} />
+                  <YAxis stroke="var(--muted)" fontSize={12} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
+                  <Legend wrapperStyle={{ color: 'var(--text)', fontSize: '0.8125rem' }} />
+                  <Bar dataKey="totalInterns" name="Total Interns" fill="#3b82f6" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(entry) => onSelectDomain?.(entry.domain)} />
+                  <Bar dataKey="certificatesCount" name="Certificates Issued" fill="#10b981" radius={[4, 4, 0, 0]} cursor="pointer" onClick={(entry) => onSelectDomain?.(entry.domain)} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -223,17 +204,17 @@ export default function AnalyticsCharts({
         })()}
       </div>
 
-      {/* 4. Pipeline Stages Funnel / Horizontal Bar Chart */}
+      {/* 4. Pipeline Stages Horizontal Bar Chart */}
       <div className="chart-card">
         <div className="chart-header">
           <div>
             <h3>Request Pipeline & Bottlenecks</h3>
-            <p className="chart-subtitle">Current request volume at each stage</p>
+            <p className="chart-subtitle">Click any stage to inspect matching requests</p>
           </div>
-          <AnalyticsExportActions onExport={onExport} type="pipeline" />
+          <AnalyticsExportActions onExport={onExport} type="pipeline" formats={['xlsx', 'csv']} />
           {pipelineData?.failedGenerations > 0 && (
-            <span className="status-badge alert" title="Approved requests missing a generated certificate draft; retry is available in the request queue">
-              <i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>{pipelineData.failedGenerations} Failed Draft Generations
+            <span className="status-badge alert" title="Approved requests missing a generated certificate draft">
+              <i className="bi bi-exclamation-triangle-fill" style={{ marginRight: 6 }}></i>{pipelineData.failedGenerations} Failed
             </span>
           )}
         </div>
@@ -248,29 +229,25 @@ export default function AnalyticsCharts({
           <div className="empty-state">No pipeline data found</div>
         ) : (
           <div className="chart-container">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart layout="vertical" data={pipelineData.pipeline} margin={{ left: 40 }}>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart layout="vertical" data={pipelineData.pipeline} margin={{ left: 20, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} stroke="var(--border)" />
-                <XAxis type="number" stroke="var(--muted)" fontSize={12} />
-                <YAxis type="category" dataKey="stage" stroke="var(--muted)" tick={{ fontSize: 11 }} width={120} />
+                <XAxis type="number" stroke="var(--muted)" fontSize={12} allowDecimals={false} />
+                <YAxis type="category" dataKey="stage" stroke="var(--muted)" tick={{ fontSize: 11 }} width={130} />
                 <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
-                <Bar dataKey="count" name="Requests Count" fill="#8b5cf6" radius={[0, 4, 4, 0]} onClick={(entry) => onOpenRequests?.(entry.status)}>
+                <Bar
+                  dataKey="count"
+                  name="Requests Count"
+                  radius={[0, 4, 4, 0]}
+                  cursor="pointer"
+                  onClick={(entry) => onOpenRequests?.(mapPipelineStatus(entry.status))}
+                >
                   {pipelineData.pipeline.map((entry, idx) => (
                     <Cell
                       key={`cell-p-${idx}`}
-                      onClick={() => entry.status === 'processing' && onOpenRequests?.()}
-                      fill={
-                        entry.status === 'pending'
-                          ? '#f59e0b'
-                          : entry.status === 'approved'
-                          ? '#3b82f6'
-                          : entry.status === 'completed'
-                          ? '#10b981'
-                          : entry.status === 'rejected'
-                          ? '#ef4444'
-                          : '#8b5cf6'
-                      }
-                      style={{ cursor: entry.status === 'processing' ? 'pointer' : 'default' }}
+                      fill={getStageColor(entry.status)}
+                      cursor="pointer"
+                      onClick={() => onOpenRequests?.(mapPipelineStatus(entry.status))}
                     />
                   ))}
                 </Bar>
@@ -284,9 +261,10 @@ export default function AnalyticsCharts({
       <div className="chart-card">
         <div className="chart-header">
           <div>
-            <h3>TL Average Review Time (Hours)</h3>
-            <p className="chart-subtitle">Turnaround speed per Team Leader</p>
+            <h3>TL Average Decision Time (Hours)</h3>
+            <p className="chart-subtitle">Turnaround speed per Team Leader (click to filter)</p>
           </div>
+          <AnalyticsExportActions onExport={onExport} type="team-leaders" formats={['xlsx', 'csv']} />
         </div>
         {loadingMap.teamLeaders ? (
           <div className="chart-skeleton">Loading TL turnaround...</div>
@@ -299,13 +277,20 @@ export default function AnalyticsCharts({
           <div className="empty-state">No Team Leader data found</div>
         ) : (
           <div className="chart-container">
-            <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={teamLeadersData}>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={teamLeadersData} margin={{ top: 8, right: 20, left: 10, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} stroke="var(--border)" />
                 <XAxis dataKey="fullName" stroke="var(--muted)" tick={{ fontSize: 11 }} />
                 <YAxis stroke="var(--muted)" fontSize={12} label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: 'var(--muted)' }} />
                 <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
-                <Bar dataKey="avgReviewTimeHours" name="Avg Review Time (hrs)" fill="#06b6d4" radius={[4, 4, 0, 0]} onClick={(entry) => onSelectTeamLeader?.(entry.id)} cursor="pointer" />
+                <Bar
+                  dataKey="avgReviewTimeHours"
+                  name="Avg Review Time (hrs)"
+                  fill="#06b6d4"
+                  radius={[4, 4, 0, 0]}
+                  onClick={(entry) => onSelectTeamLeader?.(entry.id)}
+                  cursor="pointer"
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

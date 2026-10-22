@@ -5,11 +5,31 @@ import { retryCertificateGeneration } from '../services/admin.service';
 import Toast from '../../../shared/components/Toast';
 import './ForwardedRequestsList.css';
 
-const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+const formatDate = (date) => (date ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—');
 
-export default function ForwardedRequestsList() {
+const STATUS_FILTERS = [
+  { key: 'processing', label: 'With Admin' },
+  { key: 'pending', label: 'With TL' },
+  { key: 'approved', label: 'Approved / Draft' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'rejected', label: 'Rejected' },
+  { key: 'all', label: 'All Requests' }
+];
+
+export default function ForwardedRequestsList({ initialStatus = 'processing' }) {
   const navigate = useNavigate();
-  const { requests, loading, error, refetch, approveRequest, rejectRequest } = useForwardedRequests();
+  const {
+    requests,
+    pagination,
+    loading,
+    error,
+    statusFilter,
+    setStatusFilter,
+    refetch,
+    approveRequest,
+    rejectRequest
+  } = useForwardedRequests(initialStatus);
+
   const [rejectingId, setRejectingId] = useState(null);
   const [reason, setReason] = useState('');
   const [actionError, setActionError] = useState(null);
@@ -35,7 +55,9 @@ export default function ForwardedRequestsList() {
       await rejectRequest(id, reason.trim());
       setRejectingId(null);
       setReason('');
-    } catch (requestError) { setActionError(requestError.message); }
+    } catch (requestError) {
+      setActionError(requestError.message);
+    }
   };
 
   const handleRetry = async (id) => {
@@ -49,7 +71,7 @@ export default function ForwardedRequestsList() {
         type: 'success',
         message: 'Draft certificate generated successfully! Navigating to review…'
       });
-      await refetch();
+      await refetch(statusFilter);
       if (result?.certificate?._id) {
         setTimeout(() => {
           navigate(`/admin/certificates/${result.certificate._id}/review`);
@@ -71,9 +93,33 @@ export default function ForwardedRequestsList() {
       <div className="forwarded-requests-heading">
         <div>
           <p className="admin-eyebrow">CERTIFICATE DESK</p>
-          <h2 id="forwarded-requests-title">Requests awaiting approval & recovery</h2>
+          <h2 id="forwarded-requests-title">Certificate Request Queue</h2>
         </div>
-        <span className="forwarded-requests-count">{requests.length} awaiting</span>
+        <span className="forwarded-requests-count">{requests.length} requests</span>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="forwarded-status-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+        {STATUS_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            className={`control-preset-btn ${statusFilter === f.key ? 'active' : ''}`}
+            onClick={() => setStatusFilter(f.key)}
+            style={{
+              padding: '0.45rem 0.95rem',
+              borderRadius: '8px',
+              border: statusFilter === f.key ? '1px solid #6366f1' : '1px solid var(--border, #334155)',
+              background: statusFilter === f.key ? '#6366f1' : 'var(--card, #1e293b)',
+              color: statusFilter === f.key ? '#ffffff' : 'var(--muted, #94a3b8)',
+              fontWeight: 700,
+              fontSize: '0.8125rem',
+              cursor: 'pointer'
+            }}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {toast && (
@@ -83,71 +129,132 @@ export default function ForwardedRequestsList() {
       )}
 
       {loading && <p className="forwarded-requests-state">Loading requests…</p>}
-      {!loading && error && <div className="forwarded-requests-error" role="alert"><span>{error}</span><button type="button" onClick={refetch}>Retry</button></div>}
-      {!loading && !error && actionError && <p className="forwarded-requests-error" role="alert">{actionError}</p>}
-      {!loading && !error && !requests.length && <p className="forwarded-requests-state">No requests awaiting approval or recovery</p>}
-      {!loading && requests.length > 0 && <div className="forwarded-requests-list">{requests.map((request) => {
-        const id = request._id || request.id;
-        const intern = request.userId || {};
-        const certTargetId = request.certificateId?._id || request.certificateId;
-        const isApprovedMissingCert = request.status === 'approved' && !certTargetId;
-        const isRetrying = retryingId === id;
+      {!loading && error && (
+        <div className="forwarded-requests-error" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => refetch(statusFilter)}>Retry</button>
+        </div>
+      )}
+      {!loading && !error && actionError && (
+        <p className="forwarded-requests-error" role="alert">{actionError}</p>
+      )}
+      {!loading && !error && !requests.length && (
+        <p className="forwarded-requests-state">No requests found for this status</p>
+      )}
 
-        return <article className="forwarded-request-row" key={id}>
-          <div className="forwarded-request-details">
-            <h3>{intern.fullName || 'Unknown intern'}</h3>
-            <p className="forwarded-request-meta">
-              {intern.internCode || '—'} · {intern.domain || '—'} · {formatDate(request.requestedAt || request.createdAt)}
-            </p>
-            <p>
-              <strong>{request.certificateType?.replaceAll('_', ' ') || '—'}</strong>
-              {request.status && (
-                <span className={`forwarded-status-tag ${request.status}`}>
-                  {request.status.toUpperCase()}
-                </span>
-              )}
-            </p>
-            <p className="forwarded-request-reason">{request.reason || 'No reason provided'}</p>
-          </div>
-          <div className="forwarded-request-actions">
-            {isApprovedMissingCert ? (
-              <button
-                type="button"
-                className="forwarded-retry-button"
-                onClick={() => handleRetry(id)}
-                disabled={isRetrying}
-                title="Recover draft generation for this approved request"
-              >
-                {isRetrying ? 'Retrying…' : <><i className="bi bi-arrow-repeat"></i> Retry Generation</>}
-              </button>
-            ) : rejectingId === id ? (
-              <div className="forwarded-reject-form">
-                <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Rejection reason" aria-label="Rejection reason" autoFocus />
-                <button type="button" onClick={() => reject(id)} disabled={!reason.trim()}>Confirm Reject</button>
-                <button type="button" onClick={() => { setRejectingId(null); setReason(''); }}>Cancel</button>
-              </div>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="forwarded-review-button"
-                  onClick={() => certTargetId && navigate(`/admin/certificates/${certTargetId}/review`)}
-                  disabled={!certTargetId}
-                  title={certTargetId ? "Review certificate HTML and template" : "Approve request to generate and review draft"}
-                >
-                  Review
-                </button>
-                <button type="button" className="forwarded-approve-button" onClick={() => approve(id)}>
-                  Approve
-                </button>
-                <button type="button" className="forwarded-reject-button" onClick={() => setRejectingId(id)}>
-                  Reject
-                </button>
-              </>
-            )}
-          </div>
-        </article>;
-      })}</div>}
+      {!loading && requests.length > 0 && (
+        <div className="forwarded-requests-list">
+          {requests.map((request) => {
+            const id = request._id || request.id;
+            const intern = request.userId || {};
+            const certTargetId = request.certificateId?._id || request.certificateId;
+            const isApprovedMissingCert = request.status === 'approved' && !certTargetId;
+            const isRetrying = retryingId === id;
+
+            return (
+              <article className="forwarded-request-row" key={id}>
+                <div className="forwarded-request-details">
+                  <h3>{intern.fullName || 'Unknown intern'}</h3>
+                  <p className="forwarded-request-meta">
+                    {intern.internCode || '—'} · {intern.domain || '—'} · {formatDate(request.requestedAt || request.createdAt)}
+                  </p>
+                  <p>
+                    <strong>{request.certificateType?.replaceAll('_', ' ') || '—'}</strong>
+                    {request.status && (
+                      <span className={`forwarded-status-tag ${request.status}`}>
+                        {request.status.toUpperCase()}
+                      </span>
+                    )}
+                  </p>
+                  <p className="forwarded-request-reason">{request.reason || 'No reason provided'}</p>
+                </div>
+
+                <div className="forwarded-request-actions">
+                  {request.status === 'processing' && (
+                    <>
+                      {rejectingId === id ? (
+                        <div className="forwarded-reject-box">
+                          <input
+                            type="text"
+                            placeholder="Rejection reason…"
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            className="forwarded-reject-input"
+                          />
+                          <button
+                            type="button"
+                            className="forwarded-confirm-reject-btn"
+                            onClick={() => reject(id)}
+                            disabled={!reason.trim()}
+                          >
+                            Confirm Reject
+                          </button>
+                          <button
+                            type="button"
+                            className="forwarded-cancel-btn"
+                            onClick={() => { setRejectingId(null); setReason(''); }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="forwarded-approve-btn"
+                            onClick={() => approve(id)}
+                          >
+                            Approve & Generate Draft
+                          </button>
+                          <button
+                            type="button"
+                            className="forwarded-reject-btn"
+                            onClick={() => { setRejectingId(id); setReason(''); }}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {isApprovedMissingCert && (
+                    <button
+                      type="button"
+                      className="forwarded-retry-button"
+                      onClick={() => handleRetry(id)}
+                      disabled={isRetrying}
+                      title="Recover draft generation for this approved request"
+                    >
+                      {isRetrying ? 'Generating Draft…' : 'Retry Draft Generation'}
+                    </button>
+                  )}
+
+                  {request.status === 'approved' && certTargetId && (
+                    <button
+                      type="button"
+                      className="forwarded-approve-btn"
+                      onClick={() => navigate(`/admin/certificates/${certTargetId}/review`)}
+                    >
+                      Review Draft →
+                    </button>
+                  )}
+
+                  {request.status === 'completed' && certTargetId && (
+                    <button
+                      type="button"
+                      className="control-action-btn export"
+                      onClick={() => navigate('/admin/certificates')}
+                    >
+                      View Certificate
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
-}
+}

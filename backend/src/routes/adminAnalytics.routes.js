@@ -32,6 +32,7 @@ analyticsRouter.get('/team-leaders', analyticsQueryValidator, getTeamLeaders);
 analyticsRouter.get('/domains', analyticsQueryValidator, getDomains);
 analyticsRouter.get('/pipeline', analyticsQueryValidator, getPipeline);
 analyticsRouter.get('/upcoming-completions', analyticsDaysValidator, getUpcoming);
+analyticsRouter.get('/stuck', analyticsDaysValidator, getStuck);
 analyticsRouter.get('/stuck-requests', analyticsDaysValidator, getStuck);
 analyticsRouter.get('/export', analyticsExportValidator, exportAnalyticsCSV);
 

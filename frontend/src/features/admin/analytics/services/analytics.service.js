@@ -6,6 +6,14 @@ const api = axios.create({
   withCredentials: true
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 const buildQueryString = (params = {}) => {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, val]) => {
@@ -52,7 +60,10 @@ export const fetchUpcoming = (days = 30, params = {}) =>
   request(`/api/admin/analytics/upcoming-completions${buildQueryString({ ...params, days })}`);
 
 export const fetchStuck = (days = 3, params = {}) =>
-  request(`/api/admin/analytics/stuck-requests${buildQueryString({ ...params, days })}`);
+  request(`/api/admin/analytics/stuck${buildQueryString({ ...params, days })}`);
+
+export const fetchFilteredRequests = (params = {}) =>
+  request(`/api/admin/requests${buildQueryString(params)}`);
 
 export const downloadAnalytics = async (type = 'overview', params = {}, format = 'csv') => {
   const qs = buildQueryString({ ...params, type, format });

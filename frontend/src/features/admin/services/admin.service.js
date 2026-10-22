@@ -125,6 +125,16 @@ export const getInternsByTeamLeader = (id) =>
 |--------------------------------------------------------------------------
 */
 
+export const getAdminRequests = (params = {}) => {
+  const searchParams = new URLSearchParams();
+  if (params.status) searchParams.append('status', params.status);
+  if (params.page) searchParams.append('page', params.page);
+  if (params.limit) searchParams.append('limit', params.limit);
+  if (params.search) searchParams.append('search', params.search);
+  const qs = searchParams.toString();
+  return request('get', `/api/admin/requests${qs ? `?${qs}` : ''}`);
+};
+
 export const getForwardedRequests = () =>
   request('get', '/api/admin/forwarded-requests');
 

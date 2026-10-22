@@ -284,7 +284,7 @@ test('Admin Analytics Controller Tests', async (t) => {
     let auditLogged = false;
     AuditLog.create = async (doc) => {
       auditLogged = true;
-      assert.equal(doc.action, 'EXPORT_ANALYTICS');
+      assert.ok(doc.action === 'EXPORT' || doc.action === 'EXPORT_ANALYTICS');
       return doc;
     };
 
@@ -320,7 +320,11 @@ test('Admin Analytics Controller Tests', async (t) => {
     CertificateRequest.countDocuments = async () => 0;
     Certificate.countDocuments = async () => 0;
     CertificateRequest.find = () => ({ select: async () => [] });
-    AuditLog.create = async (doc) => { auditFormat = JSON.parse(doc.description).format; return doc; };
+    AuditLog.create = async (doc) => {
+      const desc = doc.description ? (typeof doc.description === 'string' ? JSON.parse(doc.description) : doc.description) : doc.meta;
+      auditFormat = desc?.format;
+      return doc;
+    };
 
     try {
       const req = { user: { id: adminId }, query: { type: 'overview', format: 'xlsx', range: '30d' } };

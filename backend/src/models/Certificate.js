@@ -110,7 +110,8 @@ const certificateSchema = new mongoose.Schema(
     },
 
     issuedAt: {
-        type: Date
+        type: Date,
+        index: true
     },
 
     htmlContent: {

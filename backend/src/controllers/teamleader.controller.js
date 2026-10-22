@@ -6,6 +6,7 @@ import Certificate from '../models/Certificate.js';
 import { logAudit } from '../utils/auditLogger.js';
 import logAction from '../utils/logAction.js';
 import { notify } from '../services/notification.service.js';
+import { invalidateAnalyticsCache } from '../utils/redisCache.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -282,6 +283,7 @@ export const reviewRequestAsTL = async (req, res) => {
     }
 
     await request.save();
+    await invalidateAnalyticsCache();
 
     if (action === 'reject') {
       await logAction({

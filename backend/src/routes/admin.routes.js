@@ -13,6 +13,7 @@ import {
   deleteIntern,
   assignInternTeamLeader,
   deleteTeamLeader,
+  getAdminRequests,
   getForwardedRequests,
   finalizeRequest,
   getCertificateDraft,
@@ -76,6 +77,7 @@ adminRouter.patch("/teamleaders/:id", verifyAuth, requireAdmin, updateTeamLeader
 adminRouter.delete("/teamleaders/:id", verifyAuth, requireAdmin, deleteTeamLeader);
 adminRouter.get("/teamleaders/:id/interns", verifyAuth, requireAdmin, getInternsByTeamLeader);
 
+adminRouter.get("/requests", verifyAuth, requireAdmin, getAdminRequests);
 adminRouter.get("/forwarded-requests", verifyAuth, requireAdmin, getForwardedRequests);
 adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRequest);
 
