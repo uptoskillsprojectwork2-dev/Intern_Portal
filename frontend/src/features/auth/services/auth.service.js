@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 // Configure an axios instance for the API
 const apiClient = axios.create({
@@ -19,6 +19,18 @@ apiClient.interceptors.request.use((config) => {
     return config;
 });
 
+const handleError = (error) => {
+    if (error.response?.data) {
+        return error.response.data;
+    }
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        const netErr = new Error(`Cannot connect to backend server at ${API_BASE_URL}. Please ensure the backend is running.`);
+        netErr.message = `Cannot connect to backend server at ${API_BASE_URL}. Please ensure the backend is running.`;
+        return netErr;
+    }
+    return error;
+};
+
 /**
  * Login user with email and password
  * @param {string} email - The user's email
@@ -36,7 +48,7 @@ export const login = async (email, password) => {
         return response.data;
     } catch (error) {
         // Throw a clean error for the caller to handle
-        throw error.response?.data || error;
+        throw handleError(error);
     }
 };
 
@@ -55,7 +67,7 @@ export const getMe = async () => {
 
         return response.data;
     } catch (error) {
-        throw error.response?.data || error;
+        throw handleError(error);
     }
 };
 
@@ -67,7 +79,7 @@ export const forgotPassword = async (email) => {
 
         return response.data;
     } catch (error) {
-        throw error.response?.data || error;
+        throw handleError(error);
     }
 };
 
@@ -79,6 +91,6 @@ export const resetPassword = async (token, newPassword) => {
 
         return response.data;
     } catch (error) {
-        throw error.response?.data || error;
+        throw handleError(error);
     }
 };

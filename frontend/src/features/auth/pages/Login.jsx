@@ -98,7 +98,7 @@ export default function Login() {
     } catch (error) {
       console.error(error);
       setLoading(false);
-      const errMsg = error.message || 'Invalid email or password.';
+      const errMsg = error.message || error.error || (typeof error === 'string' ? error : 'Invalid email or password.');
       setLoginError(errMsg);
       notify('error', errMsg);
     }
