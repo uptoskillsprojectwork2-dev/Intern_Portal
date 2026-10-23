@@ -9,9 +9,10 @@ import logAction from "../utils/logAction.js";
 dotenv.config()
 
 export async function login(req, res) {
-    const { email, password } = req.body;
+    const { email, password, internCode } = req.body;
+    const secret = password || internCode;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email?.toLowerCase() });
 
     if (!user) {
         await logAction({
@@ -38,8 +39,21 @@ export async function login(req, res) {
         });
     }
 
-    // Compare the plain-text request password with the stored bcrypt hash.
-    const isCredentialValid = await user.comparePassword(password);
+    let isCredentialValid = false;
+
+    if (user.role === 'intern') {
+        const hasPassword = Boolean(user.password && user.passwordSetAt);
+        if (hasPassword) {
+            isCredentialValid = await user.comparePassword(secret);
+        } else if (user.password) {
+            const bcryptMatch = await user.comparePassword(secret);
+            isCredentialValid = bcryptMatch || Boolean(user.internCode && secret === user.internCode);
+        } else {
+            isCredentialValid = Boolean(user.internCode && secret === user.internCode);
+        }
+    } else {
+        isCredentialValid = await user.comparePassword(secret);
+    }
 
     if (!isCredentialValid) {
         await logAction({
@@ -51,12 +65,6 @@ export async function login(req, res) {
         });
         return res.status(401).json({
             message: "Invalid credentials"
-        });
-    }
-
-    if (user.role === "intern" && user.isArchived) {
-        return res.status(403).json({
-            message: "Your internship account has been archived. Contact admin."
         });
     }
 
@@ -92,7 +100,8 @@ export async function login(req, res) {
             email: user.email,
             mobileNo: user.mobileNo,
             role: user.role,
-            createdAt: user.createdAt
+            createdAt: user.createdAt,
+            passwordSetAt: user.passwordSetAt
         }
     });
 }
@@ -200,9 +209,9 @@ export async function resetPassword(req, res) {
     const { token } = req.params;
     const { newPassword } = req.body;
 
-    if (typeof newPassword !== "string" || newPassword.length < 8) {
+    if (typeof newPassword !== "string" || newPassword.length < 8 || !/^(?=.*[A-Za-z])(?=.*\d)/.test(newPassword)) {
         return res.status(400).json({
-            message: "New password must be at least 8 characters long"
+            message: "New password must be at least 8 characters long and contain at least one letter and one number"
         });
     }
 
@@ -220,6 +229,7 @@ export async function resetPassword(req, res) {
         }
 
         user.password = await bcrypt.hash(newPassword, 10);
+        user.passwordSetAt = new Date();
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();

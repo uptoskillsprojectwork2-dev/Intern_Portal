@@ -5,7 +5,10 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
 import MyRequestsList from '../components/MyRequestsList';
 import NotificationBell from '../../../shared/components/NotificationBell';
+import SettingsPage from './SettingsPage';
+import { updateProfile } from '../services/intern.service';
 import './InternDashboard.css';
+import './SettingsPage.css';
 import '../../../app/App.css';
 
 /* ── helpers ── */
@@ -45,17 +48,66 @@ const calcDaysLeft = (end) => {
 const NAV_ITEMS = [
   { icon: 'bi bi-grid-1x2-fill', label: 'Dashboard', id: 'dashboard' },
   { icon: 'bi bi-award-fill', label: 'Certificates', id: 'certificates' },
+  { icon: 'bi bi-gear-fill', label: 'Settings', id: 'settings' },
 ];
 
 /* ============================================================
    InternDashboard
    ============================================================ */
-export default function InternDashboard() {
+export default function InternDashboard({ initialView = 'dashboard' }) {
   const { profile, archiveNotice, loading, error, fetchProfile } = useIntern();
   const { handleLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState('dashboard');
+  const [activeNav, setActiveNav] = useState(initialView);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+
+  /* ── mobile editing state ── */
+  const [isEditingMobile, setIsEditingMobile] = useState(false);
+  const [mobileInput, setMobileInput] = useState('');
+  const [mobileError, setMobileError] = useState('');
+  const [savingMobile, setSavingMobile] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const handleStartEditMobile = () => {
+    setMobileInput(profile?.mobileNo || '');
+    setMobileError('');
+    setIsEditingMobile(true);
+  };
+
+  const handleCancelEditMobile = () => {
+    setIsEditingMobile(false);
+    setMobileError('');
+  };
+
+  const handleSaveMobile = async (e) => {
+    e.preventDefault();
+    const trimmed = mobileInput.trim();
+    if (!trimmed) {
+      setMobileError('Mobile number is required');
+      return;
+    }
+    if (!/^[0-9]{10}$/.test(trimmed)) {
+      setMobileError('Mobile number must be a valid 10-digit number');
+      return;
+    }
+
+    setSavingMobile(true);
+    setMobileError('');
+    try {
+      await updateProfile({ mobileNo: trimmed });
+      setToast({ type: 'success', message: 'Mobile number updated successfully!' });
+      setTimeout(() => setToast(null), 4000);
+      setIsEditingMobile(false);
+      await fetchProfile();
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to update mobile number';
+      setMobileError(msg);
+      setToast({ type: 'error', message: msg });
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setSavingMobile(false);
+    }
+  };
 
   const onLogout = () => {
     handleLogout();
@@ -72,6 +124,23 @@ export default function InternDashboard() {
   /* ── render ── */
   return (
     <div className="intern-dashboard-page">
+      {toast && (
+        <div className={`notification ${toast.type}`} role="alert">
+          <span className="notification-icon">
+            <i className={toast.type === 'success' ? 'bi bi-check-lg' : 'bi bi-x-lg'}></i>
+          </span>
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            className="close-btn"
+            onClick={() => setToast(null)}
+            aria-label="Close notification"
+          >
+            <i className="bi bi-x"></i>
+          </button>
+        </div>
+      )}
+
       {/* ─── Top Navbar ─── */}
       <nav className="id-navbar">
         <div className="id-brand">
@@ -163,6 +232,10 @@ export default function InternDashboard() {
           </>
         )}
 
+        {activeNav === 'settings' && (
+          <SettingsPage profile={profile} onProfileUpdated={fetchProfile} />
+        )}
+
         {/* ── Loading state ── */}
         {activeNav === 'dashboard' && loading && (
           <div className="id-loading" role="status" aria-live="polite">
@@ -219,7 +292,64 @@ export default function InternDashboard() {
               <div className="id-detail-grid">
                 <div className="id-detail-item">
                   <div className="id-detail-label"><i className="bi bi-phone-fill" style={{ marginRight: 6 }}></i>Mobile</div>
-                  <div className="id-detail-value">{profile.mobileNo}</div>
+                  {isEditingMobile ? (
+                    <form onSubmit={handleSaveMobile} className="id-mobile-edit-form">
+                      <div className="id-mobile-input-row">
+                        <input
+                          type="tel"
+                          id="mobileNo-edit-input"
+                          className={`id-mobile-input ${mobileError ? 'has-error' : ''}`}
+                          value={mobileInput}
+                          onChange={(e) => {
+                            setMobileInput(e.target.value);
+                            if (mobileError) setMobileError('');
+                          }}
+                          placeholder="10-digit mobile number"
+                          maxLength={10}
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          id="save-mobile-btn"
+                          className="id-mobile-save-btn"
+                          disabled={savingMobile}
+                          title="Save mobile number"
+                        >
+                          {savingMobile ? <span className="spinner-border-sm" aria-hidden="true" /> : <i className="bi bi-check-lg" />}
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          id="cancel-mobile-btn"
+                          className="id-mobile-cancel-btn"
+                          onClick={handleCancelEditMobile}
+                          disabled={savingMobile}
+                          title="Cancel"
+                        >
+                          <i className="bi bi-x-lg" />
+                          Cancel
+                        </button>
+                      </div>
+                      {mobileError && (
+                        <p className="inline-error" role="alert">
+                          <i className="bi bi-exclamation-circle-fill"></i> {mobileError}
+                        </p>
+                      )}
+                    </form>
+                  ) : (
+                    <div className="id-mobile-display-wrap">
+                      <span className="id-detail-value">{profile.mobileNo || '—'}</span>
+                      <button
+                        type="button"
+                        id="edit-mobile-btn"
+                        className="id-mobile-edit-btn"
+                        onClick={handleStartEditMobile}
+                        title="Edit mobile number"
+                      >
+                        <i className="bi bi-pencil-fill"></i> Edit
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="id-detail-item">

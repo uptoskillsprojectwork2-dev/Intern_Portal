@@ -57,3 +57,28 @@ export const assignTeamLeaderValidator = [
     .withMessage('Invalid teamLeaderId format'),
   validate
 ];
+
+export const setPasswordValidator = [
+  body('currentSecret')
+    .trim()
+    .notEmpty()
+    .withMessage('Current secret is required'),
+  body('newPassword')
+    .notEmpty()
+    .withMessage('New password is required')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/^(?=.*[A-Za-z])(?=.*\d)/)
+    .withMessage('Password must contain at least one letter and one number'),
+  validate
+];
+
+export const updateInternProfileValidator = [
+  body('mobileNo')
+    .trim()
+    .notEmpty()
+    .withMessage('Mobile number is required')
+    .matches(/^[0-9]{10}$/)
+    .withMessage('Mobile number must be a valid 10-digit number'),
+  validate
+];

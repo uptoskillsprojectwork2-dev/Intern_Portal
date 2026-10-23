@@ -72,6 +72,11 @@ const userSchema = new mongoose.Schema(
             }
         },
 
+        passwordSetAt: {
+            type: Date,
+            default: null
+        },
+
         resetPasswordToken: {
             type: String
         },
@@ -84,13 +89,6 @@ const userSchema = new mongoose.Schema(
             type: String,
             enum: ["admin", "intern", "teamleader"],
             default: "intern"
-        },
-        isArchived: {
-            type: Boolean,
-            default: false
-        },
-        archivedAt: {
-            type: Date
         },
         internshipDetails:{
             teamLeader: { type: mongoose.Schema.Types.ObjectId, ref: 'user', index: true },
@@ -118,20 +116,22 @@ userSchema.index({ role: 1, domain: 1, 'internshipDetails.teamLeader': 1, create
 userSchema.index({ role: 1, isArchived: 1, archivedAt: 1 });
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
-
+    if (!this.password || !candidatePassword) {
+        return false;
+    }
     return bcrypt.compare(
         candidatePassword,
         this.password
     );
-
 };
 
 userSchema.pre("save", async function (next) {
-    if (!this.internCode) {
-        this.internCode = this.email
+    if (!this.internCode && this.email) {
+        this.internCode = this.email;
     }
 
-    if (!this.isModified("password")) {
+    if (!this.isModified("password") || !this.password) {
+        if (typeof next === 'function') return next();
         return;
     }
 
@@ -139,7 +139,7 @@ userSchema.pre("save", async function (next) {
     if (!/^\$2[aby]\$\d{2}\$/.test(this.password)) {
         this.password = await bcrypt.hash(this.password, 10);
     }
-    next;
+    if (typeof next === 'function') next();
 });
 
 const userModel = mongoose.model(

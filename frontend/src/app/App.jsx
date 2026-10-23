@@ -72,6 +72,9 @@ export default function App() {
         <Route path="/intern/dashboard" element={
           <InternDashboard theme={theme} onToggleTheme={toggleTheme} />
         } />
+        <Route path="/intern/settings" element={
+          <InternDashboard initialView="settings" theme={theme} onToggleTheme={toggleTheme} />
+        } />
       </Route>
 
       {/* =========================

@@ -297,7 +297,7 @@ export default function Login() {
             {/* Password */}
             <div className="login-field">
               <label htmlFor="login-password" className="login-label">
-                Password
+                Intern Code or Password
               </label>
               <div className={`login-input-wrap ${isPasswordInvalid ? 'invalid' : isPasswordValid ? 'valid' : ''}`}>
                 <span className="login-input-icon">
@@ -307,7 +307,7 @@ export default function Login() {
                   id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
-                  placeholder="••••••••"
+                  placeholder="•••••••• or Intern Code"
                   value={values.password}
                   onChange={handleChange}
                   onBlur={handleBlur}

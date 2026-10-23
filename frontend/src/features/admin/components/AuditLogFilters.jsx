@@ -8,6 +8,8 @@ export const ACTION_OPTIONS = [
   { value: 'USER_CREATED', label: 'USER_CREATED — New Intern / TL Created' },
   { value: 'PASSWORD_RESET_REQUESTED', label: 'PASSWORD_RESET_REQUESTED — Forgot Password' },
   { value: 'PASSWORD_RESET_COMPLETED', label: 'PASSWORD_RESET_COMPLETED — Password Reset' },
+  { value: 'PASSWORD_CHANGED', label: 'PASSWORD_CHANGED — Password Changed' },
+  { value: 'PROFILE_UPDATED', label: 'PROFILE_UPDATED — Intern Profile Updated' },
   { value: 'REQUEST_SUBMITTED', label: 'REQUEST_SUBMITTED — Certificate Requested' },
   { value: 'REQUEST_FORWARDED', label: 'REQUEST_FORWARDED — TL Forwarded Request' },
   { value: 'REQUEST_REJECTED', label: 'REQUEST_REJECTED — Request Rejected' },

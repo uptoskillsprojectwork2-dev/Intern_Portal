@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
           </h1>
 
           <p>
-            Enter your staff account email. We'll send you a secure verification link to reset your credentials.
+            Enter your account email. We'll send you a secure verification link to reset your credentials.
           </p>
 
           <div className="login-chips" style={{ marginTop: '36px' }}>
@@ -100,7 +100,7 @@ export default function ForgotPasswordPage() {
           ) : (
             <form onSubmit={submit} noValidate>
               <label className="field">
-                <b>Work Email</b>
+                <b>Account Email</b>
                 <div className="input-wrap">
                   <span className="input-icon">
                     <IconMail size={17} color="var(--text-subtle)" />
@@ -109,7 +109,7 @@ export default function ForgotPasswordPage() {
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    placeholder="e.g. staff@uptoskills.com"
+                    placeholder="e.g. intern@uptoskills.com or staff@uptoskills.com"
                     required
                     autoFocus
                   />

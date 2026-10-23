@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
@@ -248,6 +249,7 @@ export const getProfile = async (req, res) => {
     }
 
     const userData = user.toObject();
+    userData.hasPassword = Boolean(user.passwordSetAt);
     if (daysUntilArchival !== null) {
       userData.daysUntilArchival = daysUntilArchival;
     }
@@ -427,3 +429,107 @@ export const downloadCertificateForRequest = async (req, res) => {
     });
   }
 };
+
+/**
+ * PATCH /api/intern/set-password
+ * Body: { currentSecret, newPassword }
+ * If no password exists yet, currentSecret must be intern code.
+ * If one exists, it must be the current password.
+ */
+export const setPassword = async (req, res) => {
+  try {
+    const { currentSecret, newPassword } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const hasPassword = Boolean(user.password && user.passwordSetAt);
+
+    let isCurrentValid = false;
+    if (!hasPassword) {
+      isCurrentValid = Boolean(user.internCode && currentSecret === user.internCode);
+      if (!isCurrentValid && user.password) {
+        isCurrentValid = await bcrypt.compare(currentSecret, user.password);
+      }
+    } else {
+      isCurrentValid = await bcrypt.compare(currentSecret, user.password);
+    }
+
+    if (!isCurrentValid) {
+      return res.status(400).json({ message: 'Invalid current credentials' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordSetAt = new Date();
+    await user.save();
+
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'PASSWORD_CHANGED',
+      targetType: 'User',
+      targetId: user._id,
+      meta: { email: user.email }
+    });
+
+    return res.status(200).json({
+      message: 'Password updated successfully'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
+  }
+};
+
+/**
+ * PATCH /api/intern/profile
+ * Whitelisted update. Only mobileNo is editable. Ignore every other field in the body.
+ */
+export const updateProfile = async (req, res) => {
+  try {
+    const { mobileNo } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const oldMobile = user.mobileNo;
+    user.mobileNo = String(mobileNo).trim();
+    await user.save();
+
+    await logAction({
+      req,
+      actor: req.user,
+      action: 'PROFILE_UPDATED',
+      targetType: 'User',
+      targetId: user._id,
+      meta: {
+        email: user.email,
+        field: 'mobileNo',
+        oldMobile,
+        newMobile: user.mobileNo
+      }
+    });
+
+    const userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.resetPasswordToken;
+    delete userObj.resetPasswordExpires;
+
+    return res.status(200).json({
+      message: 'Profile updated successfully',
+      user: userObj
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
+  }
+};
+

@@ -21,6 +21,16 @@ export const getProfile = async () => {
   return response.data;
 };
 
+export const updateProfile = async (data) => {
+  const response = await internApi.patch('/profile', data);
+  return response.data;
+};
+
+export const setPassword = async (data) => {
+  const response = await internApi.patch('/set-password', data);
+  return response.data;
+};
+
 export const submitCertificateRequest = async (data) => {
   const response = await internApi.post('/request-certificate', data);
   return response.data;

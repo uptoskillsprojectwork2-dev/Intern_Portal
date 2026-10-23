@@ -32,7 +32,6 @@ export async function createIntern(req, res) {
 			startDate,
 			endDate,
 			role: 'intern',
-			password: internCode,
 			internshipDetails: {
 				teamLeader: teamLeader._id,
 				teamleaderEmail: teamLeader.email.toLowerCase(),

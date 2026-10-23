@@ -1,0 +1,400 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SettingsPage.css — Modern enterprise styling for Intern Settings
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.settings-page-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 760px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-header-banner {
+  background: var(--surface-1, #1e293b);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-radius: var(--r-xl, 16px);
+  padding: 24px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,0.2));
+}
+
+.settings-header-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-header-sub {
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  margin: 0;
+}
+
+.settings-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.settings-status-pill.secured {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.settings-status-pill.initial {
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* Change Password Card */
+.change-password-card {
+  background: var(--surface-1, #1e293b);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-radius: var(--r-xl, 16px);
+  padding: 28px 32px;
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0,0,0,0.2));
+}
+
+.card-header-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.18));
+  color: var(--accent, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.card-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary, #f8fafc);
+  margin-bottom: 4px;
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary, #94a3b8);
+  line-height: 1.5;
+}
+
+.change-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #f8fafc);
+}
+
+.password-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  background: var(--surface-2, #0f172a);
+  border-radius: var(--r-md, 10px);
+  transition: all 0.2s ease;
+}
+
+.password-input-wrap:focus-within {
+  border-color: var(--accent, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.password-input-wrap.has-error {
+  border-color: var(--error, #ef4444);
+}
+
+.input-prefix-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-muted, #64748b);
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 44px 12px 42px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary, #f8fafc);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-input::placeholder {
+  color: var(--text-muted, #64748b);
+}
+
+.toggle-visibility-btn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  padding: 6px;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: color 0.15s ease;
+}
+
+.toggle-visibility-btn:hover {
+  color: var(--text-primary, #f8fafc);
+}
+
+.inline-error {
+  font-size: 12px;
+  color: var(--error, #ef4444);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+/* Password Strength Indicator */
+.password-strength-box {
+  margin-top: 6px;
+  padding: 12px 14px;
+  background: var(--surface-2, rgba(15, 23, 42, 0.6));
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.05));
+  border-radius: 8px;
+}
+
+.strength-header {
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 8px;
+}
+
+.strength-meter-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.strength-meter-fill {
+  height: 100%;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.strength-rules-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 6px;
+  font-size: 11px;
+}
+
+.strength-rules-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted, #64748b);
+  transition: color 0.2s ease;
+}
+
+.strength-rules-list li.passed {
+  color: var(--success, #10b981);
+}
+
+.strength-rules-list li.passed i {
+  color: var(--success, #10b981);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.btn-primary-gradient {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 24px;
+  border-radius: var(--r-md, 10px);
+  background: var(--grad-btn, linear-gradient(135deg, #6366f1 0%, #7c3aed 100%));
+  color: #ffffff;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+.btn-primary-gradient:hover:not(:disabled) {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+}
+
+.btn-primary-gradient:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.spinner-border-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Mobile Edit Inline inside Profile Card */
+.id-mobile-display-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.id-mobile-edit-btn {
+  background: transparent;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--accent, #818cf8);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.id-mobile-edit-btn:hover {
+  background: rgba(129, 140, 248, 0.12);
+  border-color: var(--accent, #818cf8);
+}
+
+.id-mobile-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.id-mobile-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.id-mobile-input {
+  flex: 1;
+  padding: 6px 10px;
+  background: var(--surface-2, #0f172a);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  border-radius: 6px;
+  color: var(--text-primary, #f8fafc);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.id-mobile-input:focus {
+  border-color: var(--accent, #6366f1);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.id-mobile-input.has-error {
+  border-color: var(--error, #ef4444);
+}
+
+.id-mobile-save-btn {
+  background: var(--success, #10b981);
+  color: #fff;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s ease;
+}
+
+.id-mobile-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.id-mobile-cancel-btn {
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.id-mobile-cancel-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary, #f8fafc);
+}

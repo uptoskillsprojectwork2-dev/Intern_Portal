@@ -6,8 +6,14 @@ import {
   getProfile,
   submitCertificateRequest,
   getCertificateForRequest,
-  downloadCertificateForRequest
+  downloadCertificateForRequest,
+  setPassword,
+  updateProfile
 } from '../controllers/intern.controller.js';
+import {
+  setPasswordValidator,
+  updateInternProfileValidator
+} from '../validators/intern.validator.js';
 
 const internRouter = express.Router();
 
@@ -32,6 +38,8 @@ internRouter.use(async (req, res, next) => {
 });
 
 internRouter.get('/profile', getProfile);
+internRouter.patch('/profile', updateInternProfileValidator, updateProfile);
+internRouter.patch('/set-password', setPasswordValidator, setPassword);
 
 internRouter.post('/request-certificate', submitCertificateRequest);
 
