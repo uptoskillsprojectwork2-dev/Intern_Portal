@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import CertificatePreview from '../components/CertificatePreview';
+import CertificateTemplateEditor from '../components/CertificateTemplateEditor';
 import useCertificateDraft from '../hooks/useCertificateDraft';
 import Toast from '../../../shared/components/Toast';
 import './CertificateReviewPage.css';
@@ -38,6 +39,8 @@ export default function CertificateReviewPage() {
   } = useCertificateDraft(id);
 
   const [copied, setCopied] = useState(false);
+  const [draftDirty, setDraftDirty] = useState(false);
+  const [editorController, setEditorController] = useState(null);
 
   const isFinalized = draft?.status === 'finalized';
 
@@ -49,8 +52,38 @@ export default function CertificateReviewPage() {
     .slice(0, 2);
 
   const onLogout = () => {
+    if (draftDirty && !window.confirm('You have unsaved certificate edits. Sign out and discard them?')) return;
     handleLogout();
     navigate('/login');
+  };
+
+  const handleBack = () => {
+    if (draftDirty && !window.confirm('You have unsaved certificate edits. Leave without saving?')) return;
+    navigate('/admin/dashboard');
+  };
+
+  const handleSaveDraft = async () => {
+    const saved = await saveDraft();
+    if (saved) {
+      setDraftDirty(false);
+      editorController?.markSaved?.();
+    }
+  };
+
+  const handleFinalize = async () => {
+    try {
+      await finalizeDraft();
+      setDraftDirty(false);
+      editorController?.markSaved?.();
+    } catch {
+      // The hook exposes the failure to the page as finalizeError.
+    }
+  };
+
+  const handleResetDraft = () => {
+    resetContent();
+    setDraftDirty(false);
+    editorController?.markSaved?.();
   };
 
   const handleCopyHtml = async () => {
@@ -97,7 +130,7 @@ export default function CertificateReviewPage() {
             <button
               type="button"
               className="certificate-back-button"
-              onClick={() => navigate('/admin/dashboard')}
+              onClick={handleBack}
               aria-label="Back to Admin Dashboard"
             >
               <span>←</span> Back to Certificate Requests
@@ -230,7 +263,7 @@ export default function CertificateReviewPage() {
                       <button
                         type="button"
                         className="editor-action-btn"
-                        onClick={resetContent}
+                        onClick={handleResetDraft}
                         title="Reset to last saved draft content"
                       >
                         <span>↺ Revert to Saved</span>
@@ -250,19 +283,13 @@ export default function CertificateReviewPage() {
                     <label htmlFor="certificate-html-editor" className="visually-hidden">
                       Certificate HTML markup
                     </label>
-                    <textarea
-                      id="certificate-html-editor"
-                      className={`certificate-editor-textarea ${isFinalized ? 'is-finalized-textarea' : ''}`}
-                      value={htmlContent}
-                      onChange={(e) => !isFinalized && setHtmlContent(e.target.value)}
+                    <CertificateTemplateEditor
+                      key={draft?._id}
+                      initialHtml={htmlContent}
+                      onChange={setHtmlContent}
+                      onDirtyChange={setDraftDirty}
+                      onEditorReady={setEditorController}
                       readOnly={isFinalized}
-                      disabled={isFinalized}
-                      spellCheck={false}
-                      autoCapitalize="off"
-                      autoComplete="off"
-                      autoCorrect="off"
-                      aria-label="Certificate HTML markup"
-                      placeholder="Enter certificate HTML template..."
                     />
                   </div>
                 </div>
@@ -273,7 +300,7 @@ export default function CertificateReviewPage() {
                     <button
                       type="button"
                       className={`editor-save-btn ${saving ? 'is-saving' : ''}`}
-                      onClick={saveDraft}
+                      onClick={handleSaveDraft}
                       disabled={saving || loading || finalizing || isFinalized}
                       title={isFinalized ? 'Certificate is finalized' : 'Save modifications to the certificate draft'}
                     >
@@ -284,7 +311,7 @@ export default function CertificateReviewPage() {
                     <button
                       type="button"
                       className={`editor-finalize-btn ${finalizing ? 'is-finalizing' : ''} ${isFinalized ? 'is-finalized' : ''}`}
-                      onClick={finalizeDraft}
+                      onClick={handleFinalize}
                       disabled={finalizing || saving || loading || isFinalized}
                       title={
                         isFinalized
@@ -296,15 +323,14 @@ export default function CertificateReviewPage() {
                     </button>
 
                     {saveSuccess && (
-                      <span className="editor-save-feedback success" role="status">
-                        ✓ Draft saved successfully.
-                      </span>
+                      <Toast type="success" message="Draft saved successfully." />
                     )}
 
                     {saveError && (
-                      <span className="editor-save-feedback error" role="alert">
-                        ✕ {saveError}
-                      </span>
+                      <div className="editor-save-error-block">
+                        <Toast type="error" message={saveError} />
+                        <button type="button" className="editor-save-retry" onClick={saveDraft} disabled={saving || finalizing}>Retry save</button>
+                      </div>
                     )}
                   </div>
 

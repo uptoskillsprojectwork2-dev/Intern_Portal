@@ -34,6 +34,10 @@ app.use('/api/auth', authRouter);
 
 app.use('/api/intern', internRouter);
 
+app.use('/api/notifications', notificationRouter);
+
+app.use('/api/admin/analytics', analyticsRouter);
+
 app.use('/api/admin', adminRouter);
 
 app.use('/api/teamleader', teamleaderRouter);

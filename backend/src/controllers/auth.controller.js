@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { sendEmail } from "../utils/sendEmail.js";
+import { logAudit } from "../utils/auditLogger.js";
 
 dotenv.config()
 
@@ -13,6 +14,7 @@ export async function login(req, res) {
     const user = await User.findOne({ email });
 
     if (!user) {
+        await logAudit({ action: 'LOGIN_FAILURE', targetType: 'Authentication', meta: { email }, req });
         return res.status(401).json({
             message: "Invalid credentials"
         });
@@ -22,8 +24,16 @@ export async function login(req, res) {
     const isCredentialValid = await user.comparePassword(password);
 
     if (!isCredentialValid) {
+        await logAudit({ action: 'LOGIN_FAILURE', targetType: 'Authentication', meta: { email }, req });
         return res.status(401).json({
             message: "Invalid credentials"
+        });
+    }
+
+    if (user.role === "intern" && user.isArchived) {
+        await logAudit({ actor: user, action: 'LOGIN_BLOCKED_ARCHIVED', targetType: 'Authentication', targetId: user._id, req });
+        return res.status(403).json({
+            message: "Your internship account has been archived. Contact admin."
         });
     }
 
@@ -35,6 +45,7 @@ export async function login(req, res) {
     }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     res.cookie("token", token);
+    await logAudit({ actor: user, action: 'LOGIN_SUCCESS', targetType: 'Authentication', targetId: user._id, req });
 
     return res.status(200).json({
         message: "User logged in successfully",
@@ -92,6 +103,7 @@ export async function forgotPassword(req, res) {
         const genericMessage = "If an account with this email exists, a reset link has been sent.";
 
         if (!user) {
+            await logAudit({ action: 'PASSWORD_RESET_REQUESTED', targetType: 'Authentication', meta: { email: normalizedEmail, accountFound: false }, req });
             return res.status(200).json({ message: genericMessage });
         }
 
@@ -111,6 +123,8 @@ export async function forgotPassword(req, res) {
                 <p><a href="${resetLink}">${resetLink}</a></p>
                 <p>This link expires in 15 minutes.</p>`
         });
+
+        await logAudit({ actor: user, action: 'PASSWORD_RESET_REQUESTED', targetType: 'Authentication', targetId: user._id, req });
 
         return res.status(200).json({ message: genericMessage });
     } catch (err) {
@@ -138,6 +152,7 @@ export async function resetPassword(req, res) {
         });
 
         if (!user) {
+            await logAudit({ action: 'PASSWORD_RESET_FAILED', targetType: 'Authentication', req });
             return res.status(400).json({
                 message: "Reset link is invalid or has expired"
             });
@@ -147,6 +162,8 @@ export async function resetPassword(req, res) {
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();
+
+        await logAudit({ actor: user, action: 'PASSWORD_RESET_COMPLETED', targetType: 'Authentication', targetId: user._id, req });
 
         return res.status(200).json({
             message: "Password reset successful. You can now log in."

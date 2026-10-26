@@ -2,6 +2,8 @@ import { createContext, useState } from 'react';
 import { login, getMe } from '../services/auth.service';
 import { useEffect } from 'react';
 
+// Context exports are intentionally colocated with their provider for consumers.
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {

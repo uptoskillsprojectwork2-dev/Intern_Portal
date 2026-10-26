@@ -4,6 +4,7 @@ import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import { logAudit } from '../utils/auditLogger.js';
+import { createNotification } from '../utils/notificationService.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -37,6 +38,7 @@ export async function createIntern(req, res) {
 				createdBy: teamLeader._id,
 			},
 		});
+		await logAudit({ userId: teamLeader._id, action: 'INTERN_CREATED', entityType: 'User', entityId: user._id, meta: { role: user.role }, req });
 
 		return res.status(201).json({
 			message: 'Intern created successfully',
@@ -54,6 +56,7 @@ export async function getInternsForTL(req, res) {
 
 		const filter = {
 			role: 'intern',
+			isArchived: { $ne: true },
 			$or: [
 				{ 'internshipDetails.teamLeader': tlId },
 				{ 'internshipDetails.teamleaderEmail': tlEmail }
@@ -99,7 +102,7 @@ export async function getAssignedInternById(req, res) {
 			return res.status(400).json({ message: 'Invalid intern ID format' });
 		}
 
-		const intern = await User.findOne({ _id: id, role: 'intern' })
+		const intern = await User.findOne({ _id: id, role: 'intern', isArchived: { $ne: true } })
 			.select('-password -resetPasswordToken -resetPasswordExpires');
 
 		if (!intern) {
@@ -279,6 +282,14 @@ export const reviewRequestAsTL = async (req, res) => {
     }
 
     await request.save();
+    await logAudit({ userId: req.user.id, action: action === 'forward' ? 'CERTIFICATE_REQUEST_FORWARDED' : 'CERTIFICATE_REQUEST_REJECTED', entityType: 'CertificateRequest', entityId: request._id, meta: { reviewStage: 'teamleader', rejectionReason: action === 'reject' ? rejectionReason : undefined }, req });
+    const statusMessage = action === 'forward' ? 'Your certificate request was forwarded to the administrator.' : `Your certificate request was declined by your team leader.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`;
+    const notifications = [createNotification({ userId: request.userId, title: action === 'forward' ? 'Request forwarded' : 'Request declined', message: statusMessage, type: 'certificate' })];
+    if (action === 'forward') {
+      const admins = await User.find({ role: 'admin' }).select('_id').lean();
+      notifications.push(...admins.map(({ _id }) => createNotification({ userId: _id, title: 'Certificate request needs review', message: 'A team leader forwarded a certificate request for your review.', type: 'certificate' })));
+    }
+    await Promise.all(notifications);
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

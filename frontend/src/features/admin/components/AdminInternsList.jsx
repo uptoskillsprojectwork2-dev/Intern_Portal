@@ -1,11 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAllInterns, getAllTeamLeaders, assignInternTeamLeader, updateIntern } from '../services/admin.service';
-import StatusBadge from '../../shared/components/StatusBadge';
+import AdminInternsTable from './AdminInternsTable';
 import './AdminInternsList.css';
-
-const formatDate = (date) => date
-  ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-  : '—';
 
 export default function AdminInternsList() {
   const [interns, setInterns] = useState([]);
@@ -13,10 +9,8 @@ export default function AdminInternsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Filters & Search
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [tlFilter, setTlFilter] = useState('');
+  const [upcomingFilters, setUpcomingFilters] = useState({ search: '', status: '', teamLeader: '' });
+  const [remainingFilters, setRemainingFilters] = useState({ search: '', status: '', teamLeader: '' });
 
   // Modals state
   const [assigningIntern, setAssigningIntern] = useState(null);
@@ -29,16 +23,48 @@ export default function AdminInternsList() {
   const [editLoading, setEditLoading] = useState(false);
   const [editMsg, setEditMsg] = useState(null);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const thirdDay = new Date(today);
+  thirdDay.setDate(thirdDay.getDate() + 3);
+  const completingSoon = interns.filter((intern) => {
+    if (!intern.endDate || ['completed', 'cancelled'].includes(intern.internshipDetails?.status)) return false;
+    const endDate = new Date(intern.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate >= today && endDate <= thirdDay;
+  });
+  const completingSoonIds = new Set(completingSoon.map((intern) => intern._id));
+  const remainingInterns = interns.filter((intern) => !completingSoonIds.has(intern._id));
+  const filterInterns = (rows, filters) => rows.filter((intern) => {
+    const query = filters.search.trim().toLowerCase();
+    const matchesSearch = !query || [intern.fullName, intern.email, intern.internCode, intern.domain]
+      .some((value) => value?.toLowerCase().includes(query));
+    const leader = intern.internshipDetails?.teamLeader;
+    const matchesLeader = !filters.teamLeader || leader?._id === filters.teamLeader ||
+      intern.internshipDetails?.teamleaderEmail === filters.teamLeader;
+    return matchesSearch && (!filters.status || intern.internshipDetails?.status === filters.status) && matchesLeader;
+  });
+  const filteredUpcoming = filterInterns(completingSoon, upcomingFilters);
+  const filteredRemaining = filterInterns(remainingInterns, remainingFilters);
+  const renderFilters = (filters, setFilters, label) => (
+    <div className="admin-interns-toolbar" aria-label={`${label} filters`}>
+      <input type="text" className="admin-interns-search" placeholder="Search by name, email, intern code, or domain..." value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} />
+      <select className="admin-interns-filter" aria-label={`${label} status`} value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+        <option value="">All Statuses</option><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+      </select>
+      <select className="admin-interns-filter" aria-label={`${label} team leader`} value={filters.teamLeader} onChange={(event) => setFilters((current) => ({ ...current, teamLeader: event.target.value }))}>
+        <option value="">All Team Leaders</option>
+        {teamLeaders.map((tl) => <option key={tl._id} value={tl._id}>{tl.fullName} ({tl.email})</option>)}
+      </select>
+    </div>
+  );
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const [internsData, tlData] = await Promise.all([
-        getAllInterns({
-          search: search || undefined,
-          status: statusFilter || undefined,
-          teamLeaderId: tlFilter || undefined,
-        }),
+        getAllInterns(),
         getAllTeamLeaders()
       ]);
       setInterns(internsData.interns || []);
@@ -48,7 +74,7 @@ export default function AdminInternsList() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, tlFilter]);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -138,41 +164,6 @@ export default function AdminInternsList() {
         <span className="team-leaders-count">{interns.length} total interns</span>
       </div>
 
-      <div className="admin-interns-toolbar">
-        <input
-          type="text"
-          className="admin-interns-search"
-          placeholder="Search by name, email, intern code, or domain..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-
-        <select
-          className="admin-interns-filter"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="">All Statuses</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="ongoing">Ongoing</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-
-        <select
-          className="admin-interns-filter"
-          value={tlFilter}
-          onChange={(e) => setTlFilter(e.target.value)}
-        >
-          <option value="">All Team Leaders</option>
-          {teamLeaders.map((tl) => (
-            <option key={tl._id} value={tl._id}>
-              {tl.fullName} ({tl.email})
-            </option>
-          ))}
-        </select>
-      </div>
-
       {loading && (
         <div className="team-leader-list" style={{ marginTop: '20px' }}>
           {[1, 2, 3].map((i) => (
@@ -187,89 +178,19 @@ export default function AdminInternsList() {
         </div>
       )}
 
-      {!loading && !error && interns.length === 0 && (
-        <p className="team-leaders-state" style={{ padding: '24px 0' }}>
-          No interns match the selected criteria.
-        </p>
-      )}
-
-      {!loading && !error && interns.length > 0 && (
-        <div className="admin-interns-table-wrapper">
-          <table className="admin-interns-table">
-            <thead>
-              <tr>
-                <th>Intern</th>
-                <th>Intern Code</th>
-                <th>Domain</th>
-                <th>Dates</th>
-                <th>Team Leader</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {interns.map((intern) => {
-                const assignedTl = intern.internshipDetails?.teamLeader?.fullName ||
-                  intern.internshipDetails?.teamleaderEmail ||
-                  'Unassigned';
-
-                return (
-                  <tr key={intern._id}>
-                    <td>
-                      <div className="admin-intern-user-cell">
-                        <div className="admin-intern-avatar">
-                          {intern.fullName?.charAt(0)?.toUpperCase() || 'I'}
-                        </div>
-                        <div>
-                          <strong>{intern.fullName}</strong>
-                          <div style={{ color: 'var(--muted)', fontSize: '12px' }}>{intern.email}</div>
-                          {intern.mobileNo && (
-                            <div style={{ color: 'var(--muted)', fontSize: '11px' }}>{intern.mobileNo}</div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td><code>{intern.internCode || '—'}</code></td>
-                    <td>{intern.domain || '—'}</td>
-                    <td>
-                      <small style={{ color: 'var(--muted)' }}>
-                        {formatDate(intern.startDate)} → {formatDate(intern.endDate)}
-                      </small>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 600 }}>
-                        {assignedTl}
-                      </span>
-                    </td>
-                    <td>
-                      <StatusBadge status={intern.internshipDetails?.status} />
-                    </td>
-                    <td>
-                      <div className="admin-intern-actions">
-                        <button
-                          type="button"
-                          className="admin-btn-sm"
-                          onClick={() => openEditModal(intern)}
-                          title="View / Edit Profile"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-btn-sm admin-btn-primary-sm"
-                          onClick={() => openAssignModal(intern)}
-                          title="Assign or Reassign Team Leader"
-                        >
-                          Assign TL
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {!loading && !error && (
+        <>
+          <section className="admin-interns-group" aria-label="Interns completing soon">
+            <h3>Completing in the next 3 days <span>({filteredUpcoming.length})</span></h3>
+            {renderFilters(upcomingFilters, setUpcomingFilters, 'Completing soon')}
+            <AdminInternsTable interns={filteredUpcoming} onEdit={openEditModal} onAssign={openAssignModal} />
+          </section>
+          <section className="admin-interns-group" aria-label="All remaining interns">
+            <h3>All remaining interns <span>({filteredRemaining.length})</span></h3>
+            {renderFilters(remainingFilters, setRemainingFilters, 'Remaining interns')}
+            <AdminInternsTable interns={filteredRemaining} onEdit={openEditModal} onAssign={openAssignModal} />
+          </section>
+        </>
       )}
 
       {/* Assign / Reassign TL Modal */}

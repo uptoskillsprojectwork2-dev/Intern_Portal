@@ -39,6 +39,12 @@ FRONTEND_URL=http://localhost:5173
 
 For MongoDB Atlas, replace `MONGO_URI` with the Atlas connection string and make sure the database user and network access rules allow your machine to connect. Do not commit `.env` or any secret values to GitHub.
 
+For deployment, set `FRONTEND_URL` to the public HTTPS frontend origin so certificate QR codes open the verification page. Set `VITE_API_BASE_URL` in the frontend build environment to the backend origin; the local default is `http://localhost:3000`.
+
+### Certificate verification and previously issued PDFs
+
+Newly generated certificate PDFs include a QR code with a random verification link. The verification ID backfill updates certificate records without rewriting or replacing already issued PDF files. Existing PDFs therefore remain unchanged and do not gain QR codes or verification links; reissue a certificate through the normal issuance flow if a recipient needs a PDF with a verification link. Backfilled certificates can still be checked through the public verification endpoint when their verification ID is provided separately.
+
 Install backend dependencies:
 
 ```bash
@@ -128,7 +134,7 @@ The backend currently has no automated test script. The frontend lint and build 
 
 ### Current implementation status
 
-The current working implementation includes the React/Vite application, Express API, MongoDB connection, cookie-based authentication flow, role-aware routes, login screen, and dashboard scaffolding. The architecture and feature sections below describe the planned full portal, including certificate workflows, AI services, PDF generation, notifications, and retention jobs; those modules still need to be implemented before production deployment.
+The current working implementation includes the React/Vite application, Express API, MongoDB connection, cookie-based authentication flow, role-aware dashboards, certificate template editing and PDF issuance, and the intern retention lifecycle. The internship-status job starts at 2:00 AM and the retention job at 2:05 AM (Asia/Kolkata by default). Set `DRY_RUN=true` in `backend/.env` to log planned job actions without changing records or sending archival warning emails.
 
 ---
 

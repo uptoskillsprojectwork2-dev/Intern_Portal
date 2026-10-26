@@ -1,3 +1,4 @@
+import Counter from '../src/models/Counter.model.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import mongoose from 'mongoose';
@@ -54,6 +55,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     const origFindOne = CertificateRequest.findOne;
     const origCreate = CertificateRequest.create;
     const origCount = CertificateRequest.countDocuments;
+    const origCounterFindOneAndUpdate = Counter.findOneAndUpdate;
 
     User.findById = () => Promise.resolve({
       _id: new mongoose.Types.ObjectId(),
@@ -67,6 +69,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
 
     CertificateRequest.findOne = () => Promise.resolve(null);
     CertificateRequest.countDocuments = () => Promise.resolve(10);
+    Counter.findOneAndUpdate = () => Promise.resolve({ seq: 11 });
     CertificateRequest.create = (doc) => Promise.resolve({ _id: new mongoose.Types.ObjectId(), ...doc });
 
     try {
@@ -108,6 +111,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
       CertificateRequest.findOne = origFindOne;
       CertificateRequest.create = origCreate;
       CertificateRequest.countDocuments = origCount;
+      Counter.findOneAndUpdate = origCounterFindOneAndUpdate;
     }
   });
 
@@ -518,7 +522,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     const compTpl = templates.find((t) => t.certificateType === 'completion_certificate');
     CertificateTemplate.findOne = () => Promise.resolve({
       _id: new mongoose.Types.ObjectId(),
-      content: compTpl.content
+      content: `${compTpl.content}\n<a href="{{verificationUrl}}">Verify</a><img src="{{qrCodeUrl}}" alt="QR">`
     });
 
     Certificate.create = (doc) => Promise.resolve({
@@ -531,6 +535,11 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
       assert.ok(draft.htmlContent.includes('Jane Doe'));
       assert.ok(draft.htmlContent.includes('Certificate of Completion'));
       assert.ok(draft.htmlContent.includes('Full Stack'));
+      assert.match(draft.certificateNumber, /^CERT-\d{4}-\d{5}$/);
+      assert.match(draft.verificationCode, /^VER-[0-9A-F]{32}$/);
+      assert.equal(draft.verificationIdVersion, 2);
+      assert.match(draft.htmlContent, /<img src="data:image\/png;base64,[^"]+" alt="QR">/);
+      assert.match(draft.htmlContent, new RegExp(`/verify/${draft.verificationCode}`));
     } finally {
       CertificateRequest.findById = origRequestFindById;
       CertificateTemplate.findOne = origTemplateFindOne;

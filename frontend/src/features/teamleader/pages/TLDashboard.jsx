@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 import CreateIntern from '../components/CreateIntern';
 import MyInternsList from '../components/MyInternsList';
 import UpcomingCompletions from '../components/UpcomingCompletions';
 import PendingReviewList from '../components/PendingReviewList';
 import { getUpcomingCompletions } from '../services/tl.service';
+import NotificationBell from '../../shared/components/NotificationBell';
 import './TLDashboard.css';
 
 const TLDashboard = () => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [fallbackView, setFallbackView] = useState('overview');
+  const activeView = searchParams.get('view') || fallbackView;
   const [upcomingCompletions, setUpcomingCompletions] = useState([]);
 
   useEffect(() => {
@@ -38,12 +41,17 @@ const TLDashboard = () => {
     handleLogout();
     navigate('/login');
   };
+  const changeView = (view) => {
+    setFallbackView(view);
+    if (searchParams.has('view')) setSearchParams({});
+  };
 
   return (
     <div className="admin-dashboard-shell">
       <header className="admin-topbar">
         <div className="admin-brand"><span className="admin-brand-icon">UP</span><strong>uptoskills</strong></div>
         <div className="admin-topbar-user">
+          <NotificationBell />
           <div className="admin-avatar">{initials}</div>
           <div><strong>{user?.fullName || 'Team Leader'}</strong><small>{user?.email || 'Loading profile...'}</small></div>
           <button className="admin-logout" onClick={logout} title="Sign out"><span>↩</span> Logout</button>
@@ -53,10 +61,10 @@ const TLDashboard = () => {
       <aside className="admin-sidebar" aria-label="Team leader navigation">
         <p className="admin-sidebar-label">Workspace</p>
         <nav className="admin-sidebar-nav">
-          <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => setActiveView('overview')}><span>▦</span> Overview</button>
-          <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => setActiveView('requests')}><span>▤</span> Certificate Requests</button>
-          <button className={`admin-nav-item ${activeView === 'myInterns' ? 'active' : ''}`} onClick={() => setActiveView('myInterns')}><span>♙</span> My Interns</button>
-          <button className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`} onClick={() => setActiveView('intern')}><span>＋</span> Create Intern</button>
+          <button className={`admin-nav-item ${activeView === 'overview' ? 'active' : ''}`} onClick={() => changeView('overview')}><span>▦</span> Overview</button>
+          <button className={`admin-nav-item ${activeView === 'requests' ? 'active' : ''}`} onClick={() => changeView('requests')}><span>▤</span> Certificate Requests</button>
+          <button className={`admin-nav-item ${activeView === 'myInterns' ? 'active' : ''}`} onClick={() => changeView('myInterns')}><span>♙</span> My Interns</button>
+          <button className={`admin-nav-item ${activeView === 'intern' ? 'active' : ''}`} onClick={() => changeView('intern')}><span>＋</span> Create Intern</button>
         </nav>
         <div className="admin-sidebar-note"><span>●</span> Team leader access enabled</div>
       </aside>
@@ -77,7 +85,7 @@ const TLDashboard = () => {
               <div><span>Mobile number</span><strong>{user?.mobileNo || 'Not provided'}</strong></div>
               <div><span>Member since</span><strong>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</strong></div>
             </div>
-            <div className="admin-quick-actions"><button onClick={() => setActiveView('intern')}><span>＋</span><strong>Create Intern</strong><small>Register an intern for your team</small></button></div>
+            <div className="admin-quick-actions"><button onClick={() => changeView('intern')}><span>＋</span><strong>Create Intern</strong><small>Register an intern for your team</small></button></div>
           </section>
           <div><UpcomingCompletions interns={upcomingCompletions} /></div>
           </>

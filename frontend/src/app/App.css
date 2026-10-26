@@ -32,6 +32,11 @@
     --shadow: #565a861c;
 }
 
+/* Keep native date picker controls legible when the app uses a dark theme. */
+:root[data-theme='dark'] input[type='date'] {
+    color-scheme: dark;
+}
+
 *,
 *::before,
 *::after {

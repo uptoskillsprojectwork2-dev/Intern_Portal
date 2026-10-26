@@ -9,13 +9,38 @@ const formatDate = (date) => date
   : '—';
 
 export default function MyInternsList() {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [upcomingFilters, setUpcomingFilters] = useState({ search: '', status: '' });
+  const [remainingFilters, setRemainingFilters] = useState({ search: '', status: '' });
 
-  const { interns, loading, error, refetch } = useMyInterns({
-    search: search || undefined,
-    status: statusFilter || undefined
+  const { interns, loading, error, refetch } = useMyInterns();
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const thirdDay = new Date(today);
+  thirdDay.setDate(thirdDay.getDate() + 3);
+  const completingSoon = interns.filter((intern) => {
+    if (!intern.endDate || ['completed', 'cancelled'].includes(intern.internshipDetails?.status)) return false;
+    const endDate = new Date(intern.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    return endDate >= today && endDate <= thirdDay;
   });
+  const remainingInterns = interns.filter((intern) => !completingSoon.includes(intern));
+  const filterInterns = (rows, filters) => rows.filter((intern) => {
+    const query = filters.search.trim().toLowerCase();
+    const matchesSearch = !query || [intern.fullName, intern.email, intern.internCode, intern.domain]
+      .some((value) => value?.toLowerCase().includes(query));
+    return matchesSearch && (!filters.status || intern.internshipDetails?.status === filters.status);
+  });
+  const filteredUpcoming = filterInterns(completingSoon, upcomingFilters);
+  const filteredRemaining = filterInterns(remainingInterns, remainingFilters);
+  const renderFilters = (filters, setFilters, label) => (
+    <div className="my-interns-toolbar" aria-label={`${label} filters`}>
+      <input type="search" placeholder="Search by name, email, intern code, or domain..." value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} />
+      <select aria-label={`${label} status`} value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+        <option value="">All Statuses</option><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+  );
 
   // Edit Modal State
   const [editingIntern, setEditingIntern] = useState(null);
@@ -74,45 +99,6 @@ export default function MyInternsList() {
         {!loading && !error && <span className="my-interns-count">{interns.length} assigned</span>}
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        <input
-          type="text"
-          placeholder="Search assigned interns by name, email, or domain..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: '220px',
-            padding: '10px 14px',
-            borderRadius: '10px',
-            border: '1px solid var(--border)',
-            background: 'var(--input)',
-            color: 'var(--text)',
-            fontSize: '14px',
-          }}
-        />
-
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{
-            padding: '10px 14px',
-            borderRadius: '10px',
-            border: '1px solid var(--border)',
-            background: 'var(--input)',
-            color: 'var(--text)',
-            fontSize: '14px',
-            cursor: 'pointer',
-          }}
-        >
-          <option value="">All Statuses</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="ongoing">Ongoing</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </div>
-
       {loading && (
         <div className="my-interns-list" aria-label="Loading interns">
           {[1, 2, 3].map((item) => <div className="my-intern-skeleton" key={item} />)}
@@ -131,8 +117,15 @@ export default function MyInternsList() {
       )}
 
       {!loading && !error && interns.length > 0 && (
-        <div className="my-interns-list">
-          {interns.map((intern) => (
+        <>
+        <section className="my-interns-group" aria-labelledby="completing-soon-title">
+          <div className="my-interns-group-heading">
+            <div><h3 id="completing-soon-title">Completing in the next 3 days</h3><p>Internships ending today through three days from now.</p></div>
+            <span>{filteredUpcoming.length}</span>
+          </div>
+          {renderFilters(upcomingFilters, setUpcomingFilters, 'Completing soon')}
+          {filteredUpcoming.length ? <div className="my-interns-list">
+          {filteredUpcoming.map((intern) => (
             <article className="my-intern-row" key={intern._id || intern.id || intern.email}>
               <div className="my-intern-row-heading">
                 <div>
@@ -160,7 +153,36 @@ export default function MyInternsList() {
               </div>
             </article>
           ))}
-        </div>
+          </div> : <p className="my-interns-state">No interns match these filters in this group.</p>}
+        </section>
+        <section className="my-interns-group" aria-labelledby="remaining-interns-title">
+          <div className="my-interns-group-heading">
+            <div><h3 id="remaining-interns-title">All remaining interns</h3><p>Every other intern assigned to your team.</p></div>
+            <span>{filteredRemaining.length}</span>
+          </div>
+          {renderFilters(remainingFilters, setRemainingFilters, 'Remaining interns')}
+          {filteredRemaining.length ? <div className="my-interns-list">
+          {filteredRemaining.map((intern) => (
+            <article className="my-intern-row" key={intern._id || intern.id || intern.email}>
+              <div className="my-intern-row-heading">
+                <div><h3>{intern.fullName}</h3><p>{intern.email}</p></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <StatusBadge status={intern.internshipDetails?.status} />
+                  <button type="button" className="admin-btn-sm" onClick={() => openEditModal(intern)} title="View & Edit Intern Details">View / Edit</button>
+                </div>
+              </div>
+              <div className="my-intern-details">
+                <div><span>Intern code</span><strong>{intern.internCode || '—'}</strong></div>
+                <div><span>Domain</span><strong>{intern.domain || '—'}</strong></div>
+                <div><span>Mentor</span><strong>{intern.internshipDetails?.mentor || '—'}</strong></div>
+                <div><span>Start date</span><strong>{formatDate(intern.startDate)}</strong></div>
+                <div><span>End date</span><strong>{formatDate(intern.endDate)}</strong></div>
+              </div>
+            </article>
+          ))}
+          </div> : <p className="my-interns-state">No other interns match the selected filters.</p>}
+        </section>
+        </>
       )}
 
       {/* Edit Intern Modal for TL */}

@@ -38,6 +38,33 @@ const userSchema = new mongoose.Schema(
             type: Date
         },
 
+        isArchived: {
+            type: Boolean,
+            default: false,
+            index: true
+        },
+
+        archivedAt: {
+            type: Date,
+            default: null,
+            index: true
+        },
+
+        archiveWarningSentAt: {
+            type: Date,
+            default: null
+        },
+
+        archiveRestoredAt: {
+            type: Date,
+            default: null
+        },
+
+        personalDataPurged: {
+            type: Boolean,
+            default: false
+        },
+
         password: {
             type: String,
             required: function () {
@@ -79,6 +106,9 @@ const userSchema = new mongoose.Schema(
         timestamps: true
     });
 
+
+userSchema.index({ role: 1, domain: 1, 'internshipDetails.teamLeader': 1, createdAt: 1 });
+userSchema.index({ role: 1, isArchived: 1, archivedAt: 1 });
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
 

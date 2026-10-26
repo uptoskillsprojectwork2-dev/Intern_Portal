@@ -17,6 +17,8 @@ import {
   updateCertificateDraft,
   finalizeCertificate,
   getAllCertificates,
+  revokeCertificate,
+  unrevokeCertificate,
   retryCertificateGeneration,
   downloadCertificatePdf,
   revokeCertificate,
@@ -26,9 +28,45 @@ import {
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
+import { getAuditLogs, exportAuditLogs } from "../controllers/audit.controller.js";
 
 const adminRouter = express.Router();
 
+adminRouter.get('/audit-logs/export', verifyAuth, requireAdmin, exportAuditLogs);
+adminRouter.get('/audit-logs', verifyAuth, requireAdmin, getAuditLogs);
+
+adminRouter.get(
+  "/templates",
+  verifyAuth,
+  requireAdmin,
+  getCertificateTemplates
+);
+
+adminRouter.get(
+  "/templates/placeholders",
+  verifyAuth,
+  requireAdmin,
+  getTemplatePlaceholders
+);
+
+adminRouter.post(
+  "/templates",
+  verifyAuth,
+  requireAdmin,
+  createCertificateTemplate
+);
+
+adminRouter.patch(
+  "/templates/:id",
+  verifyAuth,
+  requireAdmin,
+  updateCertificateTemplate
+);
+
+adminRouter.get('/retention-policy', verifyAuth, requireAdmin, getRetentionPolicy);
+adminRouter.patch('/retention-policy', verifyAuth, requireAdmin, updateRetentionPolicy);
+adminRouter.get('/interns/archived', verifyAuth, requireAdmin, getArchivedInterns);
+adminRouter.patch('/interns/:id/restore', verifyAuth, requireAdmin, restoreArchivedIntern);
 
 // POST api/auth/register-intern
 adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);
@@ -61,6 +99,8 @@ adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finaliz
 
 // Day 5 Admin Overview, Download & Retry Generation routes
 adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
+adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
+adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
 adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
 adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);

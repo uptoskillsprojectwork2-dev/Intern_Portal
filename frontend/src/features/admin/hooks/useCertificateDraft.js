@@ -62,8 +62,10 @@ export default function useCertificateDraft(certificateId) {
       setDraft(updatedCert);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      return true;
     } catch (err) {
       setSaveError(getErrorMessage(err, 'Unable to save draft. Please try again.'));
+      return false;
     } finally {
       setSaving(false);
       isSavingRef.current = false;
