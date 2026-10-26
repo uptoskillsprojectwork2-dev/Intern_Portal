@@ -51,6 +51,8 @@ export const finalizeRequest = (id, action, rejectionReason) => request(
 export const getCertificateDraft = (id) => request('get', `/api/admin/certificates/${id}`);
 export const updateCertificateDraft = (id, htmlContent) => request('patch', `/api/admin/certificates/${id}`, { htmlContent });
 export const finalizeCertificate = (id) => request('post', `/api/admin/certificates/${id}/finalize`);
+export const revokeCertificate = (id, reason) => request('patch', `/api/admin/certificates/${id}/revoke`, { reason });
+export const unrevokeCertificate = (id) => request('patch', `/api/admin/certificates/${id}/unrevoke`);
 
 // Day 5 Admin Overview & Retry Generation
 export const getAllCertificates = () => request('get', '/api/admin/certificates');
@@ -68,4 +70,4 @@ export const downloadAdminCertificate = async (id, fileName) => {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
-};
+};

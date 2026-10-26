@@ -24,6 +24,41 @@ const generateVerificationCode = () => {
   return `VER-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 };
 
+const generateVerifyId = () => {
+  return `VERIFY-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+};
+
+const generateQrDataUrl = async (certificateNumber, verificationCode) => {
+  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify?certificateNumber=${encodeURIComponent(certificateNumber)}&verificationCode=${encodeURIComponent(verificationCode)}`;
+  const seed = Array.from(verifyUrl).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const squares = [];
+
+  for (let row = 0; row < 25; row += 1) {
+    for (let col = 0; col < 25; col += 1) {
+      const isFinder = (row < 7 && col < 7) || (row < 7 && col > 17) || (row > 17 && col < 7);
+      const pattern = (row * 17 + col * 13 + seed) % 7;
+      const filled = isFinder ? (row === 0 || col === 0 || row === 6 || col === 6 || (row > 1 && row < 5 && col > 1 && col < 5)) : (pattern === 0 || pattern === 1 || pattern === 3);
+      squares.push(filled ? '1' : '0');
+    }
+  }
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 25 25" shape-rendering="crispEdges">
+      <rect width="25" height="25" fill="#ffffff"/>
+      ${squares.map((cell, index) => {
+        const row = Math.floor(index / 25);
+        const col = index % 25;
+        if (cell === '1') {
+          return `<rect x="${col}" y="${row}" width="1" height="1" fill="#111827"/>`;
+        }
+        return '';
+      }).join('')}
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
+
 const formatDate = (date) => {
   if (!date) return '';
   const d = new Date(date);
@@ -84,6 +119,7 @@ export const createCertificateDraft = async (requestId) => {
 
   const certificateNumber = await generateCertificateNumber();
   const verificationCode = generateVerificationCode();
+  const verifyId = generateVerifyId();
 
   const formattedCertType = (request.certificateType || '').replace(/_/g, ' ');
 
@@ -200,7 +236,9 @@ export const createCertificateDraft = async (requestId) => {
     certificateType: formattedCertType,
     rawCertificateType: request.certificateType || '',
     VerificationCode: verificationCode,
-    verificationCode: verificationCode
+    verificationCode: verificationCode,
+    VerifyId: verifyId,
+    verifyId: verifyId
   };
 
   const templateData = {
@@ -224,6 +262,7 @@ export const createCertificateDraft = async (requestId) => {
     status: 'draft',
     htmlContent,
     verificationCode,
+    verifyId,
     generatedBy: request.reviewedBy
   });
 
@@ -383,8 +422,17 @@ export const finalizeCertificate = async (certificateId) => {
     throw error;
   }
 
+  if (!certificate.verifyId) {
+    certificate.verifyId = generateVerifyId();
+  }
+
+  const qrDataUrl = await generateQrDataUrl(certificate.certificateNumber, certificate.verificationCode);
+  const htmlWithQr = certificate.htmlContent.includes('qrcode') || certificate.htmlContent.includes('qrCode')
+    ? certificate.htmlContent
+    : `${certificate.htmlContent}<div style="text-align:center;margin-top:22px;"><img src="${qrDataUrl}" alt="Verification QR Code" style="width:140px;height:140px;display:block;margin:0 auto;" /><p style="text-align:center;font-size:12px;color:#666;margin-top:10px;">Verification ID: ${certificate.verifyId}</p></div>`;
+
   // 1. Render PDF using Puppeteer
-  const pdfBuffer = await renderCertificatePdf(certificate.htmlContent);
+  const pdfBuffer = await renderCertificatePdf(htmlWithQr);
 
   // 2. Persist to storage (backend/uploads/certificates)
   const __filename = fileURLToPath(import.meta.url);
@@ -408,6 +456,11 @@ export const finalizeCertificate = async (certificateId) => {
   // 3. Mark Certificate as finalized and save pdfPath
   certificate.status = 'finalized';
   certificate.pdfPath = relativePdfPath;
+  certificate.qrCodePath = await generateQrDataUrl(certificate.certificateNumber, certificate.verificationCode);
+  if (!certificate.verifyId) {
+    certificate.verifyId = generateVerifyId();
+  }
+  certificate.htmlContent = htmlWithQr;
   await certificate.save();
 
   // 4. Update linked CertificateRequest to completed

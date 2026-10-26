@@ -16,8 +16,54 @@ import {
   sendCertificateEmail
 } from '../services/certificate.service.js';
 import { logAudit } from '../utils/auditLogger.js';
+import Notification from '../models/Notification.js';
 
 dotenv.config();
+
+const stripSensitiveAuditFields = (value, seen = new WeakSet()) => {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map((item) => stripSensitiveAuditFields(item, seen));
+  if (typeof value === 'object') {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+    const sanitized = {};
+    for (const [key, entry] of Object.entries(value)) {
+      const normalizedKey = key.toLowerCase();
+      if (['password', 'token', 'resetpasswordtoken', 'resetpasswordexpires', 'secret', 'authorization', 'cookie', 'session'].includes(normalizedKey)) {
+        continue;
+      }
+      sanitized[key] = stripSensitiveAuditFields(entry, seen);
+    }
+    return sanitized;
+  }
+  return value;
+};
+
+export const notifyUser = async ({ userId, title, message, type = 'general' }) => {
+  if (!userId || !title || !message) return null;
+  if (mongoose.connection.readyState !== 1) return null;
+  return Notification.create({
+    userId,
+    title: String(title).trim(),
+    message: String(message).trim(),
+    type
+  });
+};
+
+export const getAuditLogs = async (req, res) => {
+  try {
+    const logs = await (await import('../models/AuditLog.js')).default.find()
+      .sort({ createdAt: -1 })
+      .limit(100);
+    return res.status(200).json({ logs: logs.map((log) => ({
+      ...log.toObject(),
+      description: stripSensitiveAuditFields(log.description)
+    })) });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
 
 export async function createIntern(req, res) {
     try {
@@ -655,11 +701,157 @@ export const finalizeCertificate = async (req, res) => {
 /**
  * Day 5 Admin Overview: Retrieves all certificates with safe intern details.
  */
+export const verifyCertificatePublic = async (req, res) => {
+  try {
+    const { certificateNumber, verificationCode, verifyId } = req.query;
+
+    if (!certificateNumber && !verificationCode && !verifyId) {
+      return res.status(400).json({ message: 'certificateNumber, verificationCode, or verifyId is required' });
+    }
+
+    const query = verifyId
+      ? { verifyId }
+      : { certificateNumber, verificationCode };
+
+    const foundCertificate = await Certificate.findOne(query);
+    const certificate = foundCertificate && typeof foundCertificate.populate === 'function'
+      ? await foundCertificate.populate('userId', 'fullName email internCode domain')
+      : foundCertificate;
+
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found', valid: false });
+    }
+
+    const isValid = certificate.status === 'finalized' && certificate.revokedAt == null;
+
+    return res.status(200).json({
+      message: isValid ? 'Certificate verified successfully' : (certificate.status === 'revoked' ? 'Certificate has been revoked' : 'Certificate is not currently valid'),
+      certificate: {
+        _id: certificate._id,
+        certificateNumber: certificate.certificateNumber,
+        verificationCode: certificate.verificationCode,
+        verifyId: certificate.verifyId,
+        certificateType: certificate.certificateType,
+        domain: certificate.domain,
+        status: certificate.status,
+        issuedDate: certificate.issuedDate,
+        revokedAt: certificate.revokedAt,
+        revocationReason: certificate.revocationReason,
+        isValid,
+        intern: certificate.userId ? {
+          fullName: certificate.userId.fullName,
+          email: certificate.userId.email,
+          internCode: certificate.userId.internCode,
+          domain: certificate.userId.domain
+        } : null
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Internal server error', error: err.message });
+  }
+};
+
+export const revokeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID' });
+    }
+
+    const certificate = await Certificate.findById(id);
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    if (certificate.status === 'revoked') {
+      return res.status(200).json({ message: 'Certificate is already revoked', certificate });
+    }
+
+    const { reason } = req.body || {};
+    certificate.status = 'revoked';
+    certificate.revokedBy = req.user?.id || null;
+    certificate.revokedAt = new Date();
+    certificate.revocationReason = reason || 'Administrative revocation';
+    await certificate.save();
+
+    await logAudit({
+      userId: req.user?.id,
+      action: 'REVOKE_CERTIFICATE',
+      entityType: 'Certificate',
+      entityId: certificate._id,
+      description: stripSensitiveAuditFields({
+        certificateNumber: certificate.certificateNumber,
+        reason: certificate.revocationReason,
+        revokedBy: req.user?.id
+      }),
+      req
+    });
+
+    await notifyUser({
+      userId: certificate.userId,
+      title: 'Certificate revoked',
+      message: `Your certificate ${certificate.certificateNumber} has been revoked.`,
+      type: 'certificate'
+    });
+
+    return res.status(200).json({ message: 'Certificate revoked successfully', certificate });
+  } catch (err) {
+    return res.status(500).json({ message: 'Internal server error', error: err.message });
+  }
+};
+
+export const unrevokeCertificate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid certificate ID' });
+    }
+
+    const certificate = await Certificate.findById(id);
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    if (certificate.status !== 'revoked') {
+      return res.status(200).json({ message: 'Certificate is not revoked', certificate });
+    }
+
+    certificate.status = 'finalized';
+    certificate.revokedAt = null;
+    certificate.revokedBy = null;
+    certificate.revocationReason = '';
+    await certificate.save();
+
+    await logAudit({
+      userId: req.user?.id,
+      action: 'UNREVOKE_CERTIFICATE',
+      entityType: 'Certificate',
+      entityId: certificate._id,
+      description: stripSensitiveAuditFields({
+        certificateNumber: certificate.certificateNumber,
+        restoredBy: req.user?.id
+      }),
+      req
+    });
+
+    await notifyUser({
+      userId: certificate.userId,
+      title: 'Certificate restored',
+      message: `Your certificate ${certificate.certificateNumber} has been restored and is active again.`,
+      type: 'certificate'
+    });
+
+    return res.status(200).json({ message: 'Certificate restored successfully', certificate });
+  } catch (err) {
+    return res.status(500).json({ message: 'Internal server error', error: err.message });
+  }
+};
+
 export const getAllCertificates = async (req, res) => {
   try {
     const certificates = await Certificate.find()
       .populate('userId', 'fullName email internCode domain')
-      .select('certificateNumber certificateType domain issuedDate status pdfPath internCode userId createdAt')
+      .select('certificateNumber certificateType domain issuedDate status pdfPath internCode userId createdAt verifyId revokedAt revocationReason')
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ certificates });

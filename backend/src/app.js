@@ -7,6 +7,7 @@ import authRouter from './routes/auth.routes.js';
 import internRouter from './routes/intern.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import teamleaderRouter from './routes/teamleader.routes.js';
+import { verifyCertificatePublic } from './controllers/admin.controller.js';
 
 
 
@@ -36,5 +37,7 @@ app.use('/api/intern', internRouter);
 app.use('/api/admin', adminRouter);
 
 app.use('/api/teamleader', teamleaderRouter);
+
+app.get('/api/public/certificates/verify', verifyCertificatePublic);
 
 export default app;
