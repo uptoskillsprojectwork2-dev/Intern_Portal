@@ -57,4 +57,5 @@ export async function logAudit({ userId, actor, action, entityType, entityId, ta
   }
 }
 
+export const logAction = logAudit;
 export default logAudit;

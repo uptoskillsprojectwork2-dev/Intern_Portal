@@ -36,7 +36,17 @@ export const analyticsQueryValidator = [
       return true;
     }),
   query('teamLeader').optional().isMongoId().withMessage('teamLeader must be a valid ID'),
+  query('teamLeaderId').optional().isMongoId().withMessage('teamLeaderId must be a valid ID'),
   query('domain').optional().isString().trim().isLength({ max: 100 }).withMessage('domain must be 100 characters or fewer'),
+  query('status').optional().isIn(['pending', 'processing', 'approved', 'rejected', 'completed', 'cancelled'])
+    .withMessage('status must be a valid certificate request status'),
+  query('reviewStage').optional().isIn(['team-leader', 'admin'])
+    .withMessage('reviewStage must be team-leader or admin'),
+  query('certificateType').optional().isString().trim().isLength({ min: 1, max: 100 })
+    .withMessage('certificateType must be between 1 and 100 characters'),
+  query('page').optional().isInt({ min: 1, max: 100000 }).withMessage('page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
+  query('overdueDays').optional().isInt({ min: 1, max: 365 }).withMessage('overdueDays must be an integer between 1 and 365'),
   query('groupBy')
     .optional()
     .isIn(['day', 'week', 'month'])
@@ -56,6 +66,7 @@ export const analyticsExportValidator = [
       'team-leaders',
       'domains',
       'pipeline',
+      'stuck',
       'stuck-requests',
       'upcoming-completions'
     ])

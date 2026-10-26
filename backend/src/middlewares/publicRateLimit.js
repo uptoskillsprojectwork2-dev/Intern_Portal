@@ -1,4 +1,4 @@
-const WINDOW_MS = 15 * 60 * 1000;
+const WINDOW_MS = 60 * 1000;
 const MAX_REQUESTS = 30;
 const MAX_CLIENTS = 10000;
 const clients = new Map();

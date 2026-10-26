@@ -1,13 +1,25 @@
 import axios from 'axios';
+import { installApiInterceptors } from '../../shared/services/apiInterceptors';
 
 const internApi = axios.create({
   baseURL: 'http://localhost:3000/api/intern',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
+installApiInterceptors(internApi);
 
 export const getProfile = async () => {
   const response = await internApi.get('/profile');
+  return response.data;
+};
+
+export const setPassword = async (data) => {
+  const response = await internApi.patch('/set-password', data);
+  return response.data;
+};
+
+export const updateProfile = async (data) => {
+  const response = await internApi.patch('/profile', data);
   return response.data;
 };
 
@@ -39,4 +51,4 @@ export const downloadCertificatePdf = async (id, fileName) => {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(url);
-};
+};

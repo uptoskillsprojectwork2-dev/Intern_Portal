@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { installApiInterceptors } from '../../shared/services/apiInterceptors';
 
 const API_BASE_URL = 'http://localhost:3000';
 
@@ -10,6 +11,7 @@ const apiClient = axios.create({
     },
     withCredentials: true
 });
+installApiInterceptors(apiClient);
 
 /**
  * Login user with email and password

@@ -1,10 +1,13 @@
 import axios from 'axios';
+import { installApiInterceptors } from '../../../shared/services/apiInterceptors';
 
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin)).replace(/\/+$/, '');
 const api = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: apiBaseUrl,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true
 });
+installApiInterceptors(api);
 
 const buildQueryString = (params = {}) => {
   const searchParams = new URLSearchParams();
@@ -22,7 +25,7 @@ const request = async (url) => {
     const res = await api.get(url);
     return res.data;
   } catch (err) {
-    const msg = err.response?.data?.message || 'Failed to fetch analytics data.';
+    const msg = err.response?.data?.message || err.message || 'Failed to fetch analytics data.';
     throw new Error(msg, { cause: err });
   }
 };
@@ -52,13 +55,26 @@ export const fetchUpcoming = (days = 30, params = {}) =>
   request(`/api/admin/analytics/upcoming-completions${buildQueryString({ ...params, days })}`);
 
 export const fetchStuck = (days = 3, params = {}) =>
-  request(`/api/admin/analytics/stuck-requests${buildQueryString({ ...params, days })}`);
+  request(`/api/admin/analytics/stuck${buildQueryString({ ...params, days })}`);
+
+export const fetchAnalyticsRequests = (params = {}) =>
+  request(`/api/admin/analytics/requests${buildQueryString(params)}`);
 
 export const downloadAnalytics = async (type = 'overview', params = {}, format = 'csv') => {
   const qs = buildQueryString({ ...params, type, format });
-  const response = await api.get(`/api/admin/analytics/export${qs}`, {
-    responseType: 'blob'
-  });
+  let response;
+  try {
+    response = await api.get(`/api/admin/analytics/export${qs}`, { responseType: 'blob' });
+  } catch (error) {
+    let message = error.response?.data?.message || error.message || 'Unable to export analytics.';
+    if (error.response?.data instanceof Blob) {
+      try {
+        const payload = JSON.parse(await error.response.data.text());
+        message = payload.message || message;
+      } catch { /* Keep the Axios message when the response is not JSON. */ }
+    }
+    throw new Error(message, { cause: error });
+  }
   const mimeType = format === 'xlsx'
     ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     : 'text/csv;charset=utf-8';

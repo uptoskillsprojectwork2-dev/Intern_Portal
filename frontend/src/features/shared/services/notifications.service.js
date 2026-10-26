@@ -1,10 +1,12 @@
 import axios from 'axios';
+import { installApiInterceptors } from './apiInterceptors';
 
 const api = axios.create({
   baseURL: 'http://localhost:3000/api/notifications',
   withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 });
+installApiInterceptors(api);
 
 export const getNotifications = async () => (await api.get('/')).data;
 export const getUnreadNotificationCount = async () => (await api.get('/unread-count')).data;

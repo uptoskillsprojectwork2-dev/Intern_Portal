@@ -4,7 +4,16 @@ import mongoose from 'mongoose';
 import XLSX from 'xlsx';
 import { validationResult } from 'express-validator';
 import { analyticsQueryValidator } from '../src/validators/adminAnalytics.validator.js';
-import { getRequestsTrend, getTurnaroundStats } from '../src/services/adminAnalytics.service.js';
+import {
+  calculatePercentiles,
+  getCertificateTypes,
+  getOverviewKPIs,
+  getPipelineStages,
+  getRequestsTrend,
+  getTeamLeadersPerformance,
+  getTurnaroundStats,
+  getUpcomingCompletions
+} from '../src/services/adminAnalytics.service.js';
 import {
   getOverview,
   getTrend,
@@ -16,7 +25,8 @@ import {
   getUpcoming,
   getStuck,
   exportAnalyticsCSV,
-  buildAnalyticsCacheKey
+  buildAnalyticsCacheKey,
+  rowsToCsv
 } from '../src/controllers/adminAnalytics.controller.js';
 import app from '../src/app.js';
 
@@ -101,7 +111,7 @@ test('Admin Analytics Controller Tests', async (t) => {
 
     await getOverview(req, res);
 
-    assert.equal(res.statusCode, 200);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
     assert.equal(res.body.success, true);
     assert.ok(res.body.data.kpis);
     assert.equal(res.body.data.kpis.totalInterns, 10);
@@ -137,10 +147,13 @@ test('Admin Analytics Controller Tests', async (t) => {
         domain: 'Data Science', teamLeader: leaderId.toString(), groupBy: 'week'
       });
       assert.equal(internQuery.domain, 'Data Science');
-      assert.equal(internQuery['internshipDetails.teamLeader'], leaderId.toString());
+      assert.deepEqual(internQuery.$or, [
+        { 'internshipDetails.teamLeaderId': leaderId.toString() },
+        { 'internshipDetails.teamLeaderId': { $in: [null] }, 'internshipDetails.teamLeader': leaderId.toString() }
+      ]);
       assert.deepEqual(requestMatch.userId.$in, [internId]);
-      assert.equal(requestMatch.requestedAt.$gte.toISOString(), new Date(2026, 8, 1).toISOString());
-      assert.equal(requestMatch.requestedAt.$lte.toISOString(), new Date(2026, 8, 30, 23, 59, 59, 999).toISOString());
+      assert.equal(requestMatch.requestedAt.$gte.toISOString(), '2026-09-01T00:00:00.000Z');
+      assert.equal(requestMatch.requestedAt.$lte.toISOString(), '2026-09-30T23:59:59.999Z');
     } finally {
       User.find = origUserFind;
       CertificateRequest.aggregate = origAggregate;
@@ -197,30 +210,25 @@ test('Admin Analytics Controller Tests', async (t) => {
   });
 
   await t.test('turnaround uses scoped facet durations and returns known seeded-style statistics', async () => {
-    const origAggregate = CertificateRequest.aggregate;
+    const origFind = CertificateRequest.find;
+    const origCertificateFind = Certificate.find;
     const origUserFind = User.find;
     const internId = new mongoose.Types.ObjectId();
-    let pipeline;
+    const certificateId = new mongoose.Types.ObjectId();
     User.find = () => ({ select: async () => [{ _id: internId }] });
-    CertificateRequest.aggregate = async (stages) => {
-      pipeline = stages;
-      return [{
-        review: [{ hours: 1 }, { hours: 3 }, { hours: 5 }],
-        finalize: [{ hours: 2 }, { hours: 4 }],
-        total: [{ hours: 3 }, { hours: 7 }]
-      }];
-    };
+    CertificateRequest.find = () => ({ select: () => ({ lean: async () => [
+      { requestedAt: new Date('2026-01-01T00:00:00Z'), forwardedAt: new Date('2026-01-01T03:00:00Z'), reviewedAt: new Date('2026-01-01T05:00:00Z'), status: 'completed', certificateId }
+    ] }) });
+    Certificate.find = () => ({ select: () => ({ lean: async () => [{ _id: certificateId, finalizedAt: new Date('2026-01-01T07:00:00Z'), status: 'finalized' }] }) });
     try {
       const result = await getTurnaroundStats({ range: '30d', domain: 'Data Science' });
-      assert.deepEqual(pipeline[0].$match.userId.$in, [internId]);
-      assert.ok(pipeline[2].$facet.review.some((stage) => stage.$set?.seconds?.$dateDiff));
-      assert.equal(result.timeToTLReview.avg, 3);
-      assert.equal(result.timeToTLReview.median, 3);
-      assert.equal(result.timeToTLReview.p90, 4.6);
-      assert.equal(result.timeToAdminFinalize.avg, 3);
-      assert.equal(result.totalTurnaround.median, 5);
+      assert.equal(result.tlDecisionTime.avg, 3);
+      assert.equal(result.adminDecisionTime.avg, 2);
+      assert.equal(result.generationTime.avg, 2);
+      assert.equal(result.totalTurnaround.avg, 7);
     } finally {
-      CertificateRequest.aggregate = origAggregate;
+      CertificateRequest.find = origFind;
+      Certificate.find = origCertificateFind;
       User.find = origUserFind;
     }
   });
@@ -235,26 +243,23 @@ test('Admin Analytics Controller Tests', async (t) => {
     User.find = (query) => {
       if (query.role === 'teamleader') {
         return {
-          select: async () => [
-            { _id: tlId, fullName: 'TL One', email: 'tl1@test.com' }
-          ]
+          select: () => ({ lean: async () => [ { _id: tlId, fullName: 'TL One' } ] })
         };
       }
-      return { select: async () => [] };
+      if (!query._id?.$in) return { select: async () => [] };
+      return { select: () => ({ lean: async () => [] }) };
     };
     User.distinct = async () => [tlId];
 
     User.countDocuments = async () => 4;
-    CertificateRequest.find = () => ({
-      select: async () => []
-    });
+    CertificateRequest.find = () => ({ select: () => ({ lean: async () => [] }) });
 
     const req = { query: {} };
     const res = mockRes();
 
     await getTeamLeaders(req, res);
 
-    assert.equal(res.statusCode, 200);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
     assert.equal(res.body.success, true);
     assert.ok(Array.isArray(res.body.data));
     assert.equal(res.body.data[0].fullName, 'TL One');
@@ -263,6 +268,203 @@ test('Admin Analytics Controller Tests', async (t) => {
     User.distinct = origUserDistinct;
     User.countDocuments = origUserCount;
     CertificateRequest.find = origCertReqFind;
+  });
+
+  await t.test('overview uses exact decision rates and calendar-month KPI windows', async () => {
+    const originals = {
+      userCount: User.countDocuments,
+      userFind: User.find,
+      requestCount: CertificateRequest.countDocuments,
+      requestFind: CertificateRequest.find,
+      certificateCount: Certificate.countDocuments
+    };
+    const internId = new mongoose.Types.ObjectId();
+    let pendingQuery;
+    User.find = () => ({ select: async () => [{ _id: internId }] });
+    User.countDocuments = async (query) => {
+      if (query['internshipDetails.status'] === 'ongoing' && query.isArchived) return 3;
+      if (query['internshipDetails.status'] === 'ongoing') return 4;
+      if (query.role === 'teamleader') return 1;
+      return 59;
+    };
+    CertificateRequest.countDocuments = async (query) => {
+      if (query.status === 'pending') { pendingQuery = query; return 11; }
+      if (query.status === 'approved') return 2;
+      if (query.status === 'processing') return 3;
+      if (Array.isArray(query.status?.$in)) return 7;
+      if (query.status === 'rejected') return 3;
+      return query.requestedAt.$gte.getUTCMonth() === new Date().getUTCMonth() ? 9 : 6;
+    };
+    Certificate.countDocuments = async (query) => query.$or[0].finalizedAt.$gte.getUTCMonth() === new Date().getUTCMonth() ? 5 : 2;
+    CertificateRequest.find = () => ({ select: async () => [] });
+    try {
+      const result = await getOverviewKPIs({ range: '7d' });
+      assert.equal(result.kpis.totalInterns, 59);
+      assert.equal(result.kpis.activeInterns, 3);
+      assert.equal(result.kpis.pendingRequests, 11);
+      assert.equal(result.kpis.requestsThisMonth, 9);
+      assert.equal(result.kpis.certificatesIssuedThisMonth, 5);
+      assert.equal(result.kpis.approvalRate, 70);
+      assert.equal(result.kpis.rejectionRate, 30);
+      assert.equal(pendingQuery.requestedAt, undefined);
+    } finally {
+      User.countDocuments = originals.userCount;
+      User.find = originals.userFind;
+      CertificateRequest.countDocuments = originals.requestCount;
+      CertificateRequest.find = originals.requestFind;
+      Certificate.countDocuments = originals.certificateCount;
+    }
+  });
+
+  await t.test('certificate type report groups issued certificates without joining requests', async () => {
+    const origUserFind = User.find;
+    const origCertificateAggregate = Certificate.aggregate;
+    const origRequestAggregate = CertificateRequest.aggregate;
+    const internId = new mongoose.Types.ObjectId();
+    let pipeline;
+    User.find = () => ({ select: async () => [{ _id: internId }] });
+    Certificate.aggregate = async (value) => {
+      pipeline = value;
+      return [{ _id: 'bonafide', count: 2 }, { _id: 'completion_certificate', count: 1 }];
+    };
+    CertificateRequest.aggregate = async () => { throw new Error('Request records must not drive certificate counts'); };
+    try {
+      const result = await getCertificateTypes({ range: '30d', domain: 'Engineering' });
+      assert.equal(pipeline[0].$match.userId.$in[0], internId);
+      assert.deepEqual(pipeline.at(-2).$group, { _id: '$certificateType', count: { $sum: 1 } });
+      assert.equal(result.total, 3);
+      assert.equal(result.breakdown[0].percentage, 66.7);
+    } finally {
+      User.find = origUserFind;
+      Certificate.aggregate = origCertificateAggregate;
+      CertificateRequest.aggregate = origRequestAggregate;
+    }
+  });
+
+  await t.test('pipeline separates TL rejection, Admin rejection, draft and failed generation', async () => {
+    const originals = {
+      userFind: User.find,
+      requestAggregate: CertificateRequest.aggregate,
+      requestFind: CertificateRequest.find,
+      requestCount: CertificateRequest.countDocuments,
+      certificateFind: Certificate.find
+    };
+    const draftId = new mongoose.Types.ObjectId();
+    const issuedId = new mongoose.Types.ObjectId();
+    User.find = () => ({ select: async () => [{ _id: new mongoose.Types.ObjectId() }] });
+    CertificateRequest.aggregate = async () => [
+      { _id: 'pending', count: 2 }, { _id: 'processing', count: 3 },
+      { _id: 'approved', count: 4 }, { _id: 'completed', count: 1 }
+    ];
+    CertificateRequest.find = () => ({ select: async () => [
+      { _id: 'no-link', reviewedAt: new Date(Date.now() - 7200000), updatedAt: new Date(Date.now() - 7200000) },
+      { _id: 'draft-link', certificateId: draftId, reviewedAt: new Date(Date.now() - 7200000) },
+      { _id: 'issued-link', certificateId: issuedId, reviewedAt: new Date(Date.now() - 7200000) }
+    ] });
+    CertificateRequest.countDocuments = async (query) => query.forwardedAt?.$ne === null ? 1 : 2;
+    Certificate.find = () => ({ select: async () => [
+      { _id: draftId, status: 'draft' }, { _id: issuedId, status: 'finalized' }
+    ] });
+    try {
+      const result = await getPipelineStages({ range: '30d' });
+      assert.equal(result.pipeline.find((stage) => stage.status === 'pending').count, 2);
+      assert.equal(result.pipeline.find((stage) => stage.status === 'processing').count, 3);
+      assert.equal(result.pipeline.find((stage) => stage.stage === 'Awaiting finalization').count, 1);
+      assert.equal(result.pipeline.find((stage) => stage.stage === 'Rejected by Team Leader').count, 2);
+      assert.equal(result.pipeline.find((stage) => stage.stage === 'Rejected by Admin').count, 1);
+      assert.equal(result.failedGenerations, 2);
+    } finally {
+      User.find = originals.userFind;
+      CertificateRequest.aggregate = originals.requestAggregate;
+      CertificateRequest.find = originals.requestFind;
+      CertificateRequest.countDocuments = originals.requestCount;
+      Certificate.find = originals.certificateFind;
+    }
+  });
+
+  await t.test('team leader metrics batch-load assignments and include TL rejection timing', async () => {
+    const originals = { userFind: User.find, userDistinct: User.distinct, requestFind: CertificateRequest.find };
+    const leaderId = new mongoose.Types.ObjectId();
+    const internId = new mongoose.Types.ObjectId();
+    const now = Date.now();
+    let userFindCalls = 0;
+    let requestFindCalls = 0;
+    User.distinct = async (field) => field.endsWith('teamLeaderId') ? [leaderId] : [];
+    User.find = (query) => {
+      userFindCalls += 1;
+      if (query.role === 'teamleader') return { select: () => ({ lean: async () => [{ _id: leaderId, fullName: 'TL One', email: 'private@example.test' }] }) };
+      if (query._id?.$in) return { select: () => ({ lean: async () => [{ _id: internId, internshipDetails: { teamLeaderId: leaderId }, isArchived: false }] }) };
+      return { select: async () => [{ _id: internId }] };
+    };
+    CertificateRequest.find = () => {
+      requestFindCalls += 1;
+      return { select: () => ({ lean: async () => [
+        { userId: internId, status: 'rejected', requestedAt: new Date(now - 10 * 3600000), reviewedAt: new Date(now - 8 * 3600000) },
+        { userId: internId, status: 'processing', requestedAt: new Date(now - 8 * 3600000), forwardedAt: new Date(now - 4 * 3600000) },
+        { userId: internId, status: 'pending', requestedAt: new Date(now - 4 * 86400000) }
+      ] }) };
+    };
+    try {
+      const [leader] = await getTeamLeadersPerformance({ range: '30d' });
+      assert.equal(leader.internsAssigned, 1);
+      assert.equal(leader.requestsReceived, 3);
+      assert.equal(leader.requestsForwarded, 1);
+      assert.equal(leader.requestsRejected, 1);
+      assert.equal(leader.avgReviewTimeHours, 3);
+      assert.equal(leader.rejectionRate, 50);
+      assert.equal(leader.hasOverdueRequests, true);
+      assert.equal('email' in leader, false);
+      assert.equal(userFindCalls, 3);
+      assert.equal(requestFindCalls, 1);
+    } finally {
+      User.find = originals.userFind;
+      User.distinct = originals.userDistinct;
+      CertificateRequest.find = originals.requestFind;
+    }
+  });
+
+  await t.test('upcoming completions check each completion request type in one batch', async () => {
+    const originals = { userFind: User.find, requestFind: CertificateRequest.find };
+    const firstId = new mongoose.Types.ObjectId();
+    const secondId = new mongoose.Types.ObjectId();
+    let requestFilter;
+    let requestCalls = 0;
+    User.find = () => ({
+      select: () => ({ populate: () => ({ populate: () => ({ lean: async () => [
+        { _id: firstId, fullName: 'Intern One', endDate: new Date(Date.now() + 2 * 86400000), internshipDetails: { teamLeader: null } },
+        { _id: secondId, fullName: 'Intern Two', endDate: new Date(Date.now() + 8 * 86400000), internshipDetails: { teamLeader: null } }
+      ] }) }) })
+    });
+    CertificateRequest.find = (query) => {
+      requestCalls += 1;
+      requestFilter = query;
+      return { select: () => ({ sort: () => ({ lean: async () => [
+        { userId: firstId, status: 'pending', requestNumber: 'CERT-1' }
+      ] }) }) };
+    };
+    try {
+      const results = await getUpcomingCompletions(30, { domain: 'Engineering' });
+      assert.equal(requestCalls, 1);
+      assert.deepEqual(requestFilter.certificateType.$in, ['completion_certificate', 'internship_completion_certificate']);
+      assert.equal(results[0].completionWindow, 'next-7-days');
+      assert.equal(results[0].hasRequestedCertificate, true);
+      assert.equal(results[1].completionWindow, 'next-30-days');
+      assert.equal(results[1].hasRequestedCertificate, false);
+      assert.equal('email' in results[0], false);
+    } finally {
+      User.find = originals.userFind;
+      CertificateRequest.find = originals.requestFind;
+    }
+  });
+
+  await t.test('percentiles use linear interpolation and CSV neutralizes formulas', () => {
+    assert.deepEqual(calculatePercentiles([1, 2, 3, 4]), { avg: 2.5, median: 2.5, p90: 3.7 });
+    const csv = rowsToCsv([{ value: '=1+1', note: 'quote " me' }, { value: '+cmd', note: '@name' }, { value: '-2', note: '\tSUM(A1:A2)' }]);
+    assert.match(csv, /"'=1\+1"/);
+    assert.match(csv, /"'\+cmd"/);
+    assert.match(csv, /"'-2"/);
+    assert.match(csv, /"'\tSUM\(A1:A2\)"/);
+    assert.match(csv, /quote "" me/);
   });
 
   await t.test('GET /export should generate CSV and log to AuditLog', async () => {
@@ -278,14 +480,12 @@ test('Admin Analytics Controller Tests', async (t) => {
     User.find = () => ({ select: async () => [{ _id: new mongoose.Types.ObjectId() }] });
     CertificateRequest.countDocuments = async () => 5;
     Certificate.countDocuments = async () => 2;
-    CertificateRequest.find = () => ({
-      select: async () => []
-    });
+    CertificateRequest.find = () => ({ select: async () => [] });
 
     let auditLogged = false;
     AuditLog.create = async (doc) => {
       auditLogged = true;
-      assert.equal(doc.action, 'EXPORT_ANALYTICS');
+      assert.equal(doc.action, 'EXPORT');
       return doc;
     };
     mongoose.connection.readyState = 1;
@@ -295,7 +495,7 @@ test('Admin Analytics Controller Tests', async (t) => {
 
     await exportAnalyticsCSV(req, res);
 
-    assert.equal(res.statusCode, 200);
+    assert.equal(res.statusCode, 200, JSON.stringify(res.body));
     assert.match(res.headers['Content-Type'], /^text\/csv/);
     assert.ok(res.sentContent.includes('totalInterns'));
     assert.equal(auditLogged, true);

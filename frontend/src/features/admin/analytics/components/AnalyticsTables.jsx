@@ -70,23 +70,35 @@ export default function AnalyticsTables({
             <table className="analytics-table">
               <thead>
                 <tr>
-                  <th onClick={() => handleSort('fullName')}>
+                  <th aria-sort={tlSortKey === 'fullName' ? (tlSortAsc ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" onClick={() => handleSort('fullName')}>
                     Team Leader {tlSortKey === 'fullName' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    </button>
                   </th>
-                  <th onClick={() => handleSort('internsAssigned')}>
+                  <th aria-sort={tlSortKey === 'internsAssigned' ? (tlSortAsc ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" onClick={() => handleSort('internsAssigned')}>
                     Interns {tlSortKey === 'internsAssigned' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    </button>
                   </th>
-                  <th onClick={() => handleSort('requestsReviewed')}>
+                  <th aria-sort={tlSortKey === 'requestsReviewed' ? (tlSortAsc ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" onClick={() => handleSort('requestsReviewed')}>
                     Reviewed {tlSortKey === 'requestsReviewed' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    </button>
                   </th>
-                  <th onClick={() => handleSort('pendingReviews')}>
+                  <th aria-sort={tlSortKey === 'pendingReviews' ? (tlSortAsc ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" onClick={() => handleSort('pendingReviews')}>
                     Pending {tlSortKey === 'pendingReviews' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    </button>
                   </th>
-                  <th onClick={() => handleSort('avgReviewTimeHours')}>
+                  <th aria-sort={tlSortKey === 'avgReviewTimeHours' ? (tlSortAsc ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" onClick={() => handleSort('avgReviewTimeHours')}>
                     Avg Review Time {tlSortKey === 'avgReviewTimeHours' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    </button>
                   </th>
-                  <th onClick={() => handleSort('rejectionRate')}>
+                  <th aria-sort={tlSortKey === 'rejectionRate' ? (tlSortAsc ? 'ascending' : 'descending') : 'none'}>
+                    <button type="button" onClick={() => handleSort('rejectionRate')}>
                     Rejection Rate {tlSortKey === 'rejectionRate' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    </button>
                   </th>
                   <th>Overdue Status</th>
                 </tr>
@@ -97,7 +109,6 @@ export default function AnalyticsTables({
                     <td>
                       <div className="tl-name-cell">
                         <strong>{tl.fullName}</strong>
-                        <small>{tl.email}</small>
                       </div>
                     </td>
                     <td><span className="pill blue">{tl.internsAssigned}</span></td>
@@ -191,9 +202,11 @@ export default function AnalyticsTables({
                           <button
                             type="button"
                             className="table-action-btn"
-                            onClick={() => item.reviewLink === 'requests-queue' ? onOpenRequests?.() : navigate(item.reviewLink)}
+                            onClick={() => item.reviewLink === 'requests-queue' ? onOpenRequests?.({ status: item.status }) : navigate(item.reviewLink)}
                           >
-                            {item.reviewLink === 'requests-queue' ? 'Open Retry Queue →' : 'Review →'}
+                            {item.reviewLink === 'requests-queue'
+                              ? (item.status === 'approved' ? 'Open Retry Queue →' : 'View filtered requests →')
+                              : 'Review →'}
                           </button>
                         ) : <span title="This request is waiting for Team Leader review">Awaiting TL</span>}
                       </td>
@@ -210,7 +223,7 @@ export default function AnalyticsTables({
           <div className="table-card-header">
             <div>
               <h3>Upcoming Internship Completions</h3>
-              <p className="table-subtitle">Interns with end dates in the selected date window</p>
+              <p className="table-subtitle">Ongoing interns ending in the next 30 days; custom dates can narrow the window</p>
             </div>
             <AnalyticsExportActions onExport={onExport} type="upcoming-completions" formats={['xlsx']} />
             <button
@@ -238,6 +251,7 @@ export default function AnalyticsTables({
                   <tr>
                     <th>Intern</th>
                     <th>End Date</th>
+                    <th>Window</th>
                     <th>Remaining</th>
                     <th>Cert Requested</th>
                   </tr>
@@ -252,6 +266,7 @@ export default function AnalyticsTables({
                         </div>
                       </td>
                       <td>{new Date(item.endDate).toLocaleDateString()}</td>
+                      <td>{item.completionWindow === 'next-7-days' ? 'Next 7 days' : 'Next 30 days'}</td>
                       <td>
                         <span className={`pill ${item.daysRemaining <= 7 ? 'amber' : 'blue'}`}>
                           {item.daysRemaining} days left

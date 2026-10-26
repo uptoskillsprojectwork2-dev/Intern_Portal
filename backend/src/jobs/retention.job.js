@@ -4,6 +4,7 @@ import RetentionPolicy from '../models/RetentionPolicy.js';
 import { sendEmail } from '../utils/sendEmail.js';
 import { logAudit } from '../utils/auditLogger.js';
 import { createNotification } from '../utils/notificationService.js';
+import { invalidateAnalyticsCache } from '../utils/redisCache.js';
 
 const BATCH_SIZE = 100;
 const DAY_MS = 86400000;
@@ -118,6 +119,7 @@ export async function archiveCompletedInterns({ graceDays, dryRun, today, notify
         { $set: { isArchived: true, archivedAt: new Date() } }
       );
       if (result.modifiedCount) {
+        await invalidateAnalyticsCache();
         await audit({
           actor: { _id: null, role: 'system' },
           action: 'INTERN_ARCHIVED',
@@ -168,6 +170,7 @@ export async function purgeArchivedInterns({ purgeDays, dryRun, today, notify = 
         $unset: { archiveWarningSentAt: 1 },
       });
       if (result.modifiedCount) {
+        await invalidateAnalyticsCache();
         await audit({
           actor: { _id: null, role: 'system' },
           action: 'INTERN_PERSONAL_DATA_PURGED',

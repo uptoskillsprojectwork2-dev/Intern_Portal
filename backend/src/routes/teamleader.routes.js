@@ -1,5 +1,6 @@
 import express from 'express';
 import { registerValidator } from '../validators/auth.validator.js';
+import { teamLeaderReviewValidator } from '../validators/workflow.validator.js';
 import verifyAuth from '../middlewares/verifyAuth.js';
 import {
 	createIntern,
@@ -30,6 +31,6 @@ teamleaderRouter.patch('/interns/:id', updateAssignedIntern);
 teamleaderRouter.get('/requests-for-review', getRequestsForReview);
 teamleaderRouter.get('/upcoming-completions', getUpcomingCompletionsForTL);
 
-teamleaderRouter.patch('/requests/:id/review', reviewRequestAsTL);
+teamleaderRouter.patch('/requests/:id/review', teamLeaderReviewValidator, reviewRequestAsTL);
 
 export default teamleaderRouter;

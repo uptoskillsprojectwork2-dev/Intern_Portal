@@ -4,6 +4,9 @@ import { scheduleInternshipStatusJob } from "./src/jobs/internshipStatus.job.js"
 import { scheduleRetentionJob } from "./src/jobs/retention.job.js"
 
 const startServer = async () => {
+    const required = ['MONGO_URI', 'JWT_SECRET', 'FRONTEND_URL', 'BREVO_SMTP_USER', 'BREVO_SMTP_KEY'];
+    const missing = required.filter((name) => !process.env[name]?.trim());
+    if (missing.length) throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
     await connectToDB();
     scheduleInternshipStatusJob();
     scheduleRetentionJob();

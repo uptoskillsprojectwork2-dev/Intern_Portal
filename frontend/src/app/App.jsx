@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
 import Login from '../features/auth/pages/Login';
@@ -8,15 +8,16 @@ import ResetPasswordPage from '../features/auth/pages/ResetPasswordPage';
 import ProtectedRoute from '../features/shared/components/ProtectedRoute';
 import ThemeToggle from '../features/shared/components/ThemeToggle';
 
-import InternDashboard from '../features/intern/pages/InternDashboard';
-import TLDashboard from '../features/teamleader/pages/TLDashboard';
-
-import AdminDashboard from '../features/admin/pages/AdminDashboard';
-import CertificateReviewPage from '../features/admin/pages/CertificateReviewPage';
-import CertificateTemplateEditorPage from '../features/admin/pages/CertificateTemplateEditorPage';
 import CertificateVerificationPage from '../features/shared/pages/CertificateVerificationPage';
+import AccessDeniedPage from '../features/shared/components/AccessDeniedPage';
 
 import './App.css';
+
+const CertificateReviewPage = lazy(() => import('../features/admin/pages/CertificateReviewPage'));
+const CertificateTemplateEditorPage = lazy(() => import('../features/admin/pages/CertificateTemplateEditorPage'));
+const InternDashboard = lazy(() => import('../features/intern/pages/InternDashboard'));
+const TLDashboard = lazy(() => import('../features/teamleader/pages/TLDashboard'));
+const AdminDashboard = lazy(() => import('../features/admin/pages/AdminDashboard'));
 
 export default function App() {
   const [theme, setTheme] = useState(
@@ -65,6 +66,7 @@ export default function App() {
           path="/verify/:certificateNumber"
           element={<CertificateVerificationPage />}
         />
+        <Route path="/access-denied" element={<AccessDeniedPage />} />
 
         {/* =========================
             INTERN ROUTES
@@ -77,7 +79,11 @@ export default function App() {
         >
           <Route
             path="/intern/dashboard"
-            element={<InternDashboard />}
+            element={<Suspense fallback={<div role="status" className="route-loading">Loading intern dashboard…</div>}><InternDashboard /></Suspense>}
+          />
+          <Route
+            path="/intern/settings"
+            element={<Navigate to="/intern/dashboard?view=settings" replace />}
           />
         </Route>
 
@@ -92,7 +98,7 @@ export default function App() {
         >
           <Route
             path="/teamleader/dashboard"
-            element={<TLDashboard />}
+            element={<Suspense fallback={<div role="status" className="route-loading">Loading Team Leader dashboard…</div>}><TLDashboard /></Suspense>}
           />
         </Route>
 
@@ -107,17 +113,17 @@ export default function App() {
         >
           <Route
             path="/admin/dashboard"
-            element={<AdminDashboard />}
+            element={<Suspense fallback={<div role="status" className="route-loading">Loading admin dashboard…</div>}><AdminDashboard /></Suspense>}
           />
 
           <Route
             path="/admin/certificates/:id/review"
-            element={<CertificateReviewPage />}
+            element={<Suspense fallback={<div role="status" className="route-loading">Loading certificate review…</div>}><CertificateReviewPage /></Suspense>}
           />
 
           <Route
             path="/admin/certificate-templates"
-            element={<CertificateTemplateEditorPage />}
+            element={<Suspense fallback={<div role="status" className="route-loading">Loading certificate templates…</div>}><CertificateTemplateEditorPage /></Suspense>}
           />
         </Route>
 

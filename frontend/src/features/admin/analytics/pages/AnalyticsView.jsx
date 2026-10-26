@@ -10,6 +10,24 @@ import { getAllTeamLeaders } from '../../services/admin.service';
 import { fetchDomains } from '../services/analytics.service';
 import './AnalyticsView.css';
 
+function periodBounds(period, groupBy) {
+  if (!period) return null;
+  if (groupBy === 'day') return { from: period, to: period };
+  if (groupBy === 'week') {
+    const [year, week] = period.split('-W').map(Number);
+    const start = new Date(Date.UTC(year, 0, 4));
+    const mondayOffset = (start.getUTCDay() || 7) - 1;
+    start.setUTCDate(start.getUTCDate() - mondayOffset + (week - 1) * 7);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 6);
+    return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
+  }
+  const [year, month] = period.split('-').map(Number);
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
+  return { from: start.toISOString().slice(0, 10), to: end.toISOString().slice(0, 10) };
+}
+
 export default function AnalyticsView({ onOpenRequests }) {
   const {
     range,
@@ -35,21 +53,62 @@ export default function AnalyticsView({ onOpenRequests }) {
     clearToast
   } = useAdminAnalytics();
 
-  const [teamLeadersList, setTeamLeadersList] = useState([]);
-  const [allDomainsList, setAllDomainsList] = useState([]);
+  const [teamLeadersList, setTeamLeadersList] = useState(null);
+  const [allDomainsList, setAllDomainsList] = useState(null);
+  const [filterOptionsError, setFilterOptionsError] = useState('');
+  const [filterOptionsRetry, setFilterOptionsRetry] = useState(0);
+  const filtersLoading = teamLeadersList === null || allDomainsList === null;
 
   useEffect(() => {
-    getAllTeamLeaders()
-      .then((res) => {
-        if (res.teamLeaders) setTeamLeadersList(res.teamLeaders);
-      })
-      .catch(() => {});
-    fetchDomains({ range: 'all' })
-      .then((res) => setAllDomainsList(res.data?.domains || []))
-      .catch(() => {});
-  }, []);
+    let active = true;
+    Promise.allSettled([getAllTeamLeaders(), fetchDomains({ range: 'all' })]).then(([leadersResult, domainsResult]) => {
+      if (!active) return;
+      const failures = [];
+      if (leadersResult.status === 'fulfilled') setTeamLeadersList(leadersResult.value.teamLeaders || []);
+      else { setTeamLeadersList([]); failures.push('Team leaders could not be loaded.'); }
+      if (domainsResult.status === 'fulfilled') setAllDomainsList(domainsResult.value.data?.domains || []);
+      else { setAllDomainsList([]); failures.push('Domains could not be loaded.'); }
+      setFilterOptionsError(failures.join(' '));
+    });
+    return () => { active = false; };
+  }, [filterOptionsRetry]);
 
-  const domainsList = allDomainsList;
+  const domainsList = allDomainsList || [];
+  const dateError = range === 'custom' && (!from || !to)
+    ? 'Choose both a start and end date.'
+    : range === 'custom' && from > to
+      ? 'Start date must be on or before end date.'
+      : '';
+  const changeRange = (value) => {
+    if (value === 'custom' && (!from || !to)) {
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const monthAgo = new Date(today);
+      monthAgo.setUTCDate(monthAgo.getUTCDate() - 30);
+      setFrom(monthAgo.toISOString().slice(0, 10));
+      setTo(today.toISOString().slice(0, 10));
+    }
+    setRange(value);
+  };
+  const openRequestDrilldown = (extra = {}) => {
+    const drilldown = { ...extra };
+    const filters = {
+      range: range === 'custom' && from && to ? 'custom' : (range === 'custom' ? '6m' : range),
+      domain,
+      teamLeaderId: teamLeader,
+      groupBy
+    };
+    if (range === 'custom' && from && to) {
+      filters.from = from;
+      filters.to = to;
+    }
+    if (drilldown.period) {
+      Object.assign(filters, periodBounds(drilldown.period, groupBy), { range: 'custom' });
+      delete filters.groupBy;
+      delete drilldown.period;
+    }
+    onOpenRequests?.({ ...filters, ...drilldown });
+  };
 
   return (
     <div className="analytics-view-shell">
@@ -64,7 +123,7 @@ export default function AnalyticsView({ onOpenRequests }) {
       {/* Controls Bar */}
       <AnalyticsControls
         range={range}
-        setRange={setRange}
+        setRange={changeRange}
         from={from}
         setFrom={setFrom}
         to={to}
@@ -78,8 +137,25 @@ export default function AnalyticsView({ onOpenRequests }) {
         lastUpdated={lastUpdated}
         onRefresh={refetchAll}
         onExport={handleExport}
+        onClearFilters={() => {
+          setRange('6m');
+          setFrom('');
+          setTo('');
+          setDomain('');
+          setTeamLeader('');
+          setGroupBy('month');
+        }}
+        dateError={dateError}
+        filtersLoading={filtersLoading}
+        filterOptionsError={filterOptionsError}
+        onRetryFilterOptions={() => {
+          setFilterOptionsError('');
+          setTeamLeadersList(null);
+          setAllDomainsList(null);
+          setFilterOptionsRetry((value) => value + 1);
+        }}
         domainsList={domainsList}
-        teamLeadersList={teamLeadersList}
+        teamLeadersList={teamLeadersList || []}
       />
 
       {/* Top Row: KPI Cards */}
@@ -109,7 +185,7 @@ export default function AnalyticsView({ onOpenRequests }) {
         errorMap={errors}
         onRetry={fetchSingleWidget}
         onExport={handleExport}
-        onOpenRequests={onOpenRequests}
+        onOpenRequests={openRequestDrilldown}
         onSelectDomain={setDomain}
         onSelectTeamLeader={setTeamLeader}
       />
@@ -123,7 +199,7 @@ export default function AnalyticsView({ onOpenRequests }) {
         errorMap={errors}
         onRetry={fetchSingleWidget}
         onExport={handleExport}
-        onOpenRequests={onOpenRequests}
+        onOpenRequests={openRequestDrilldown}
       />
     </div>
   );

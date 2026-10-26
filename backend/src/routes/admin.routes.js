@@ -34,6 +34,9 @@ import { updateInternValidator, assignTeamLeaderValidator } from "../validators/
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
 import { getAuditLogs, exportAuditLogs } from "../controllers/audit.controller.js";
+import { getRequests as getAnalyticsRequests } from '../controllers/adminAnalytics.controller.js';
+import { analyticsQueryValidator } from '../validators/adminAnalytics.validator.js';
+import { adminReviewValidator, templateCreateValidator, templateUpdateValidator } from '../validators/workflow.validator.js';
 
 const adminRouter = express.Router();
 
@@ -58,6 +61,7 @@ adminRouter.post(
   "/templates",
   verifyAuth,
   requireAdmin,
+  templateCreateValidator,
   createCertificateTemplate
 );
 
@@ -65,6 +69,7 @@ adminRouter.patch(
   "/templates/:id",
   verifyAuth,
   requireAdmin,
+  templateUpdateValidator,
   updateCertificateTemplate
 );
 
@@ -92,8 +97,9 @@ adminRouter.patch("/teamleaders/:id", verifyAuth, requireAdmin, updateTeamLeader
 adminRouter.get("/teamleaders/:id/interns", verifyAuth, requireAdmin, getInternsByTeamLeader);
 
 adminRouter.get("/forwarded-requests", verifyAuth, requireAdmin, getForwardedRequests);
+adminRouter.get('/requests', verifyAuth, requireAdmin, analyticsQueryValidator, getAnalyticsRequests);
 
-adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRequest);
+adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, adminReviewValidator, finalizeRequest);
 
 // Day 3 Certificate Draft Review routes
 adminRouter.get("/certificates/:id", verifyAuth, requireAdmin, getCertificateDraft);

@@ -1,12 +1,16 @@
 import axios from 'axios';
+import { installApiInterceptors } from '../../shared/services/apiInterceptors';
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin)).replace(/\/+$/, '');
 
 const adminApi = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
   withCredentials: true,
 });
+installApiInterceptors(adminApi);
 
 const request = async (method, url, payload) => {
   try {

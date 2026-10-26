@@ -4,6 +4,7 @@ import { useIntern } from '../hooks/useIntern';
 import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
 import MyRequestsList from '../components/MyRequestsList';
+import SettingsPage from './SettingsPage';
 import NotificationBell from '../../shared/components/NotificationBell';
 import './InternDashboard.css';
 import '../../../app/App.css';
@@ -45,6 +46,7 @@ const calcDaysLeft = (end) => {
 const NAV_ITEMS = [
   { icon: '🏠', label: 'Dashboard', id: 'dashboard' },
   { icon: '📄', label: 'Certificates', id: 'certificates' },
+  { icon: '⚙️', label: 'Settings', id: 'settings' },
 ];
 
 /* ============================================================
@@ -128,13 +130,11 @@ export default function InternDashboard() {
       <main className="id-main">
         {/* Page header */}
         <header className="id-page-header">
-          <h1 className="id-greeting">
+          <h1 className="id-greeting">{activeNav === 'settings' ? 'Settings' : <>
             Hello,{' '}
             <em>{profile?.fullName ?? '…'}</em> 👋
-          </h1>
-          <p className="id-subtext">
-            Here's your internship overview for today.
-          </p>
+          </>}</h1>
+          <p className="id-subtext">{activeNav === 'settings' ? 'Manage your profile details and password.' : "Here's your internship overview for today."}</p>
         </header>
 
         {activeNav === 'dashboard' && archiveNotice && (
@@ -157,8 +157,12 @@ export default function InternDashboard() {
           </>
         )}
 
+        {activeNav === 'settings' && !loading && !error && profile && (
+          <SettingsPage profile={profile} onProfileUpdated={fetchProfile} />
+        )}
+
         {/* ── Loading state ── */}
-        {activeNav === 'dashboard' && loading && (
+        {(activeNav === 'dashboard' || activeNav === 'settings') && loading && (
           <div className="id-loading" role="status" aria-live="polite">
             <div className="id-spinner" aria-hidden="true" />
             <span>Loading your profile…</span>
@@ -166,7 +170,7 @@ export default function InternDashboard() {
         )}
 
         {/* ── Error state ── */}
-        {activeNav === 'dashboard' && !loading && error && (
+        {(activeNav === 'dashboard' || activeNav === 'settings') && !loading && error && (
           <div className="id-error" role="alert">
             <span className="id-error-icon">⚠️</span>
             <span>{error}</span>

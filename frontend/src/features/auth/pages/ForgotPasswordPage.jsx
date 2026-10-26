@@ -20,8 +20,8 @@ export default function ForgotPasswordPage() {
     try {
       const data = await forgotPassword(email.trim().toLowerCase());
       setMessage(data.message);
-    } catch {
-      setError(genericError);
+    } catch (requestError) {
+      setError(requestError.message || genericError);
     } finally {
       setLoading(false);
     }
@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
       <div className="form-side">
         <div className="auth-card">
           <h2>Forgot Password?</h2>
-          <p className="sub">Enter your staff account email and we will send a reset link.</p>
+          <p className="sub">Enter your account email and we will send a reset link if it is registered.</p>
 
           {message ? (
             <div className="auth-status success" role="status">{message}</div>

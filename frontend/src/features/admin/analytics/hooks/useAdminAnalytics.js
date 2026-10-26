@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   fetchOverview,
   fetchTrend,
@@ -13,14 +14,34 @@ import {
 } from '../services/analytics.service';
 
 export function useAdminAnalytics() {
-  const [range, setRange] = useState('6m');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [domain, setDomain] = useState('');
-  const [teamLeader, setTeamLeader] = useState('');
-  const [groupBy, setGroupBy] = useState('month');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [range, setRange] = useState(() => searchParams.get('range') || (searchParams.has('from') || searchParams.has('to') ? 'custom' : '6m'));
+  const [from, setFrom] = useState(() => searchParams.get('from') || '');
+  const [to, setTo] = useState(() => searchParams.get('to') || '');
+  const [domain, setDomain] = useState(() => searchParams.get('domain') || '');
+  const [teamLeader, setTeamLeader] = useState(() => searchParams.get('teamLeaderId') || '');
+  const [groupBy, setGroupBy] = useState(() => searchParams.get('groupBy') || 'month');
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [toastMessage, setToastMessage] = useState(null);
+  const requestSequence = useRef({});
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      const values = { range, from: range === 'custom' ? from : '', to: range === 'custom' ? to : '', domain, teamLeaderId: teamLeader, groupBy };
+      for (const [key, value] of Object.entries(values)) {
+        if (value) next.set(key, value);
+        else next.delete(key);
+      }
+      return next;
+    }, { replace: true });
+  }, [range, from, to, domain, teamLeader, groupBy, setSearchParams]);
 
   // Per-widget state storage
   const [widgets, setWidgets] = useState({
@@ -60,7 +81,7 @@ export function useAdminAnalytics() {
   });
 
   const getParams = useCallback(() => {
-    const params = { range: range === 'custom' && (!from || !to) ? '6m' : range, domain, teamLeader, groupBy };
+    const params = { range: range === 'custom' && (!from || !to) ? '6m' : range, domain, teamLeaderId: teamLeader, groupBy };
     if (range === 'custom') {
       if (from) params.from = from;
       if (to) params.to = to;
@@ -70,6 +91,8 @@ export function useAdminAnalytics() {
 
   const fetchSingleWidget = useCallback(
     async (key) => {
+      const requestId = (requestSequence.current[key] || 0) + 1;
+      requestSequence.current[key] = requestId;
       setLoading((prev) => ({ ...prev, [key]: true }));
       setErrors((prev) => ({ ...prev, [key]: null }));
       try {
@@ -107,11 +130,17 @@ export function useAdminAnalytics() {
             return;
         }
 
-        setWidgets((prev) => ({ ...prev, [key]: res.data }));
+        if (mounted.current && requestSequence.current[key] === requestId) {
+          setWidgets((prev) => ({ ...prev, [key]: res.data }));
+        }
       } catch (err) {
-        setErrors((prev) => ({ ...prev, [key]: err.message || 'Failed to load widget' }));
+        if (mounted.current && requestSequence.current[key] === requestId) {
+          setErrors((prev) => ({ ...prev, [key]: err.message || 'Failed to load widget' }));
+        }
       } finally {
-        setLoading((prev) => ({ ...prev, [key]: false }));
+        if (mounted.current && requestSequence.current[key] === requestId) {
+          setLoading((prev) => ({ ...prev, [key]: false }));
+        }
       }
     },
     [getParams, groupBy]
@@ -129,7 +158,7 @@ export function useAdminAnalytics() {
       fetchSingleWidget('upcoming'),
       fetchSingleWidget('stuck')
     ]);
-    setLastUpdated(new Date());
+    if (mounted.current) setLastUpdated(new Date());
   }, [fetchSingleWidget]);
 
   useEffect(() => {

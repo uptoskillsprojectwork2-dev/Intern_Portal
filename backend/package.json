@@ -5,9 +5,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js",
+    "test": "node --test tests/*.test.js && node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "seed:templates": "node seeds/seedTemplates.js",
     "backfill:certificate-verification-ids": "node scripts/backfillCertificateVerificationIds.js",
+    "backfill:team-leader-id": "node scripts/backfillTeamLeaderId.js",
     "backup:certificates": "node scripts/backupCertificates.js",
     "dev": "npx nodemon server.js"
   },
@@ -23,6 +24,7 @@
     "express": "^5.2.1",
     "express-validator": "^7.3.2",
     "handlebars": "^4.7.9",
+    "helmet": "^8.3.0",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.2",
@@ -31,5 +33,10 @@
     "puppeteer": "^25.10.0",
     "qrcode": "^1.5.4",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "jest": "^30.5.2",
+    "mongodb-memory-server": "^11.3.0",
+    "supertest": "^7.3.1"
   }
 }

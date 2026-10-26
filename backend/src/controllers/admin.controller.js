@@ -21,6 +21,7 @@ import {
 import { logAudit } from '../utils/auditLogger.js';
 import { createNotification } from '../utils/notificationService.js';
 import { invalidateAnalyticsCache } from '../utils/redisCache.js';
+import { authCookieOptions } from '../utils/authCookie.js';
 
 dotenv.config();
 
@@ -72,6 +73,7 @@ export async function createIntern(req, res) {
             password: internCode,
             internshipDetails: {
                 teamLeader: tl?._id,
+                teamLeaderId: tl?._id,
                 teamleaderEmail: tl?.email?.toLowerCase(),
                 status: 'upcoming',
                 createdBy: req.user.id
@@ -79,6 +81,7 @@ export async function createIntern(req, res) {
         });
 
         await logAudit({ userId: req.user.id, action: 'INTERN_CREATED', entityType: 'User', entityId: user._id, meta: { role: user.role }, req });
+        await invalidateAnalyticsCache();
 
 
         res.status(200).json({
@@ -127,13 +130,14 @@ export async function createTeamLeader(req, res) {
         });
 
         await logAudit({ userId: req.user.id, action: 'TEAM_LEADER_CREATED', entityType: 'User', entityId: user._id, meta: { role: user.role }, req });
+        await invalidateAnalyticsCache();
 
         const token = jwt.sign({
             id: user._id,
             email: email
         }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-        res.cookie("token", token);
+        res.cookie("token", token, authCookieOptions());
 
         res.status(201).json({
             message: "Team leader created successfully",
@@ -180,6 +184,7 @@ export async function getAllInterns(req, res) {
         if (req.query.teamLeaderId) {
             if (mongoose.Types.ObjectId.isValid(req.query.teamLeaderId)) {
                 filter.$or = [
+                    { 'internshipDetails.teamLeaderId': req.query.teamLeaderId },
                     { 'internshipDetails.teamLeader': req.query.teamLeaderId },
                     { 'internshipDetails.teamleaderEmail': req.query.teamLeaderId.toLowerCase() }
                 ];
@@ -295,6 +300,7 @@ export async function updateIntern(req, res) {
         if (status !== undefined) { changes.status = { from: intern.internshipDetails.status, to: status }; intern.internshipDetails.status = status; }
 
         await intern.save();
+        await invalidateAnalyticsCache();
 
         await logAudit({
             userId: req.user.id,
@@ -349,8 +355,10 @@ export async function assignInternTeamLeader(req, res) {
         const prevTlEmail = intern.internshipDetails.teamleaderEmail;
 
         intern.internshipDetails.teamLeader = tl._id;
+        intern.internshipDetails.teamLeaderId = tl._id;
         intern.internshipDetails.teamleaderEmail = tl.email.toLowerCase();
         await intern.save();
+        await invalidateAnalyticsCache();
 
         await logAudit({
             userId: req.user.id,
@@ -483,6 +491,7 @@ export async function updateTeamLeader(req, res) {
         if (endDate !== undefined) { changes.endDate = { from: teamLeader.endDate, to: endDate }; teamLeader.endDate = endDate; }
 
         await teamLeader.save();
+        await invalidateAnalyticsCache();
 
         await logAudit({
             userId: req.user.id,
@@ -522,6 +531,7 @@ export async function getInternsByTeamLeader(req, res) {
             role: 'intern',
             isArchived: { $ne: true },
             $or: [
+                { 'internshipDetails.teamLeaderId': teamLeader._id },
                 { 'internshipDetails.teamLeader': teamLeader._id },
                 { 'internshipDetails.teamleaderEmail': teamLeader.email.toLowerCase() }
             ]
@@ -584,10 +594,12 @@ export const finalizeRequest = async (req, res) => {
     if (action === 'reject') request.rejectionReason = rejectionReason;
 
     await request.save();
+    await invalidateAnalyticsCache();
 
     let certificate = null;
     if (action === 'approve') {
       certificate = await createCertificateDraft(request._id);
+      await invalidateAnalyticsCache();
       await logAudit({ userId: req.user.id, action: 'CERTIFICATE_DRAFT_CREATED', entityType: 'Certificate', entityId: certificate._id, meta: { requestId: request._id, certificateType: request.certificateType }, req });
     }
 
@@ -600,8 +612,6 @@ export const finalizeRequest = async (req, res) => {
         : `Your certificate request was declined.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`,
       type: 'certificate',
     });
-
-    await invalidateAnalyticsCache();
 
     res.json({ request, certificate });
   } catch (err) {
@@ -736,6 +746,7 @@ export const revokeCertificate = async (req, res) => {
         type: 'certificate',
       }),
     ]);
+    await invalidateAnalyticsCache();
 
     return res.status(200).json({ message: 'Certificate revoked.', certificate });
   } catch (error) {
@@ -757,6 +768,7 @@ export const unrevokeCertificate = async (req, res) => {
       if (!existing) return res.status(404).json({ message: 'Certificate not found.' });
       return res.status(409).json({ message: 'Only revoked certificates can be reinstated.' });
     }
+    await invalidateAnalyticsCache();
     await logAudit({ userId: req.user.id, action: 'CERTIFICATE_UNREVOKED', entityType: 'Certificate', entityId: certificate._id, meta: { restoredStatus: certificate.status }, req });
     return res.json({ message: 'Certificate reinstated.', certificate });
   } catch (error) {
@@ -1265,6 +1277,7 @@ export const restoreArchivedIntern = async (req, res) => {
     intern.archiveWarningSentAt = null;
     intern.archiveRestoredAt = new Date();
     await intern.save();
+    await invalidateAnalyticsCache();
     console.log(`[retention] admin ${req.user.id} restored intern ${intern._id}`);
 
     await Promise.all([

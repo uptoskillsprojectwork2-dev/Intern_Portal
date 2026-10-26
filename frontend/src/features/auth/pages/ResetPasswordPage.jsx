@@ -15,8 +15,8 @@ export default function ResetPasswordPage() {
     event.preventDefault();
     setError('');
 
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters long');
+    if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      setError('Password must be at least 8 characters and contain a letter and a number');
       return;
     }
 
@@ -54,7 +54,7 @@ export default function ResetPasswordPage() {
       <div className="form-side">
         <div className="auth-card">
           <h2>Reset Password</h2>
-          <p className="sub">Create a new password for your staff account.</p>
+          <p className="sub">Create a new password for your account.</p>
 
           {success ? (
             <>
@@ -71,7 +71,7 @@ export default function ResetPasswordPage() {
                     type="password"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
-                    placeholder="At least 8 characters"
+                    placeholder="8+ characters, with a letter and number"
                     required
                   />
                 </div>

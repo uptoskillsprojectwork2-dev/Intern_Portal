@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+node_modules/
+backend/uploads/
+frontend/dist/
+
+# Local audit exports and temporary browser profiles
+backend/data/users_export_readonly.csv
+backend/users_export_readonly.csv
+backend/team-leader-search.txt
+.tmp-audit-chrome-profile/
+.tmp-debug-profile/
+.tmp-part-e-browser-profile/
