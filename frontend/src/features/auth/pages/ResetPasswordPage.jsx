@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { resetPassword as resetPasswordRequest } from '../services/auth.service';
+import { formatRateLimitError } from '../../../shared/utils/formatRateLimitError';
 import '../../../app/App.css';
 
 export default function ResetPasswordPage() {
@@ -20,6 +21,11 @@ export default function ResetPasswordPage() {
       return;
     }
 
+    if (!/[a-zA-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      setError('Password must contain at least one letter and one number');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -31,7 +37,8 @@ export default function ResetPasswordPage() {
       const data = await resetPasswordRequest(token, newPassword);
       setSuccess(data.message);
     } catch (requestError) {
-      setError(requestError.message || 'Something went wrong, please try again');
+      const friendlyMsg = formatRateLimitError(requestError, requestError.message || 'Something went wrong, please try again');
+      setError(friendlyMsg);
     } finally {
       setLoading(false);
     }
@@ -41,7 +48,7 @@ export default function ResetPasswordPage() {
     <div className="auth-page">
       <div className="brand-panel">
         <div className="brand">
-          <span className="brand-icon">🚀</span>
+          <span className="brand-icon">🎓</span>
           <strong>uptoskills</strong>
         </div>
         <div className="brand-content">
@@ -54,7 +61,7 @@ export default function ResetPasswordPage() {
       <div className="form-side">
         <div className="auth-card">
           <h2>Reset Password</h2>
-          <p className="sub">Create a new password for your staff account.</p>
+          <p className="sub">Create a new password for your account.</p>
 
           {success ? (
             <>
@@ -62,39 +69,44 @@ export default function ResetPasswordPage() {
               <Link className="primary auth-button-link" to="/login">Go to Login</Link>
             </>
           ) : (
-            <form onSubmit={submit} noValidate>
-              <label className="field">
+            <form onSubmit={submit} noValidate aria-label="Reset password form">
+              <label className="field" htmlFor="reset-new-password">
                 <b>New Password</b>
                 <div className="input-wrap">
-                  <span className="input-icon">🔒</span>
+                  <span className="input-icon" aria-hidden="true">🔒</span>
                   <input
+                    id="reset-new-password"
                     type="password"
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
                     placeholder="At least 8 characters"
                     required
+                    aria-required="true"
+                    aria-describedby={error ? "reset-password-error" : undefined}
                   />
                 </div>
               </label>
 
-              <label className="field">
+              <label className="field" htmlFor="reset-confirm-password">
                 <b>Confirm Password</b>
                 <div className="input-wrap">
-                  <span className="input-icon">🔒</span>
+                  <span className="input-icon" aria-hidden="true">🔒</span>
                   <input
+                    id="reset-confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
                     placeholder="Enter your password again"
                     required
+                    aria-required="true"
                   />
                 </div>
               </label>
 
-              {error && <div className="auth-status error" role="alert">{error}</div>}
+              {error && <div className="auth-status error" id="reset-password-error" role="alert">{error}</div>}
 
               <button type="submit" className="primary" disabled={loading}>
-                {loading ? <span className="spinner"></span> : 'Reset Password'}
+                {loading ? <span className="spinner" aria-hidden="true"></span> : 'Reset Password'}
               </button>
             </form>
           )}

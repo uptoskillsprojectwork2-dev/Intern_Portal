@@ -669,3 +669,84 @@
     color: var(--muted);
     line-height: 1.5;
 }
+
+/* Inline Mobile Editing on Profile Card */
+.id-mobile-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.id-inline-edit-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.id-inline-edit-btn:hover {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+}
+
+.id-inline-mobile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.id-inline-mobile-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.id-inline-mobile-input-wrap input {
+    width: 120px;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.id-inline-mobile-input-wrap input:focus {
+    border-color: var(--accent);
+}
+
+.id-inline-mobile-input-wrap input.has-error {
+    border-color: var(--error);
+}
+
+.id-inline-btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+.id-inline-btn.save {
+    background: var(--success);
+    color: #064e3b;
+}
+
+.id-inline-btn.cancel {
+    background: var(--line);
+    color: var(--text);
+}
+
+.id-inline-error {
+    font-size: 0.75rem;
+    color: var(--error);
+}
+

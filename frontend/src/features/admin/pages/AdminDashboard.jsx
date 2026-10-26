@@ -16,18 +16,20 @@ import AnalyticsView from '../analytics/pages/AnalyticsView';
 
 import './AdminDashboard.css';
 
-const AdminDashboard = () => {
+const AdminDashboard = ({ initialView = 'overview' }) => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activeView, setActiveView] = useState(() => searchParams.get('view') || 'overview');
+  const [activeView, setActiveView] = useState(() => searchParams.get('view') || initialView);
 
   useEffect(() => {
     const viewParam = searchParams.get('view');
     if (viewParam) {
       setActiveView(viewParam);
+    } else if (initialView) {
+      setActiveView(initialView);
     }
-  }, [searchParams]);
+  }, [searchParams, initialView]);
 
   const initials = (user?.fullName || 'Admin')
     .split(' ')

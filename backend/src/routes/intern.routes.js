@@ -4,10 +4,16 @@ import verifyAuth from '../middlewares/verifyAuth.js';
 import {
   getMyRequests,
   getProfile,
+  setPassword,
+  updateProfile,
   submitCertificateRequest,
   getCertificateForRequest,
   downloadCertificateForRequest
 } from '../controllers/intern.controller.js';
+import {
+  setPasswordValidator,
+  updateProfileValidator
+} from '../validators/intern.validator.js';
 
 const internRouter = express.Router();
 
@@ -31,9 +37,14 @@ internRouter.use(async (req, res, next) => {
 	}
 });
 
-internRouter.get('/profile', getProfile);
+import { submitCertificateRequestValidator } from '../validators/portal.validator.js';
+import { resetPasswordRateLimiter } from '../middlewares/rateLimiters.js';
 
-internRouter.post('/request-certificate', submitCertificateRequest);
+internRouter.get('/profile', getProfile);
+internRouter.patch('/profile', updateProfileValidator, updateProfile);
+internRouter.patch('/set-password', resetPasswordRateLimiter, setPasswordValidator, setPassword);
+
+internRouter.post('/request-certificate', submitCertificateRequestValidator, submitCertificateRequest);
 
 internRouter.get('/requests', getMyRequests);
 

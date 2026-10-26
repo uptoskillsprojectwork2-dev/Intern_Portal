@@ -5,6 +5,8 @@ import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
 import MyRequestsList from '../components/MyRequestsList';
 import NotificationBell from '../../../shared/components/NotificationBell';
+import { updateProfile } from '../services/intern.service';
+import Toast from '../../../shared/components/Toast';
 import './InternDashboard.css';
 import '../../../app/App.css';
 
@@ -45,18 +47,32 @@ const calcDaysLeft = (end) => {
 const NAV_ITEMS = [
   { icon: '🏠', label: 'Dashboard', id: 'dashboard' },
   { icon: '📄', label: 'Certificates', id: 'certificates' },
+  { icon: '⚙️', label: 'Settings', id: 'settings' },
 ];
 
 /* ============================================================
    InternDashboard
    ============================================================ */
 export default function InternDashboard() {
-  const { profile, archiveNotice, loading, error, fetchProfile } = useIntern();
+  const { profile, setProfile, archiveNotice, loading, error, fetchProfile } = useIntern();
   const { handleLogout } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeNav, setActiveNav] = useState(() => searchParams.get('view') || 'dashboard');
   const [showCertificateModal, setShowCertificateModal] = useState(false);
+
+  // Mobile editing on profile card
+  const [isEditingMobile, setIsEditingMobile] = useState(false);
+  const [mobileVal, setMobileVal] = useState('');
+  const [mobileErr, setMobileErr] = useState('');
+  const [mobileSaving, setMobileSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (profile?.mobileNo) {
+      setMobileVal(profile.mobileNo);
+    }
+  }, [profile?.mobileNo]);
 
   useEffect(() => {
     const viewParam = searchParams.get('view');
@@ -64,6 +80,14 @@ export default function InternDashboard() {
       setActiveNav(viewParam);
     }
   }, [searchParams]);
+
+  const handleNavClick = (id) => {
+    if (id === 'settings') {
+      navigate('/intern/settings');
+    } else {
+      setActiveNav(id);
+    }
+  };
 
   const onLogout = () => {
     handleLogout();
@@ -117,7 +141,7 @@ export default function InternDashboard() {
               key={item.id}
               id={`sidebar-nav-${item.id}`}
               className={`id-nav-item ${activeNav === item.id ? 'active' : ''}`}
-              onClick={() => setActiveNav(item.id)}
+              onClick={() => handleNavClick(item.id)}
             >
               <span className="id-nav-icon">{item.icon}</span>
               {item.label}
@@ -128,6 +152,14 @@ export default function InternDashboard() {
 
       {/* ─── Main Content ─── */}
       <main className="id-main">
+        {toast && (
+          <Toast
+            type={toast.type}
+            message={toast.message}
+            onClose={() => setToast(null)}
+          />
+        )}
+
         {/* Page header */}
         <header className="id-page-header">
           <h1 className="id-greeting">
@@ -213,9 +245,106 @@ export default function InternDashboard() {
 
               {/* Detail grid */}
               <div className="id-detail-grid">
-                <div className="id-detail-item">
+                <div className="id-detail-item id-detail-mobile">
                   <div className="id-detail-label">📱 Mobile</div>
-                  <div className="id-detail-value">{profile.mobileNo}</div>
+                  {!isEditingMobile ? (
+                    <div className="id-mobile-display">
+                      <span className="id-detail-value">{profile.mobileNo || '—'}</span>
+                      <button
+                        type="button"
+                        id="profile-edit-mobile-btn"
+                        className="id-inline-edit-btn"
+                        onClick={() => {
+                          setMobileVal(profile.mobileNo || '');
+                          setIsEditingMobile(true);
+                          setMobileErr('');
+                        }}
+                        aria-label="Edit mobile number"
+                      >
+                        ✏️ Edit
+                      </button>
+                    </div>
+                  ) : (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const clean = mobileVal.trim();
+                        if (!clean) {
+                          setMobileErr('Mobile number is required.');
+                          return;
+                        }
+                        if (!/^\d{10}$/.test(clean)) {
+                          setMobileErr('Mobile number must be exactly 10 digits.');
+                          return;
+                        }
+                        setMobileSaving(true);
+                        try {
+                          const res = await updateProfile({ mobileNo: clean });
+                          setToast({ type: 'success', message: 'Mobile number updated successfully!' });
+                          setIsEditingMobile(false);
+                          setMobileErr('');
+                          if (setProfile) {
+                            setProfile((prev) => ({
+                              ...prev,
+                              mobileNo: res.user?.mobileNo || clean,
+                            }));
+                          }
+                        } catch (err) {
+                          const msg =
+                            err.response?.data?.errors?.[0]?.msg ||
+                            err.response?.data?.message ||
+                            'Failed to update mobile number.';
+                          setToast({ type: 'error', message: msg });
+                        } finally {
+                          setMobileSaving(false);
+                        }
+                      }}
+                      className="id-inline-mobile-form"
+                      noValidate
+                    >
+                      <div className="id-inline-mobile-input-wrap">
+                        <input
+                          id="profile-mobile-input"
+                          type="tel"
+                          value={mobileVal}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                            setMobileVal(val);
+                            if (mobileErr && /^\d{10}$/.test(val)) setMobileErr('');
+                          }}
+                          placeholder="10 digits"
+                          maxLength={10}
+                          autoFocus
+                          className={mobileErr ? 'has-error' : ''}
+                          aria-invalid={Boolean(mobileErr)}
+                        />
+                        <button
+                          type="submit"
+                          id="profile-save-mobile-btn"
+                          className="id-inline-btn save"
+                          disabled={mobileSaving}
+                        >
+                          {mobileSaving ? '…' : 'Save'}
+                        </button>
+                        <button
+                          type="button"
+                          id="profile-cancel-mobile-btn"
+                          className="id-inline-btn cancel"
+                          onClick={() => {
+                            setIsEditingMobile(false);
+                            setMobileVal(profile.mobileNo || '');
+                            setMobileErr('');
+                          }}
+                          disabled={mobileSaving}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      {mobileErr && (
+                        <span className="id-inline-error" role="alert">{mobileErr}</span>
+                      )}
+                    </form>
+                  )}
                 </div>
 
                 <div className="id-detail-item">

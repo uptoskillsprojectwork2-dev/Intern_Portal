@@ -9,13 +9,14 @@ dotenv.config({
 
 export const sendEmail = async ({ to, subject, html, attachments }) => {
     const { BREVO_SMTP_USER, BREVO_SMTP_KEY, BREVO_SENDER_EMAIL } = process.env;
+    const sender = BREVO_SENDER_EMAIL || BREVO_SMTP_USER;
 
-    if (!BREVO_SMTP_USER || !BREVO_SMTP_KEY) {
-        throw new Error("BREVO_SMTP_USER and BREVO_SMTP_KEY must be configured");
-    }
-
-    if (!BREVO_SENDER_EMAIL) {
-        throw new Error("BREVO_SENDER_EMAIL must be configured with a verified Brevo sender");
+    if (!BREVO_SMTP_USER || !BREVO_SMTP_KEY || !sender) {
+        console.warn("[sendEmail] Brevo SMTP credentials not configured in .env. Logging email to console:");
+        console.log(`[sendEmail] TO: ${to}`);
+        console.log(`[sendEmail] SUBJECT: ${subject}`);
+        console.log(`[sendEmail] HTML: ${html}`);
+        return { messageId: "mock-dev-email-" + Date.now() };
     }
 
     const transporter = nodemailer.createTransport({
@@ -28,7 +29,7 @@ export const sendEmail = async ({ to, subject, html, attachments }) => {
     });
 
     const mailOptions = {
-        from: `"UPTOSKILL" <${BREVO_SENDER_EMAIL}>`,
+        from: `"UPTOSKILL" <${sender}>`,
         to,
         subject,
         html

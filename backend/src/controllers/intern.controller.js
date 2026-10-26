@@ -3,13 +3,14 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.model.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
 import { logAction } from '../utils/logAction.js';
-import { REQUEST_SUBMITTED } from '../utils/auditActions.js';
+import { REQUEST_SUBMITTED, PASSWORD_CHANGED, PROFILE_UPDATED } from '../utils/auditActions.js';
 import { notify, REQUEST_SUBMITTED as NOTIF_REQUEST_SUBMITTED } from '../services/notification.service.js';
 
 const ALLOWED_TYPES = [
@@ -231,6 +232,113 @@ export const getProfile = async (req, res) => {
     });
   }
 };
+
+/**
+ * Sets or updates intern password.
+ * If no password exists yet, currentSecret must match internCode.
+ * If password exists, currentSecret must match current password.
+ */
+export const setPassword = async (req, res) => {
+  try {
+    const { currentSecret, newPassword } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const hasPassword = Boolean(user.password && user.passwordSetAt);
+
+    if (hasPassword) {
+      const isMatch = await user.comparePassword(currentSecret);
+      if (!isMatch) {
+        return res.status(400).json({
+          message: 'Current password is incorrect',
+          errors: [{ msg: 'Current password is incorrect', path: 'currentSecret' }]
+        });
+      }
+    } else {
+      if (!user.internCode || currentSecret !== user.internCode) {
+        return res.status(400).json({
+          message: 'Current secret must match your intern code',
+          errors: [{ msg: 'Current secret must match your intern code', path: 'currentSecret' }]
+        });
+      }
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordSetAt = new Date();
+    await user.save();
+
+    logAction({
+      req,
+      actor: { id: user._id, role: user.role },
+      action: PASSWORD_CHANGED,
+      targetType: 'User',
+      targetId: user._id
+    });
+
+    return res.status(200).json({
+      message: 'Password updated successfully',
+      passwordSetAt: user.passwordSetAt
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
+  }
+};
+
+/**
+ * Whitelisted profile update. ONLY mobileNo is editable.
+ * Ignores any other field passed in body (e.g. role, email, internCode).
+ */
+export const updateProfile = async (req, res) => {
+  try {
+    const { mobileNo } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.mobileNo = String(mobileNo).trim();
+    await user.save();
+
+    logAction({
+      req,
+      actor: { id: user._id, role: user.role },
+      action: PROFILE_UPDATED,
+      targetType: 'User',
+      targetId: user._id,
+      meta: { updatedFields: ['mobileNo'] }
+    });
+
+    return res.status(200).json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        mobileNo: user.mobileNo,
+        internCode: user.internCode,
+        domain: user.domain,
+        startDate: user.startDate,
+        endDate: user.endDate,
+        role: user.role,
+        passwordSetAt: user.passwordSetAt,
+        internshipDetails: user.internshipDetails
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: 'Server error',
+      error: err.message
+    });
+  }
+};
+
 
 /**
  * Fetches finalized certificate metadata for a specific request owned by

@@ -1,5 +1,11 @@
 import express from 'express';
-import { registerValidator, teamLeaderValidator } from "../validators/auth.validator.js";
+import {
+  createInternValidator,
+  createTLValidator,
+  templateCreateValidator,
+  templateUpdateValidator,
+  finalizeRequestAdminValidator
+} from "../validators/portal.validator.js";
 import {
   createIntern,
   createTeamLeader,
@@ -34,8 +40,13 @@ import { updateInternValidator, assignTeamLeaderValidator } from "../validators/
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
 import { getAuditLogs, exportAuditLogs } from "../controllers/auditLog.controller.js";
+import { getRequests } from "../controllers/adminAnalytics.controller.js";
+import { analyticsRequestsValidator } from "../validators/adminAnalytics.validator.js";
 
 const adminRouter = express.Router();
+
+// Filtered request list for analytics chart segment clicks
+adminRouter.get("/requests", verifyAuth, requireAdmin, analyticsRequestsValidator, getRequests);
 
 adminRouter.get(
   "/templates",
@@ -55,6 +66,7 @@ adminRouter.post(
   "/templates",
   verifyAuth,
   requireAdmin,
+  templateCreateValidator,
   createCertificateTemplate
 );
 
@@ -62,6 +74,7 @@ adminRouter.patch(
   "/templates/:id",
   verifyAuth,
   requireAdmin,
+  templateUpdateValidator,
   updateCertificateTemplate
 );
 
@@ -71,10 +84,10 @@ adminRouter.get('/interns/archived', verifyAuth, requireAdmin, getArchivedIntern
 adminRouter.patch('/interns/:id/restore', verifyAuth, requireAdmin, restoreArchivedIntern);
 
 // POST api/auth/register-intern
-adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);
+adminRouter.post("/create-intern", verifyAuth, requireAdmin, createInternValidator, createIntern);
 
 // POST api/auth/register-tl
-adminRouter.post("/create-tl", verifyAuth, requireAdmin, teamLeaderValidator, createTeamLeader);
+adminRouter.post("/create-tl", verifyAuth, requireAdmin, createTLValidator, createTeamLeader);
 
 // Intern Management routes
 adminRouter.get("/interns", verifyAuth, requireAdmin, getAllInterns);
@@ -90,7 +103,7 @@ adminRouter.get("/teamleaders/:id/interns", verifyAuth, requireAdmin, getInterns
 
 adminRouter.get("/forwarded-requests", verifyAuth, requireAdmin, getForwardedRequests);
 
-adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRequest);
+adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRequestAdminValidator, finalizeRequest);
 
 // Day 3 Certificate Draft Review routes
 adminRouter.get("/certificates/:id", verifyAuth, requireAdmin, getCertificateDraft);

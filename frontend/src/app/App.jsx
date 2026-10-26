@@ -5,11 +5,13 @@ import Login from '../features/auth/pages/Login';
 import ForgotPasswordPage from '../features/auth/pages/ForgotPasswordPage';
 import ResetPasswordPage from '../features/auth/pages/ResetPasswordPage';
 import VerifyPage from '../features/public/pages/VerifyPage';
+import AccessDeniedPage from '../shared/pages/AccessDeniedPage';
 
 import ProtectedRoute from '../features/shared/components/ProtectedRoute';
 import ThemeToggle from '../features/shared/components/ThemeToggle';
 
 import InternDashboard from '../features/intern/pages/InternDashboard';
+import SettingsPage from '../features/intern/pages/SettingsPage';
 import TLDashboard from '../features/teamleader/pages/TLDashboard';
 
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
@@ -67,6 +69,11 @@ export default function App() {
           element={<ResetPasswordPage />}
         />
 
+        <Route
+          path="/access-denied"
+          element={<AccessDeniedPage />}
+        />
+
         {/* =========================
             INTERN ROUTES
         ========================== */}
@@ -79,6 +86,10 @@ export default function App() {
           <Route
             path="/intern/dashboard"
             element={<InternDashboard />}
+          />
+          <Route
+            path="/intern/settings"
+            element={<SettingsPage />}
           />
         </Route>
 
@@ -109,6 +120,11 @@ export default function App() {
           <Route
             path="/admin/dashboard"
             element={<AdminDashboard />}
+          />
+
+          <Route
+            path="/admin/analytics"
+            element={<AdminDashboard initialView="analytics" />}
           />
 
           <Route

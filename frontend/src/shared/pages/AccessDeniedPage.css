@@ -1,0 +1,104 @@
+.access-denied-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-main, #0f172a);
+  color: var(--text-main, #f8fafc);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.access-denied-card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  background: var(--card-bg, #1e293b);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 16px;
+  padding: 40px 32px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+}
+
+.access-denied-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  margin-bottom: 20px;
+}
+
+.access-denied-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+  color: #ef4444;
+}
+
+.access-denied-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: var(--text-main, #f8fafc);
+}
+
+.access-denied-desc {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-muted, #94a3b8);
+  margin: 0 0 32px;
+}
+
+.access-denied-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background: #3b82f6;
+  color: #ffffff;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, transform 0.1s;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  background: #2563eb;
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus-visible {
+  color: var(--text-main, #f8fafc);
+  border-color: #64748b;
+  outline: 2px solid #94a3b8;
+  outline-offset: 2px;
+}

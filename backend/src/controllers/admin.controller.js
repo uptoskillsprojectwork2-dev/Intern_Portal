@@ -87,9 +87,9 @@ export async function createIntern(req, res) {
             startDate,
             endDate,
             role: "intern",
-            password: internCode,
             internshipDetails: {
                 teamLeader: tl?._id,
+                teamLeaderId: tl?._id,
                 teamleaderEmail: tl?.email?.toLowerCase(),
                 status: 'upcoming',
                 createdBy: req.user.id
@@ -149,7 +149,12 @@ export async function createTeamLeader(req, res) {
             email: email
         }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-        res.cookie("token", token);
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? (process.env.COOKIE_SAME_SITE || 'none') : 'lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
 
         logAction({ req, actor: { id: req.user.id, role: 'admin' }, action: USER_CREATED, targetType: 'User', targetId: user._id, meta: { role: 'teamleader', email: user.email, fullName } });
 
@@ -198,6 +203,7 @@ export async function getAllInterns(req, res) {
         if (req.query.teamLeaderId) {
             if (mongoose.Types.ObjectId.isValid(req.query.teamLeaderId)) {
                 filter.$or = [
+                    { 'internshipDetails.teamLeaderId': req.query.teamLeaderId },
                     { 'internshipDetails.teamLeader': req.query.teamLeaderId },
                     { 'internshipDetails.teamleaderEmail': req.query.teamLeaderId.toLowerCase() }
                 ];
@@ -452,6 +458,7 @@ export async function getTeamLeaderById(req, res) {
         const assignedInterns = await User.find({
             role: 'intern',
             $or: [
+                { 'internshipDetails.teamLeaderId': teamLeader._id },
                 { 'internshipDetails.teamLeader': teamLeader._id },
                 { 'internshipDetails.teamleaderEmail': teamLeader.email.toLowerCase() }
             ]
@@ -540,6 +547,7 @@ export async function getInternsByTeamLeader(req, res) {
             role: 'intern',
             isArchived: { $ne: true },
             $or: [
+                { 'internshipDetails.teamLeaderId': teamLeader._id },
                 { 'internshipDetails.teamLeader': teamLeader._id },
                 { 'internshipDetails.teamleaderEmail': teamLeader.email.toLowerCase() }
             ]

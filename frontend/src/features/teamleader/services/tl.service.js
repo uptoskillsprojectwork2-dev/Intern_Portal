@@ -1,10 +1,13 @@
 import axios from 'axios';
+import { attachCentralInterceptor } from '../../../shared/services/axiosSetup';
 
-const tlApi = axios.create({
-  baseURL: 'http://localhost:3000/api/teamleader',
-  headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
-});
+const tlApi = attachCentralInterceptor(
+  axios.create({
+    baseURL: 'http://localhost:3000/api/teamleader',
+    headers: { 'Content-Type': 'application/json' },
+    withCredentials: true,
+  })
+);
 
 export const getRequestsForReview = async () => {
   const response = await tlApi.get('/requests-for-review');

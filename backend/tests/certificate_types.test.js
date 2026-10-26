@@ -371,7 +371,9 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     const origCertCreate = Certificate.create;
     const origCertCount = Certificate.countDocuments;
     const origCertExists = Certificate.exists;
+    const origCounterFindOneAndUpdate = Counter.findOneAndUpdate;
 
+    Counter.findOneAndUpdate = () => Promise.resolve({ seq: 1 });
     Certificate.countDocuments = () => Promise.resolve(0);
     Certificate.exists = () => Promise.resolve(false);
 
@@ -423,6 +425,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
       Certificate.create = origCertCreate;
       Certificate.countDocuments = origCertCount;
       Certificate.exists = origCertExists;
+      Counter.findOneAndUpdate = origCounterFindOneAndUpdate;
     }
   });
 
@@ -435,7 +438,9 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     const origCertCreate = Certificate.create;
     const origCertCount = Certificate.countDocuments;
     const origCertExists = Certificate.exists;
+    const origCounterFindOneAndUpdate = Counter.findOneAndUpdate;
 
+    Counter.findOneAndUpdate = () => Promise.resolve({ seq: 1 });
     Certificate.countDocuments = () => Promise.resolve(0);
     Certificate.exists = () => Promise.resolve(false);
 
@@ -487,6 +492,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
       Certificate.create = origCertCreate;
       Certificate.countDocuments = origCertCount;
       Certificate.exists = origCertExists;
+      Counter.findOneAndUpdate = origCounterFindOneAndUpdate;
     }
   });
 
@@ -499,7 +505,9 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
     const origCertCreate = Certificate.create;
     const origCertCount = Certificate.countDocuments;
     const origCertExists = Certificate.exists;
+    const origCounterFindOneAndUpdate = Counter.findOneAndUpdate;
 
+    Counter.findOneAndUpdate = () => Promise.resolve({ seq: 1 });
     Certificate.countDocuments = () => Promise.resolve(0);
     Certificate.exists = () => Promise.resolve(false);
 
@@ -541,6 +549,7 @@ test('Comprehensive 7 Certificate Types & Generation Flow Tests', async (t) => {
       Certificate.create = origCertCreate;
       Certificate.countDocuments = origCertCount;
       Certificate.exists = origCertExists;
+      Counter.findOneAndUpdate = origCounterFindOneAndUpdate;
     }
   });
 });

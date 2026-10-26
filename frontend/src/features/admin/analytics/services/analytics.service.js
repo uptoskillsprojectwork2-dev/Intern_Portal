@@ -1,10 +1,13 @@
 import axios from 'axios';
+import { attachCentralInterceptor } from '../../../../shared/services/axiosSetup';
 
-const api = axios.create({
-  baseURL: 'http://localhost:3000',
-  headers: { 'Content-Type': 'application/json' },
-  withCredentials: true
-});
+const api = attachCentralInterceptor(
+  axios.create({
+    baseURL: 'http://localhost:3000',
+    headers: { 'Content-Type': 'application/json' },
+    withCredentials: true
+  })
+);
 
 const buildQueryString = (params = {}) => {
   const searchParams = new URLSearchParams();
@@ -52,7 +55,10 @@ export const fetchUpcoming = (days = 30, params = {}) =>
   request(`/api/admin/analytics/upcoming-completions${buildQueryString({ ...params, days })}`);
 
 export const fetchStuck = (days = 3, params = {}) =>
-  request(`/api/admin/analytics/stuck-requests${buildQueryString({ ...params, days })}`);
+  request(`/api/admin/analytics/stuck${buildQueryString({ ...params, days })}`);
+
+export const fetchFilteredRequests = (params = {}) =>
+  request(`/api/admin/requests${buildQueryString(params)}`);
 
 export const downloadAnalytics = async (type = 'overview', params = {}, format = 'csv') => {
   const qs = buildQueryString({ ...params, type, format });

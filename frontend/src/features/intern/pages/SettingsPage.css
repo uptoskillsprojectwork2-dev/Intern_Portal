@@ -1,0 +1,201 @@
+.settings-main {
+  padding: 32px 40px;
+  overflow-y: auto;
+  max-width: 1200px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 28px;
+  margin-top: 24px;
+}
+
+@media (max-width: 1024px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settings-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 4px 20px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.settings-card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 18px;
+}
+
+.settings-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(16, 185, 129, 0.2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.settings-card-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.settings-card-subtitle {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.settings-profile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-profile-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px dashed var(--line);
+}
+
+.settings-profile-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.sp-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.sp-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sp-code {
+  font-family: monospace;
+  background: rgba(109, 114, 234, 0.12);
+  color: var(--accent);
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: inline-block;
+  width: fit-content;
+}
+
+/* Mobile editing */
+.sp-mobile-view {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sp-edit-btn {
+  background: var(--line);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sp-edit-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.sp-mobile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sp-mobile-input-wrap {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sp-mobile-input-wrap input {
+  flex: 1;
+  min-width: 140px;
+  background: var(--input);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.sp-mobile-input-wrap input:focus {
+  border-color: var(--accent);
+}
+
+.sp-mobile-input-wrap input.has-error {
+  border-color: var(--error);
+}
+
+.sp-mobile-btn-group {
+  display: flex;
+  gap: 6px;
+}
+
+.sp-btn {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.sp-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.sp-btn.save {
+  background: var(--success);
+  color: #064e3b;
+}
+
+.sp-btn.cancel {
+  background: var(--line);
+  color: var(--text);
+}
+
+.sp-field-error {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--error);
+}

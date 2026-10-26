@@ -37,6 +37,12 @@ export default function AnalyticsTables({
     return 0;
   });
 
+  const sortIcon = (key) => (tlSortKey === key ? (tlSortAsc ? ' ▲' : ' ▼') : '');
+
+  // Handle both old array shape and new { interns, summary } shape
+  const upcomingInterns = Array.isArray(upcomingData) ? upcomingData : upcomingData?.interns || [];
+  const upcomingSummary = upcomingData?.summary || null;
+
   return (
     <div className="analytics-tables-container">
       {/* 1. Team Leader Performance Table */}
@@ -46,18 +52,11 @@ export default function AnalyticsTables({
             <h3>Team Leader Performance Matrix</h3>
             <p className="table-subtitle">Review speeds, pending counts, and overdue flags per Team Leader</p>
           </div>
-          <AnalyticsExportActions onExport={onExport} type="team-leaders" formats={['xlsx']} />
-          <button
-            type="button"
-            className="table-export-btn"
-            onClick={() => onExport('team-leaders')}
-          >
-            <span>📥</span> Export CSV
-          </button>
+          <AnalyticsExportActions onExport={onExport} type="team-leaders" />
         </div>
 
         {loadingMap.teamLeaders ? (
-          <div className="table-skeleton">Loading performance matrix...</div>
+          <div className="chart-skeleton" style={{ height: 120 }}>Loading performance matrix...</div>
         ) : errorMap.teamLeaders ? (
           <div className="widget-error-box">
             <p>⚠️ Error: {errorMap.teamLeaders}</p>
@@ -67,26 +66,32 @@ export default function AnalyticsTables({
           <div className="empty-state">No Team Leaders registered yet</div>
         ) : (
           <div className="table-wrapper">
-            <table className="analytics-table">
+            <table className="analytics-table" id="tl-performance-table">
               <thead>
                 <tr>
                   <th onClick={() => handleSort('fullName')}>
-                    Team Leader {tlSortKey === 'fullName' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    Team Leader{sortIcon('fullName')}
                   </th>
                   <th onClick={() => handleSort('internsAssigned')}>
-                    Interns {tlSortKey === 'internsAssigned' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    Interns{sortIcon('internsAssigned')}
                   </th>
-                  <th onClick={() => handleSort('requestsReviewed')}>
-                    Reviewed {tlSortKey === 'requestsReviewed' ? (tlSortAsc ? '▲' : '▼') : ''}
+                  <th onClick={() => handleSort('requestsReceived')}>
+                    Received{sortIcon('requestsReceived')}
+                  </th>
+                  <th onClick={() => handleSort('forwarded')}>
+                    Forwarded{sortIcon('forwarded')}
+                  </th>
+                  <th onClick={() => handleSort('rejected')}>
+                    Rejected{sortIcon('rejected')}
                   </th>
                   <th onClick={() => handleSort('pendingReviews')}>
-                    Pending {tlSortKey === 'pendingReviews' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    Pending{sortIcon('pendingReviews')}
                   </th>
                   <th onClick={() => handleSort('avgReviewTimeHours')}>
-                    Avg Review Time {tlSortKey === 'avgReviewTimeHours' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    Avg Review Time{sortIcon('avgReviewTimeHours')}
                   </th>
                   <th onClick={() => handleSort('rejectionRate')}>
-                    Rejection Rate {tlSortKey === 'rejectionRate' ? (tlSortAsc ? '▲' : '▼') : ''}
+                    Rejection Rate{sortIcon('rejectionRate')}
                   </th>
                   <th>Overdue Status</th>
                 </tr>
@@ -101,7 +106,9 @@ export default function AnalyticsTables({
                       </div>
                     </td>
                     <td><span className="pill blue">{tl.internsAssigned}</span></td>
-                    <td><span className="pill green">{tl.requestsReviewed}</span></td>
+                    <td><span className="pill gray">{tl.requestsReceived ?? tl.requestsReviewed ?? 0}</span></td>
+                    <td><span className="pill green">{tl.forwarded ?? 0}</span></td>
+                    <td><span className={`pill ${tl.rejected > 0 ? 'amber' : 'gray'}`}>{tl.rejected ?? 0}</span></td>
                     <td>
                       <span className={`pill ${tl.pendingReviews > 0 ? 'amber' : 'gray'}`}>
                         {tl.pendingReviews}
@@ -132,21 +139,14 @@ export default function AnalyticsTables({
         <div className="table-card">
           <div className="table-card-header">
             <div>
-              <h3>Requests Pending &gt; 3 Days</h3>
-              <p className="table-subtitle">Requests stuck in bottleneck stages</p>
+              <h3>Overdue Requests</h3>
+              <p className="table-subtitle">Requests stuck with TL or Admin beyond the overdue limit</p>
             </div>
-            <AnalyticsExportActions onExport={onExport} type="stuck-requests" formats={['xlsx']} />
-            <button
-              type="button"
-              className="table-export-btn"
-              onClick={() => onExport('stuck-requests')}
-            >
-              <span>📥</span> Export CSV
-            </button>
+            <AnalyticsExportActions onExport={onExport} type="stuck-requests" />
           </div>
 
           {loadingMap.stuck ? (
-            <div className="table-skeleton">Loading stuck requests...</div>
+            <div className="chart-skeleton" style={{ height: 120 }}>Loading stuck requests...</div>
           ) : errorMap.stuck ? (
             <div className="widget-error-box">
               <p>⚠️ Error: {errorMap.stuck}</p>
@@ -156,13 +156,13 @@ export default function AnalyticsTables({
             <div className="empty-state">🎉 No stuck requests! All requests are up to date.</div>
           ) : (
             <div className="table-wrapper">
-              <table className="analytics-table mini">
+              <table className="analytics-table mini" id="stuck-requests-table">
                 <thead>
                   <tr>
                     <th>Request #</th>
                     <th>Intern</th>
                     <th>Days Pending</th>
-                    <th>Status</th>
+                    <th>Stuck With</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -182,8 +182,8 @@ export default function AnalyticsTables({
                         </span>
                       </td>
                       <td>
-                        <span className={`status-tag ${item.status}`}>
-                          {item.status}
+                        <span className={`status-tag ${item.stuckWith === 'Admin' ? 'approved' : 'pending'}`}>
+                          {item.stuckWith || (item.status === 'processing' ? 'Admin' : 'Team Leader')}
                         </span>
                       </td>
                       <td>
@@ -191,11 +191,21 @@ export default function AnalyticsTables({
                           <button
                             type="button"
                             className="table-action-btn"
-                            onClick={() => item.reviewLink === 'requests-queue' ? onOpenRequests?.() : navigate(item.reviewLink)}
+                            onClick={() => navigate(item.reviewLink)}
                           >
-                            {item.reviewLink === 'requests-queue' ? 'Open Retry Queue →' : 'Review →'}
+                            Review →
                           </button>
-                        ) : <span title="This request is waiting for Team Leader review">Awaiting TL</span>}
+                        ) : item.status === 'processing' ? (
+                          <button
+                            type="button"
+                            className="table-action-btn"
+                            onClick={() => onOpenRequests?.('processing')}
+                          >
+                            Open Queue →
+                          </button>
+                        ) : (
+                          <span title="This request is waiting for Team Leader review">Awaiting TL</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -210,30 +220,28 @@ export default function AnalyticsTables({
           <div className="table-card-header">
             <div>
               <h3>Upcoming Internship Completions</h3>
-              <p className="table-subtitle">Interns with end dates in the selected date window</p>
+              <p className="table-subtitle">
+                Interns with end dates in the next 30 days
+                {upcomingSummary && (
+                  <> — <strong>{upcomingSummary.withoutCertificateRequest}</strong> haven&apos;t requested a certificate</>
+                )}
+              </p>
             </div>
-            <AnalyticsExportActions onExport={onExport} type="upcoming-completions" formats={['xlsx']} />
-            <button
-              type="button"
-              className="table-export-btn"
-              onClick={() => onExport('upcoming-completions')}
-            >
-              <span>📥</span> Export CSV
-            </button>
+            <AnalyticsExportActions onExport={onExport} type="upcoming-completions" />
           </div>
 
           {loadingMap.upcoming ? (
-            <div className="table-skeleton">Loading upcoming completions...</div>
+            <div className="chart-skeleton" style={{ height: 120 }}>Loading upcoming completions...</div>
           ) : errorMap.upcoming ? (
             <div className="widget-error-box">
               <p>⚠️ Error: {errorMap.upcoming}</p>
               <button className="retry-btn" onClick={() => onRetry('upcoming')}>Retry</button>
             </div>
-          ) : !upcomingData || upcomingData.length === 0 ? (
+          ) : upcomingInterns.length === 0 ? (
             <div className="empty-state">No upcoming completions found for this filter</div>
           ) : (
             <div className="table-wrapper">
-              <table className="analytics-table mini">
+              <table className="analytics-table mini" id="upcoming-completions-table">
                 <thead>
                   <tr>
                     <th>Intern</th>
@@ -243,7 +251,7 @@ export default function AnalyticsTables({
                   </tr>
                 </thead>
                 <tbody>
-                  {upcomingData.map((item) => (
+                  {upcomingInterns.map((item) => (
                     <tr key={item.id}>
                       <td>
                         <div className="tl-name-cell">

@@ -36,6 +36,7 @@ export const analyticsQueryValidator = [
       return true;
     }),
   query('teamLeader').optional().isMongoId().withMessage('teamLeader must be a valid ID'),
+  query('teamLeaderId').optional().isMongoId().withMessage('teamLeaderId must be a valid ID'),
   query('domain').optional().isString().trim().isLength({ max: 100 }).withMessage('domain must be 100 characters or fewer'),
   query('groupBy')
     .optional()
@@ -68,5 +69,16 @@ export const analyticsExportValidator = [
 export const analyticsDaysValidator = [
   ...analyticsQueryValidator.slice(0, -1),
   query('days').optional().isInt({ min: 1, max: 365 }).withMessage('days must be an integer between 1 and 365'),
+  validate
+];
+
+export const analyticsRequestsValidator = [
+  ...analyticsQueryValidator.slice(0, -1),
+  query('status')
+    .optional()
+    .isIn(['pending', 'approved', 'rejected', 'processing', 'completed', 'cancelled'])
+    .withMessage('status must be one of: pending, approved, rejected, processing, completed, cancelled'),
+  query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100'),
   validate
 ];

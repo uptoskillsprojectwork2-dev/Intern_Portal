@@ -10,30 +10,48 @@ import { LOGIN, LOGIN_FAILED, PASSWORD_RESET_REQUESTED, PASSWORD_RESET_COMPLETED
 dotenv.config()
 
 export async function login(req, res) {
-    const { email, password } = req.body;
+    const { email, password, internCode } = req.body;
+    const credential = password || internCode;
 
-    const user = await User.findOne({ email });
+    if (!email || !credential) {
+        return res.status(401).json({
+            message: "Invalid credentials"
+        });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
-        logAction({ req, actor: null, action: LOGIN_FAILED, targetType: 'User', meta: { email } });
+        logAction({ req, actor: null, action: LOGIN_FAILED, targetType: 'User', meta: { email: normalizedEmail } });
         return res.status(401).json({
             message: "Invalid credentials"
         });
     }
 
-    // Compare the plain-text request password with the stored bcrypt hash.
-    const isCredentialValid = await user.comparePassword(password);
-
-    if (!isCredentialValid) {
-        logAction({ req, actor: null, action: LOGIN_FAILED, targetType: 'User', targetId: user._id, meta: { email } });
-        return res.status(401).json({
-            message: "Invalid credentials"
-        });
-    }
-
-    if (user.role === "intern" && user.isArchived) {
+    if (user.isArchived) {
         return res.status(403).json({
             message: "Your internship account has been archived. Contact admin."
+        });
+    }
+
+    let isCredentialValid = false;
+
+    if (user.role === "intern") {
+        const hasPassword = Boolean(user.password && user.passwordSetAt);
+        if (hasPassword) {
+            isCredentialValid = await user.comparePassword(credential);
+        } else {
+            isCredentialValid = (credential === user.internCode) || (await user.comparePassword(credential));
+        }
+    } else {
+        isCredentialValid = await user.comparePassword(credential);
+    }
+
+    if (!isCredentialValid) {
+        logAction({ req, actor: null, action: LOGIN_FAILED, targetType: 'User', targetId: user._id, meta: { email: user.email } });
+        return res.status(401).json({
+            message: "Invalid credentials"
         });
     }
 
@@ -44,7 +62,12 @@ export async function login(req, res) {
         role: user.role
     }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.cookie("token", token);
+    res.cookie("token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? (process.env.COOKIE_SAME_SITE || 'none') : 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000
+    });
 
     logAction({ req, actor: { id: user._id, role: user.role }, action: LOGIN, targetType: 'User', targetId: user._id, meta: { email: user.email } });
 
@@ -55,8 +78,10 @@ export async function login(req, res) {
             fullName: user.fullName,
             email: user.email,
             mobileNo: user.mobileNo,
+            internCode: user.internCode,
             role: user.role,
-            createdAt: user.createdAt
+            createdAt: user.createdAt,
+            passwordSetAt: user.passwordSetAt
         }
     });
 }
@@ -65,7 +90,7 @@ export async function getMe(req, res) {
     try {
         const userId = req.user.id;
 
-        const user = await User.findById(userId).select('fullName email mobileNo role createdAt');
+        const user = await User.findById(userId).select('fullName email mobileNo internCode role createdAt passwordSetAt');
 
         if (!user) {
             return res.status(404).json({
@@ -79,8 +104,10 @@ export async function getMe(req, res) {
             fullName: user.fullName,
             email: user.email,
             mobileNo: user.mobileNo,
+            internCode: user.internCode,
             role: user.role,
-            createdAt: user.createdAt
+            createdAt: user.createdAt,
+            passwordSetAt: user.passwordSetAt
         })
     } catch (err) {
         res.status(500).json({
@@ -114,19 +141,24 @@ export async function forgotPassword(req, res) {
         user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
         await user.save();
 
-        const resetLink = `${process.env.FRONTEND_URL}/reset-password/${rawToken}`;
+        const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${rawToken}`;
 
-        await sendEmail({
-            to: user.email,
-            subject: "Reset your UPTOSKILL password",
-            html: `<p>Click the link below to reset your password:</p>
-                <p><a href="${resetLink}">${resetLink}</a></p>
-                <p>This link expires in 15 minutes.</p>`
-        });
+        try {
+            await sendEmail({
+                to: user.email,
+                subject: "Reset your UPTOSKILL password",
+                html: `<p>Click the link below to reset your password:</p>
+                    <p><a href="${resetLink}">${resetLink}</a></p>
+                    <p>This link expires in 15 minutes.</p>`
+            });
+        } catch (emailErr) {
+            console.warn("[forgotPassword] Could not deliver email via SMTP:", emailErr.message);
+            console.log(`[forgotPassword] Direct reset link for testing: ${resetLink}`);
+        }
 
         logAction({ req, actor: { id: user._id, role: user.role }, action: PASSWORD_RESET_REQUESTED, targetType: 'User', targetId: user._id, meta: { email: user.email } });
 
-        return res.status(200).json({ message: genericMessage });
+        return res.status(200).json({ message: genericMessage, devResetLink: process.env.NODE_ENV !== 'production' ? resetLink : undefined });
     } catch (err) {
         return res.status(500).json({
             message: err.message
@@ -138,9 +170,12 @@ export async function resetPassword(req, res) {
     const { token } = req.params;
     const { newPassword } = req.body;
 
-    if (typeof newPassword !== "string" || newPassword.length < 8) {
+    const hasLetter = /[a-zA-Z]/.test(newPassword || '');
+    const hasNumber = /\d/.test(newPassword || '');
+
+    if (typeof newPassword !== "string" || newPassword.length < 8 || !hasLetter || !hasNumber) {
         return res.status(400).json({
-            message: "New password must be at least 8 characters long"
+            message: "New password must be at least 8 characters long and contain at least one letter and one number"
         });
     }
 
@@ -158,6 +193,7 @@ export async function resetPassword(req, res) {
         }
 
         user.password = await bcrypt.hash(newPassword, 10);
+        user.passwordSetAt = new Date();
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();

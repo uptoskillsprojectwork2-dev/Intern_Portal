@@ -36,9 +36,9 @@ export async function createIntern(req, res) {
 			startDate,
 			endDate,
 			role: 'intern',
-			password: internCode,
 			internshipDetails: {
 				teamLeader: teamLeader._id,
+				teamLeaderId: teamLeader._id,
 				teamleaderEmail: teamLeader.email.toLowerCase(),
 				status: 'ongoing',
 				createdBy: teamLeader._id,
@@ -63,6 +63,7 @@ export async function getInternsForTL(req, res) {
 			role: 'intern',
 			isArchived: { $ne: true },
 			$or: [
+				{ 'internshipDetails.teamLeaderId': tlId },
 				{ 'internshipDetails.teamLeader': tlId },
 				{ 'internshipDetails.teamleaderEmail': tlEmail }
 			]
@@ -118,6 +119,7 @@ export async function getAssignedInternById(req, res) {
 		const tlId = req.user.id.toString();
 		const tlEmail = req.user.email?.toLowerCase();
 		const isAssigned =
+			(intern.internshipDetails?.teamLeaderId && intern.internshipDetails.teamLeaderId.toString() === tlId) ||
 			(intern.internshipDetails?.teamLeader && intern.internshipDetails.teamLeader.toString() === tlId) ||
 			(intern.internshipDetails?.teamleaderEmail && intern.internshipDetails.teamleaderEmail.toLowerCase() === tlEmail);
 
@@ -244,13 +246,32 @@ export async function updateAssignedIntern(req, res) {
 // Step 1: TL sees requests waiting for their review
 export const getRequestsForReview = async (req, res) => {
   try {
-    const requests = await CertificateRequest.find({ status: 'pending' })
+    let filter = { status: 'pending' };
+
+    // Admin keeps full visibility; TL only sees requests from their own interns
+    if (req.user.role !== 'admin') {
+      const tlId = req.user.id;
+      const tlEmail = req.user.email?.toLowerCase();
+      const myInterns = await User.find({
+        role: 'intern',
+        $or: [
+          { 'internshipDetails.teamLeaderId': tlId },
+          { 'internshipDetails.teamLeader': tlId },
+          { 'internshipDetails.teamleaderEmail': tlEmail }
+        ]
+      }).select('_id');
+
+      const internIds = myInterns.map((i) => i._id);
+      filter.userId = { $in: internIds };
+    }
+
+    const requests = await CertificateRequest.find(filter)
       .populate('userId', 'fullName email internCode domain')
       .sort({ requestedAt: -1 });
 
     res.json({ requests });
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -270,6 +291,24 @@ export const reviewRequestAsTL = async (req, res) => {
 
     if (request.status !== 'pending') {
       return res.status(409).json({ message: 'This request has already been reviewed' });
+    }
+
+    // TL scoping: return 403 if the request belongs to another TL's intern
+    if (req.user.role !== 'admin') {
+      const intern = await User.findById(request.userId);
+      if (!intern) {
+        return res.status(404).json({ message: 'Intern not found' });
+      }
+
+      const tlId = req.user.id.toString();
+      const tlEmail = req.user.email?.toLowerCase();
+      const internTlId = intern.internshipDetails?.teamLeaderId?.toString() || intern.internshipDetails?.teamLeader?.toString();
+      const internTlEmail = intern.internshipDetails?.teamleaderEmail?.toLowerCase();
+
+      const isOwner = (internTlId && internTlId === tlId) || (internTlEmail && internTlEmail === tlEmail);
+      if (!isOwner) {
+        return res.status(403).json({ message: "Access denied: Request belongs to another team leader's intern" });
+      }
     }
 
     if (action === 'reject') {
@@ -330,7 +369,11 @@ export const getUpcomingCompletionsForTL = async (req, res) => {
 
     const interns = await User.find({
       role: 'intern',
-      'internshipDetails.teamleaderEmail': req.user.email.toLowerCase(),
+      $or: [
+        { 'internshipDetails.teamLeaderId': req.user.id },
+        { 'internshipDetails.teamLeader': req.user.id },
+        { 'internshipDetails.teamleaderEmail': req.user.email.toLowerCase() }
+      ],
       endDate: {
         $gte: today,
         $lte: thirdDay,
@@ -367,3 +410,5 @@ export const getUpcomingCompletionsForTL = async (req, res) => {
     });
   }
 };
+
+export const getMyInterns = getInternsForTL;

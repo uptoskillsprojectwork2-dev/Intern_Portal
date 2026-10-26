@@ -285,6 +285,9 @@ test('Day 5 Test Cases A - J', async (t) => {
       _id: validCertId
     });
 
+    const originalCounterFind = (await import('../src/models/Counter.js')).default.findOneAndUpdate;
+    (await import('../src/models/Counter.js')).default.findOneAndUpdate = async () => ({ seq: 1 });
+
     try {
       const req = { params: { id: validReqId }, user: { role: 'admin' } };
       const res = mockRes();
@@ -295,6 +298,7 @@ test('Day 5 Test Cases A - J', async (t) => {
       assert.equal(res.body.certificate._id, validCertId);
       assert.match(res.body.message, /generated successfully/i);
     } finally {
+      (await import('../src/models/Counter.js')).default.findOneAndUpdate = originalCounterFind;
       CertificateRequest.findById = originalReqFind;
       CertificateTemplate.findOne = originalTemplateFindOne;
       Certificate.create = originalCertCreate;

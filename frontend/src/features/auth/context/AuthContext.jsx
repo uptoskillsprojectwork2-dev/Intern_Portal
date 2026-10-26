@@ -31,11 +31,6 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, [])
 
-  // This is the correct way to "fix" it if you want to perform actions or log
-  // the user state immediately after it has successfully updated.
-  useEffect(() => {
-    console.log("Current user state is now:", user);
-  }, [user])
 
 
   const handleLogin = async (email, password) => {

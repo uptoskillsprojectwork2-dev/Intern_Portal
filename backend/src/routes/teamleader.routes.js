@@ -1,5 +1,8 @@
 import express from 'express';
-import { registerValidator } from '../validators/auth.validator.js';
+import {
+	createInternValidator,
+	reviewRequestTLValidator
+} from '../validators/portal.validator.js';
 import verifyAuth from '../middlewares/verifyAuth.js';
 import {
 	createIntern,
@@ -8,7 +11,7 @@ import {
 	updateAssignedIntern,
 	getRequestsForReview,
 	reviewRequestAsTL,
-        getUpcomingCompletionsForTL
+	getUpcomingCompletionsForTL
 } from '../controllers/teamleader.controller.js';
 
 const teamleaderRouter = express.Router();
@@ -21,7 +24,7 @@ teamleaderRouter.use(verifyAuth, (req, res, next) => {
 	next();
 });
 
-teamleaderRouter.post('/create-intern', registerValidator, createIntern);
+teamleaderRouter.post('/create-intern', createInternValidator, createIntern);
 
 teamleaderRouter.get('/interns', getInternsForTL);
 teamleaderRouter.get('/interns/:id', getAssignedInternById);
@@ -30,6 +33,6 @@ teamleaderRouter.patch('/interns/:id', updateAssignedIntern);
 teamleaderRouter.get('/requests-for-review', getRequestsForReview);
 teamleaderRouter.get('/upcoming-completions', getUpcomingCompletionsForTL);
 
-teamleaderRouter.patch('/requests/:id/review', reviewRequestAsTL);
+teamleaderRouter.patch('/requests/:id/review', reviewRequestTLValidator, reviewRequestAsTL);
 
 export default teamleaderRouter;

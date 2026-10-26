@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { formatRateLimitError } from '../../../shared/utils/formatRateLimitError';
 import '../../../app/App.css';
-
 
 const validateEmail = (email) => {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -10,7 +10,6 @@ const validateEmail = (email) => {
 };
 
 export default function Login() {
-
   const [values, setValues] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -25,7 +24,7 @@ export default function Login() {
     setNotification({ type, message });
     setTimeout(() => {
       setNotification(null);
-    }, 4000);
+    }, 6000);
   };
 
   const isEmailValid = touched.email && !errors.email && values.email.trim() && validateEmail(values.email);
@@ -54,7 +53,7 @@ export default function Login() {
 
     if (name === 'password') {
       if (!value) {
-        setErrors((prev) => ({ ...prev, password: 'Password is required.' }));
+        setErrors((prev) => ({ ...prev, password: 'Intern code or password is required.' }));
       } else {
         setErrors((prev) => {
           const next = { ...prev };
@@ -84,25 +83,25 @@ export default function Login() {
       const userData = data.user || data;
       navigate(`/${userData.role}/dashboard`);
     } catch (error) {
-      console.error(error);
       setLoading(false);
-      notify('error', error.message || 'Invalid email or password.');
+      const friendlyMsg = formatRateLimitError(error, error.message || 'Invalid email or password.');
+      notify('error', friendlyMsg);
     }
   };
 
   return (
     <div className="auth-page">
       {notification && (
-        <div className={`notification ${notification.type}`}>
-          <span className="notification-icon">{notification.type === 'error' ? '✖' : '✔'}</span>
+        <div className={`notification ${notification.type}`} role="alert" aria-live="assertive">
+          <span className="notification-icon">{notification.type === 'error' ? '⚠' : '✓'}</span>
           <span>{notification.message}</span>
-          <button className="close-btn" onClick={() => setNotification(null)}>×</button>
+          <button className="close-btn" aria-label="Close notification" onClick={() => setNotification(null)}>✕</button>
         </div>
       )}
 
       <div className="brand-panel">
         <div className="brand">
-          <span className="brand-icon">🚀</span>
+          <span className="brand-icon">🎓</span>
           <strong>uptoskills</strong>
         </div>
 
@@ -125,63 +124,73 @@ export default function Login() {
           <h2>Welcome Back</h2>
           <p className="sub">Sign in to access your assigned dashboard.</p>
 
-          <form onSubmit={submit} noValidate>
-            <label className="field">
+          <form onSubmit={submit} noValidate aria-label="Sign in form">
+            <label className="field" htmlFor="login-email">
               <b>Email Address</b>
               <div
                 className={`input-wrap ${isEmailInvalid ? 'invalid' : isEmailValid ? 'valid' : ''
                   }`}
               >
-                <span className="input-icon">✉️</span>
+                <span className="input-icon" aria-hidden="true">✉</span>
                 <input
+                  id="login-email"
                   type="email"
                   name="email"
                   placeholder="e.g. intern@uptoskills.com"
                   value={values.email}
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  aria-required="true"
+                  aria-invalid={isEmailInvalid ? 'true' : 'false'}
+                  aria-describedby={isEmailInvalid ? 'login-email-error' : undefined}
                 />
               </div>
               {isEmailInvalid && (
-                <span className="field-error">{errors.email}</span>
+                <span className="field-error" id="login-email-error">{errors.email}</span>
               )}
             </label>
 
-            <label className="field">
-              <b>Password</b>
+            <label className="field" htmlFor="login-password">
+              <b>Intern Code or Password</b>
               <div
                 className={`input-wrap ${isPasswordInvalid ? 'invalid' : isPasswordValid ? 'valid' : ''
                   }`}
               >
-                <span className="input-icon">🔒</span>
+                <span className="input-icon" aria-hidden="true">🔒</span>
                 <input
+                  id="login-password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
-                  placeholder="••••••••"
+                  placeholder="Intern code or password"
                   value={values.password}
                   onChange={handleChange}
                   onBlur={handleBlur}
+                  aria-required="true"
+                  aria-invalid={isPasswordInvalid ? 'true' : 'false'}
+                  aria-describedby={isPasswordInvalid ? 'login-password-error' : undefined}
                 />
                 <button
                   type="button"
                   className="eye"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? '👁️' : '🙈'}
+                  {showPassword ? '👁' : '👁‍🗨'}
                 </button>
               </div>
               {isPasswordInvalid && (
-                <span className="field-error">{errors.password}</span>
+                <span className="field-error" id="login-password-error">{errors.password}</span>
               )}
             </label>
 
             <button
               type="submit"
               className="primary"
+              id="login-submit-btn"
               disabled={loading}
               style={{ marginTop: '16px' }}
             >
-              {loading ? <span className="spinner"></span> : 'Sign In'}
+              {loading ? <span className="spinner" aria-hidden="true"></span> : 'Sign In'}
             </button>
           </form>
 

@@ -82,6 +82,19 @@ export default function CertificatesOverview() {
     };
   }, []);
 
+  /* ── Revoke Handlers ─────────────────────────────── */
+  const openRevokeModal = (cert) => {
+    setRevokeModalCert(cert);
+    setRevokeReason('');
+    setRevokeError(null);
+  };
+
+  const closeRevokeModal = () => {
+    setRevokeModalCert(null);
+    setRevokeReason('');
+    setRevokeError(null);
+  };
+
   /* ── Keyboard accessibility & focus trap for modals ── */
   useEffect(() => {
     if (!revokeModalCert && !unrevokeModalCert) return;
@@ -152,19 +165,6 @@ export default function CertificatesOverview() {
       setDownloadingId(null);
       setTimeout(() => setToast(null), 5000);
     }
-  };
-
-  /* ── Revoke Handlers ─────────────────────────────── */
-  const openRevokeModal = (cert) => {
-    setRevokeModalCert(cert);
-    setRevokeReason('');
-    setRevokeError(null);
-  };
-
-  const closeRevokeModal = () => {
-    setRevokeModalCert(null);
-    setRevokeReason('');
-    setRevokeError(null);
   };
 
   const handleRevokeSubmit = async (e) => {

@@ -59,7 +59,7 @@ export function InternProvider({ children }) {
 	}, [authLoading, user?.role]);
 
 	return (
-		<InternContext.Provider value={{ profile, archiveNotice, loading, error, fetchProfile }}>
+		<InternContext.Provider value={{ profile, setProfile, archiveNotice, loading, error, fetchProfile }}>
 			{children}
 		</InternContext.Provider>
 	);

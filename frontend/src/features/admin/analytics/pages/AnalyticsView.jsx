@@ -5,6 +5,7 @@ import AnalyticsKPICards from '../components/AnalyticsKPICards';
 import AnalyticsCharts from '../components/AnalyticsCharts';
 import AnalyticsTables from '../components/AnalyticsTables';
 import AnalyticsTurnaround from '../components/AnalyticsTurnaround';
+import AnalyticsRequestsModal from '../components/AnalyticsRequestsModal';
 import Toast from '../../../../shared/components/Toast';
 import { getAllTeamLeaders } from '../../services/admin.service';
 import { fetchDomains } from '../services/analytics.service';
@@ -37,6 +38,8 @@ export default function AnalyticsView({ onOpenRequests }) {
 
   const [teamLeadersList, setTeamLeadersList] = useState([]);
   const [allDomainsList, setAllDomainsList] = useState([]);
+  const [modalStatus, setModalStatus] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     getAllTeamLeaders()
@@ -50,6 +53,11 @@ export default function AnalyticsView({ onOpenRequests }) {
   }, []);
 
   const domainsList = allDomainsList;
+
+  const handleOpenSegmentRequests = (status) => {
+    setModalStatus(status || null);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="analytics-view-shell">
@@ -109,7 +117,7 @@ export default function AnalyticsView({ onOpenRequests }) {
         errorMap={errors}
         onRetry={fetchSingleWidget}
         onExport={handleExport}
-        onOpenRequests={onOpenRequests}
+        onOpenRequests={handleOpenSegmentRequests}
         onSelectDomain={setDomain}
         onSelectTeamLeader={setTeamLeader}
       />
@@ -123,7 +131,16 @@ export default function AnalyticsView({ onOpenRequests }) {
         errorMap={errors}
         onRetry={fetchSingleWidget}
         onExport={handleExport}
-        onOpenRequests={onOpenRequests}
+        onOpenRequests={handleOpenSegmentRequests}
+      />
+
+      {/* Interactive Filtered Requests Drill-down Modal */}
+      <AnalyticsRequestsModal
+        isOpen={isModalOpen}
+        status={modalStatus}
+        filters={{ from, to, range, domain, teamLeader }}
+        onClose={() => setIsModalOpen(false)}
+        onOpenInDesk={onOpenRequests}
       />
     </div>
   );

@@ -22,3 +22,5 @@ export const INTERN_ARCHIVED          = 'INTERN_ARCHIVED';
 export const INTERN_PURGED            = 'INTERN_PURGED';
 export const INTERN_RESTORED          = 'INTERN_RESTORED';
 export const EXPORT                   = 'EXPORT';
+export const PASSWORD_CHANGED         = 'PASSWORD_CHANGED';
+export const PROFILE_UPDATED          = 'PROFILE_UPDATED';

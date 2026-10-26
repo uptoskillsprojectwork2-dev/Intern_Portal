@@ -8,7 +8,8 @@ import {
   getDomainsDistribution,
   getPipelineStages,
   getUpcomingCompletions,
-  getStuckRequests
+  getStuckRequests,
+  getFilteredRequests
 } from '../services/adminAnalytics.service.js';
 import { getCache, setCache } from '../utils/redisCache.js';
 import { logAudit } from '../utils/auditLogger.js';
@@ -19,7 +20,11 @@ const readFilters = (query) => ({
   range: query.range,
   domain: query.domain,
   teamLeader: query.teamLeader,
-  groupBy: query.groupBy
+  teamLeaderId: query.teamLeaderId,
+  groupBy: query.groupBy,
+  status: query.status,
+  page: query.page,
+  limit: query.limit
 });
 
 export const buildAnalyticsCacheKey = (widget, query, extras = {}) =>
@@ -94,6 +99,18 @@ export async function getStuck(req, res) {
   } catch (err) { return res.status(500).json({ message: 'Error retrieving stuck requests', error: err.message }); }
 }
 
+/**
+ * Filtered request list — for chart segment clicks.
+ * GET /api/admin/requests?status=&page=&limit=
+ */
+export async function getRequests(req, res) {
+  try {
+    const data = await fetchWithCache(buildAnalyticsCacheKey('requests', req.query), 120,
+      () => getFilteredRequests(readFilters(req.query)));
+    return res.status(200).json({ success: true, data });
+  } catch (err) { return res.status(500).json({ message: 'Error retrieving filtered requests', error: err.message }); }
+}
+
 function toExportRows(type, data) {
   if (type === 'overview') return Object.entries(data.kpis).map(([metric, value]) => ({ metric, value }));
   if (type === 'requests-trend') return data.raw;
@@ -102,7 +119,8 @@ function toExportRows(type, data) {
   if (type === 'team-leaders') return data;
   if (type === 'domains') return data.domains;
   if (type === 'pipeline') return [...data.pipeline, { stage: 'Failed draft generation (retry available)', status: 'failed-generation', count: data.failedGenerations }];
-  if (type === 'stuck-requests' || type === 'upcoming-completions') return data;
+  if (type === 'stuck-requests') return data;
+  if (type === 'upcoming-completions') return data.interns || data;
   return [];
 }
 
@@ -128,6 +146,11 @@ export async function exportAnalyticsCSV(req, res) {
       'stuck-requests': () => getStuckRequests(Number(req.query.days || 3), filters),
       'upcoming-completions': () => getUpcomingCompletions(Number(req.query.days || 30), filters)
     };
+
+    if (!exports[type]) {
+      return res.status(400).json({ message: `Invalid export type: ${type}` });
+    }
+
     const data = await exports[type]();
     const rows = toExportRows(type, data);
     const extension = format === 'xlsx' ? 'xlsx' : 'csv';

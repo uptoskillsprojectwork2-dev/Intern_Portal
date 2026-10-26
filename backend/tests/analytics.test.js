@@ -15,6 +15,7 @@ import {
   getPipeline,
   getUpcoming,
   getStuck,
+  getRequests,
   exportAnalyticsCSV,
   buildAnalyticsCacheKey
 } from '../src/controllers/adminAnalytics.controller.js';
@@ -342,4 +343,58 @@ test('Admin Analytics Controller Tests', async (t) => {
       AuditLog.create = origAuditCreate;
     }
   });
+
+  await t.test('GET /requests should return paginated filtered request list for chart segment clicks', async () => {
+    const origUserFind = User.find;
+    const origCertReqFind = CertificateRequest.find;
+    const origCertReqCount = CertificateRequest.countDocuments;
+    const internId = new mongoose.Types.ObjectId();
+    const requestId = new mongoose.Types.ObjectId();
+
+    User.find = () => ({ select: async () => [{ _id: internId }] });
+    CertificateRequest.countDocuments = async () => 1;
+    CertificateRequest.find = () => ({
+      populate: () => ({
+        populate: () => ({
+          populate: () => ({
+            sort: () => ({
+              skip: () => ({
+                limit: () => ({
+                  lean: async () => [
+                    {
+                      _id: requestId,
+                      requestNumber: 'REQ-001',
+                      userId: { fullName: 'Test Intern', email: 'intern@test.com', domain: 'Data Science' },
+                      certificateType: 'Completion',
+                      status: 'pending',
+                      requestedAt: new Date()
+                    }
+                  ]
+                })
+              })
+            })
+          })
+        })
+      })
+    });
+
+    try {
+      const req = { query: { status: 'pending', page: '1', limit: '10' } };
+      const res = mockRes();
+      await getRequests(req, res);
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.body.success, true);
+      assert.ok(Array.isArray(res.body.data.requests));
+      assert.equal(res.body.data.requests.length, 1);
+      assert.equal(res.body.data.requests[0].requestNumber, 'REQ-001');
+      assert.equal(res.body.data.requests[0].status, 'pending');
+      assert.equal(res.body.data.pagination.page, 1);
+      assert.equal(res.body.data.pagination.totalCount, 1);
+    } finally {
+      User.find = origUserFind;
+      CertificateRequest.find = origCertReqFind;
+      CertificateRequest.countDocuments = origCertReqCount;
+    }
+  });
 });
+

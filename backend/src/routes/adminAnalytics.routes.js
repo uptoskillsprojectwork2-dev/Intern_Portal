@@ -4,7 +4,8 @@ import requireAdmin from '../middlewares/requireAdmin.js';
 import {
   analyticsQueryValidator,
   analyticsExportValidator,
-  analyticsDaysValidator
+  analyticsDaysValidator,
+  analyticsRequestsValidator
 } from '../validators/adminAnalytics.validator.js';
 import {
   getOverview,
@@ -16,6 +17,7 @@ import {
   getPipeline,
   getUpcoming,
   getStuck,
+  getRequests,
   exportAnalyticsCSV
 } from '../controllers/adminAnalytics.controller.js';
 
@@ -32,7 +34,7 @@ analyticsRouter.get('/team-leaders', analyticsQueryValidator, getTeamLeaders);
 analyticsRouter.get('/domains', analyticsQueryValidator, getDomains);
 analyticsRouter.get('/pipeline', analyticsQueryValidator, getPipeline);
 analyticsRouter.get('/upcoming-completions', analyticsDaysValidator, getUpcoming);
-analyticsRouter.get('/stuck-requests', analyticsDaysValidator, getStuck);
+analyticsRouter.get('/stuck', analyticsDaysValidator, getStuck);
 analyticsRouter.get('/export', analyticsExportValidator, exportAnalyticsCSV);
 
 export default analyticsRouter;

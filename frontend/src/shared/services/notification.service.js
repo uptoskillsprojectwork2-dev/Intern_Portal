@@ -1,10 +1,13 @@
 import axios from 'axios';
+import { attachCentralInterceptor } from './axiosSetup';
 
-const notificationApi = axios.create({
-  baseURL: 'http://localhost:3000/api/notifications',
-  headers: { 'Content-Type': 'application/json' },
-  withCredentials: true,
-});
+const notificationApi = attachCentralInterceptor(
+  axios.create({
+    baseURL: 'http://localhost:3000/api/notifications',
+    headers: { 'Content-Type': 'application/json' },
+    withCredentials: true,
+  })
+);
 
 /**
  * Fetch paginated notifications for current user.

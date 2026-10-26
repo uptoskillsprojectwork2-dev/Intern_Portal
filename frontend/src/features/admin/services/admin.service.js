@@ -1,12 +1,15 @@
 import axios from 'axios';
+import { attachCentralInterceptor } from '../../../shared/services/axiosSetup';
 
-const adminApi = axios.create({
-  baseURL: 'http://localhost:3000',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true,
-});
+const adminApi = attachCentralInterceptor(
+  axios.create({
+    baseURL: 'http://localhost:3000',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    withCredentials: true,
+  })
+);
 
 const request = async (method, url, payload) => {
   try {
@@ -243,7 +246,7 @@ export const downloadAdminCertificate = async (
 ) => {
   try {
     const response = await adminApi.get(
-      `/api/admin/certificates/${id}/download`,
+      `/api/certificates/${id}/download`,
       {
         responseType: 'blob',
       }
