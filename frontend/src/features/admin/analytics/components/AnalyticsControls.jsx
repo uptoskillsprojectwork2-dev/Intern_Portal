@@ -15,6 +15,11 @@ export default function AnalyticsControls({
   lastUpdated,
   onRefresh,
   onExport,
+  onClearFilters,
+  dateError,
+  filtersLoading = false,
+  filterOptionsError,
+  onRetryFilterOptions,
   domainsList = [],
   teamLeadersList = []
 }) {
@@ -45,6 +50,20 @@ export default function AnalyticsControls({
           </button>
           <button
             type="button"
+            className={`control-preset-btn ${range === '12m' ? 'active' : ''}`}
+            onClick={() => setRange('12m')}
+          >
+            12 Months
+          </button>
+          <button
+            type="button"
+            className={`control-preset-btn ${range === 'all' ? 'active' : ''}`}
+            onClick={() => setRange('all')}
+          >
+            All Time
+          </button>
+          <button
+            type="button"
             className={`control-preset-btn ${range === 'custom' ? 'active' : ''}`}
             onClick={() => setRange('custom')}
           >
@@ -71,17 +90,20 @@ export default function AnalyticsControls({
               placeholder="To Date"
               aria-label="To Date"
             />
+            {dateError && <span className="analytics-filter-error" role="alert">{dateError}</span>}
           </div>
         )}
 
-        {domainsList.length > 0 && (
+        {(domainsList.length > 0 || filtersLoading || filterOptionsError) && (
           <select
             className="control-select"
             value={domain}
             onChange={(e) => setDomain(e.target.value)}
             aria-label="Filter by Domain"
+            disabled={filtersLoading}
           >
             <option value="">All Domains</option>
+            {filtersLoading && <option disabled>Loading domains…</option>}
             {domainsList.map((d) => (
               <option key={d.domain || d} value={d.domain || d}>
                 {d.domain || d}
@@ -90,14 +112,16 @@ export default function AnalyticsControls({
           </select>
         )}
 
-        {teamLeadersList.length > 0 && (
+        {(teamLeadersList.length > 0 || filtersLoading || filterOptionsError) && (
           <select
             className="control-select"
             value={teamLeader}
             onChange={(e) => setTeamLeader(e.target.value)}
             aria-label="Filter by Team Leader"
+            disabled={filtersLoading}
           >
             <option value="">All Team Leaders</option>
+            {filtersLoading && <option disabled>Loading team leaders…</option>}
             {teamLeadersList.map((tl) => (
               <option key={tl.id || tl._id} value={tl.id || tl._id}>
                 {tl.fullName}
@@ -105,6 +129,7 @@ export default function AnalyticsControls({
             ))}
           </select>
         )}
+        {filterOptionsError && <span className="analytics-filter-error" role="alert">{filterOptionsError} <button type="button" onClick={onRetryFilterOptions}>Retry</button></span>}
       </div>
 
       <div className="controls-group right">
@@ -145,6 +170,10 @@ export default function AnalyticsControls({
           title="Refresh Data"
         >
           <span>🔄</span> Refresh
+        </button>
+
+        <button type="button" className="control-action-btn refresh" onClick={onClearFilters} aria-label="Clear analytics filters">
+          Clear filters
         </button>
 
         {lastUpdated && (

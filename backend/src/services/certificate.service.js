@@ -12,6 +12,9 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
 import { sendEmail } from '../utils/sendEmail.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /* =========================================================
    CONSTANTS
 ========================================================= */
@@ -321,8 +324,8 @@ export const createCertificateDraft = async (requestId) => {
   const verificationCode = generateVerificationCode();
   const verifyId = generateVerifyId();
 
-  const certificateTitle =
-    getCertificateTitle(request.certificateType);
+  const certificateTitle = getCertificateTitle(request.certificateType);
+  const formattedCertType = certificateTitle;
 
   /* ---------------------------------------------------------
      QR CODE
@@ -721,7 +724,10 @@ export const createCertificateDraft = async (requestId) => {
     VerificationCode: verificationCode,
     verificationCode: verificationCode,
     VerifyId: verifyId,
-    verifyId: verifyId
+    verifyId: verifyId,
+    qrCodeDataUrl,
+    qrCodeUrl: qrCodeDataUrl,
+    verificationUrl
   };
 
   /* =========================================================
@@ -732,6 +738,7 @@ export const createCertificateDraft = async (requestId) => {
     ...supplementaryData,
     ...trustedCoreData,
   };
+  const htmlContent = Handlebars.compile(templateHtml)(templateData);
 
   /* =========================================================
      COMPILE HANDLEBARS TEMPLATE
@@ -751,6 +758,7 @@ export const createCertificateDraft = async (requestId) => {
     htmlContent,
     verificationCode,
     verifyId,
+    verificationIdVersion: 2,
     generatedBy: request.reviewedBy
   });
 
@@ -1181,14 +1189,10 @@ export const finalizeCertificate = async (
     });
 
   if (request) {
-    request.status =
-      'completed';
-
-    request.completedAt =
-      finalizedAt;
-
-    await request.save();
-  }
+  request.status = 'completed';
+  request.completedAt = new Date();
+  await request.save();
+}
 
   return {
     certificate,

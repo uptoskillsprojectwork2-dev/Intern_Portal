@@ -1,8 +1,9 @@
 import AnalyticsExportActions from './AnalyticsExportActions';
 
 const stages = [
-  ['timeToTLReview', 'Request to Team Leader review'],
-  ['timeToAdminFinalize', 'Team Leader review to completion'],
+  ['tlDecisionTime', 'Team Leader decision'],
+  ['adminDecisionTime', 'Admin decision'],
+  ['generationTime', 'Certificate generation'],
   ['totalTurnaround', 'Request to certificate issued']
 ];
 

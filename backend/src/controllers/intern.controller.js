@@ -7,7 +7,15 @@ import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.js';
+import RetentionPolicy from '../models/RetentionPolicy.js';
 import Notification from '../models/Notification.js';
+import {
+  createNotification,
+  markNotificationRead as markNotificationReadService
+} from '../utils/notificationService.js';
+import { logAudit } from '../utils/auditLogger.js';
+import { invalidateAnalyticsCache } from '../utils/redisCache.js';
+
 
 const ALLOWED_TYPES = [
   'offer_letter',
@@ -136,6 +144,7 @@ export const submitCertificateRequest = async (req, res) => {
       reason,
       metadata: safeMetadata
     });
+    await invalidateAnalyticsCache();
 
     await logAudit({ userId: req.user.id, action: 'CERTIFICATE_REQUEST_SUBMITTED', entityType: 'CertificateRequest', entityId: request._id, meta: { certificateType, requestNumber }, req });
     const teamLeaderId = user.internshipDetails?.teamLeader;
@@ -193,7 +202,7 @@ export const getMyRequests = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id)
-      .select('-password');
+      .select('fullName email mobileNo role createdAt passwordSetAt internCode domain startDate endDate internshipDetails isArchived');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -236,6 +245,55 @@ export const getProfile = async (req, res) => {
   }
 };
 
+export const setPassword = async (req, res) => {
+  try {
+    const { currentSecret, newPassword } = req.body || {};
+    if (!currentSecret || typeof currentSecret !== 'string' || !currentSecret.trim()) {
+      return res.status(400).json({ message: 'Current secret is required' });
+    }
+    if (typeof newPassword !== 'string' || !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(newPassword)) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters and contain a letter and a number' });
+    }
+
+    const user = await User.findById(req.user?.id);
+    if (!user || user.role !== 'intern') return res.status(404).json({ message: 'Intern not found' });
+
+    const secretIsValid = user.passwordSetAt
+      ? await user.comparePassword(currentSecret)
+      : currentSecret === user.internCode || await user.comparePassword(currentSecret);
+    if (!secretIsValid) return res.status(400).json({ message: 'Current secret is incorrect' });
+
+    user.password = newPassword;
+    user.passwordSetAt = new Date();
+    await user.save();
+    await logAudit({ userId: user._id, action: 'PASSWORD_CHANGED', entityType: 'User', entityId: user._id, req });
+    return res.json({ message: 'Password updated successfully', passwordSetAt: user.passwordSetAt });
+  } catch (err) {
+    return res.status(500).json({ message: 'Unable to update password' });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const rawMobile = req.body?.mobileNo;
+    const mobileNo = typeof rawMobile === 'string' ? rawMobile.trim() : String(rawMobile || '').trim();
+    if (!/^\d{10}$/.test(mobileNo)) {
+      return res.status(400).json({ message: 'Mobile number must contain exactly 10 digits' });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { _id: req.user?.id, role: 'intern' },
+      { $set: { mobileNo } },
+      { new: true, runValidators: true, projection: 'fullName email mobileNo role createdAt passwordSetAt internCode domain startDate endDate' }
+    );
+    if (!user) return res.status(404).json({ message: 'Intern not found' });
+    await logAudit({ userId: user._id, action: 'PROFILE_UPDATED', entityType: 'User', entityId: user._id, meta: { fields: ['mobileNo'] }, req });
+    return res.json({ message: 'Profile updated successfully', user });
+  } catch (err) {
+    return res.status(500).json({ message: 'Unable to update profile' });
+  }
+};
+
 export const getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ userId: req.user.id })
@@ -262,7 +320,7 @@ export const markNotificationAsRead = async (req, res) => {
       return res.status(400).json({ message: 'Invalid notification ID' });
     }
 
-    const notification = await markNotificationRead(req.user.id, id);
+    const notification = await markNotificationReadService(req.user.id, id);
 
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found' });
@@ -444,41 +502,9 @@ export const downloadCertificateForRequest = async (req, res) => {
   }
 };
 
-export const getNotifications = async (req, res) => {
-  try {
-    const notifications = await Notification.find({ userId: req.user.id }).sort({ createdAt: -1 });
-    const unreadCount = notifications.filter((notification) => !notification.isRead).length;
 
-    return res.status(200).json({
-      notifications,
-      unreadCount
-    });
-  } catch (err) {
-    return res.status(500).json({ message: 'Internal server error', error: err.message });
-  }
-};
 
-export const markNotificationRead = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid notification ID' });
-    }
 
-    const notification = await Notification.findOne({ _id: id, userId: req.user.id });
-    if (!notification) {
-      return res.status(404).json({ message: 'Notification not found' });
-    }
-
-    notification.isRead = true;
-    notification.readAt = new Date();
-    await notification.save();
-
-    return res.status(200).json({ message: 'Notification marked as read', notification });
-  } catch (err) {
-    return res.status(500).json({ message: 'Internal server error', error: err.message });
-  }
-};
 
 export const markAllNotificationsRead = async (req, res) => {
   try {
@@ -495,4 +521,3 @@ export const markAllNotificationsRead = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error', error: err.message });
   }
 };
-

@@ -70,7 +70,7 @@ export default function AnalyticsKPICards({ overviewData, loading, error, onRetr
         <div className="kpi-value">{kpis.pendingRequests || 0}</div>
         <div className="kpi-sub">
           <span>Forwarded to Admin: <strong>{kpis.forwardedRequests || 0}</strong></span>
-          <span>Requests in period: <strong>{kpis.requestsThisMonth || 0}</strong></span>
+          <span>Requests this month: <strong>{kpis.requestsThisMonth || 0}</strong></span>
         </div>
       </div>
 
@@ -86,7 +86,7 @@ export default function AnalyticsKPICards({ overviewData, loading, error, onRetr
               {changes.certificates >= 0 ? `▲ +${changes.certificates}%` : `▼ ${changes.certificates}%`}
             </span>
           )}
-          <span className="sub-text">vs previous period</span>
+          <span className="sub-text">vs previous month</span>
         </div>
       </div>
 

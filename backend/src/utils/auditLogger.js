@@ -27,7 +27,21 @@ export async function logAudit({ userId, actor, action, entityType, entityId, ta
     if (mongoose.connection.readyState !== 1) {
       return;
     }
+const actorObject = actor && typeof actor === 'object' ? actor : null;
 
+const resolvedUserId =
+  userId ||
+  actorObject?._id ||
+  actorObject?.id ||
+  (typeof actor === 'string' ? actor : null) ||
+  req?.user?._id ||
+  req?.user?.id ||
+  null;
+
+const actorRole =
+  actorObject?.role ||
+  req?.user?.role ||
+  'system';
     const ipAddress = req?.ip || req?.headers?.['x-forwarded-for'] || req?.socket?.remoteAddress || '';
     const userAgent = req?.headers?.['user-agent'] || '';
     const safeMeta = stripSensitiveData(meta ?? description ?? {});
@@ -55,4 +69,5 @@ export async function logAudit({ userId, actor, action, entityType, entityId, ta
   }
 }
 
+export const logAction = logAudit;
 export default logAudit;

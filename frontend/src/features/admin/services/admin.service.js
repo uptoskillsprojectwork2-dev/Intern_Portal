@@ -1,10 +1,16 @@
 import axios from 'axios';
+import { installApiInterceptors } from '../../shared/services/apiInterceptors';
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:3000' : window.location.origin)).replace(/\/+$/, '');
 
 const adminApi = axios.create({
-  baseURL: 'http://localhost:3000',
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
   withCredentials: true,
 });
+installApiInterceptors(adminApi);
 
 const request = async (method, url, payload) => {
   try {
@@ -71,3 +77,58 @@ export const downloadAdminCertificate = async (id, fileName) => {
   link.remove();
   window.URL.revokeObjectURL(url);
 };
+
+
+/* Certificate Template Management */
+export const getCertificateTemplates = () =>
+  request('get', '/api/admin/templates');
+
+export const getTemplatePlaceholders = () =>
+  request('get', '/api/admin/templates/placeholders');
+
+export const createCertificateTemplate = (payload) =>
+  request('post', '/api/admin/templates', payload);
+
+export const updateCertificateTemplate = (id, payload) =>
+  request('patch', `/api/admin/templates/${id}`, payload);
+
+/* Certificate Revocation API aliases used by the overview UI */
+export const revokeAdminCertificate = (id, reason) =>
+  revokeCertificate(id, reason);
+
+export const unrevokeAdminCertificate = (id) =>
+  unrevokeCertificate(id);
+
+/* Audit Logs */
+export const getAuditLogs = (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== '')
+  );
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  return request('get', `/api/admin/audit-logs${qs}`);
+};
+
+export const exportAuditLogs = async (params = {}) => {
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value !== undefined && value !== '')
+  );
+  const qs = query.toString() ? `?${query.toString()}` : '';
+  const response = await adminApi.get(`/api/admin/audit-logs/export${qs}`, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+/* Retention Policy */
+export const getRetentionPolicy = () =>
+  request('get', '/api/admin/retention-policy');
+
+export const updateRetentionPolicy = (payload) =>
+  request('patch', '/api/admin/retention-policy', payload);
+
+/* Archived Interns */
+export const getArchivedInterns = () =>
+  request('get', '/api/admin/interns/archived');
+
+export const restoreIntern = (id) =>
+  request('patch', `/api/admin/interns/${id}/restore`);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 
@@ -11,11 +11,13 @@ import AdminInternsList from '../components/AdminInternsList';
 import AdminUpcomingCompletions from '../components/AdminUpcomingCompletions';
 import RetentionManagement from '../components/RetentionManagement';
 
-import AnalyticsView from '../analytics/pages/AnalyticsView';
 import AuditLogsPage from './AuditLogsPage';
 import NotificationBell from '../../shared/components/NotificationBell';
 
 import './AdminDashboard.css';
+
+const AnalyticsView = lazy(() => import('../analytics/pages/AnalyticsView'));
+const AnalyticsRequestsView = lazy(() => import('../analytics/pages/AnalyticsRequestsView'));
 
 const AdminDashboard = () => {
   const { user, handleLogout } = useAuth();
@@ -49,7 +51,25 @@ const AdminDashboard = () => {
    */
   const changeView = (view) => {
     setFallbackView(view);
-    if (searchParams.has('view')) setSearchParams({});
+    if (view === 'analytics') {
+      const preserved = {};
+      ['range', 'from', 'to', 'domain', 'teamLeaderId', 'groupBy'].forEach((key) => {
+        const value = searchParams.get(key);
+        if (value) preserved[key] = value;
+      });
+      setSearchParams({ ...preserved, view });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const openAnalyticsRequests = (filters = {}) => {
+    const params = { view: 'analytics-requests', page: '1' };
+    ['range', 'from', 'to', 'domain', 'teamLeaderId', 'groupBy', 'status', 'reviewStage', 'certificateType'].forEach((key) => {
+      const value = filters[key];
+      if (value) params[key] = String(value);
+    });
+    setSearchParams(params);
   };
 
   /*
@@ -59,6 +79,8 @@ const AdminDashboard = () => {
     switch (activeView) {
       case 'analytics':
         return 'Admin Analytics';
+      case 'analytics-requests':
+        return 'Analytics Request Details';
 
       case 'interns':
         return 'Intern Management';
@@ -97,6 +119,8 @@ const AdminDashboard = () => {
     switch (activeView) {
       case 'analytics':
         return 'Comprehensive performance metrics, issuance speed, team leader bottlenecks, and analytics.';
+      case 'analytics-requests':
+        return 'Requests matching the selected analytics filters.';
 
       case 'interns':
         return 'View, edit, and assign or reassign all interns across Team Leaders.';
@@ -204,7 +228,7 @@ const AdminDashboard = () => {
           <button
             type="button"
             className={`admin-nav-item ${
-              activeView === 'analytics' ? 'active' : ''
+              ['analytics', 'analytics-requests'].includes(activeView) ? 'active' : ''
             }`}
             onClick={() => changeView('analytics')}
           >
@@ -354,13 +378,15 @@ const AdminDashboard = () => {
         {/* =======================================================
             ANALYTICS
         ======================================================== */}
-        {activeView === 'analytics' ? (
+        {activeView === 'analytics-requests' ? (
+          <Suspense fallback={<div role="status" className="route-loading">Loading analytics requests…</div>}><AnalyticsRequestsView onBack={() => changeView('analytics')} /></Suspense>
 
-          <AnalyticsView
-            onOpenRequests={() =>
-              changeView('requests')
-            }
+        ) : activeView === 'analytics' ? (
+
+          <Suspense fallback={<div role="status" className="route-loading">Loading admin analytics…</div>}><AnalyticsView
+            onOpenRequests={openAnalyticsRequests}
           />
+          </Suspense>
 
         ) : activeView === 'overview' ? (
 

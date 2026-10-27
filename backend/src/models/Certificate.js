@@ -95,6 +95,11 @@ const certificateSchema = new mongoose.Schema(
         index: true
     },
 
+    verificationIdVersion: {
+        type: Number,
+        default: 2
+    },
+
     qrCodePath: {
         type: String
     },

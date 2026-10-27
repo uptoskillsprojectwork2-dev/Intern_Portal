@@ -36,10 +36,21 @@ export default function AnalyticsCharts({
   errorMap,
   onRetry,
   onExport,
-  onOpenRequests,
-  onSelectDomain,
-  onSelectTeamLeader
+  onOpenRequests
 }) {
+  const readDatum = (value) => value?.payload || value?.activePayload?.[0]?.payload || value;
+  const openTrendRequests = (point, status) => {
+    const datum = readDatum(point);
+    if (datum?.period) onOpenRequests?.({ period: datum.period, status });
+  };
+  const openPipelineRequests = (entry) => {
+    const datum = readDatum(entry);
+    const rawStatus = datum?.status;
+    if (!rawStatus) return;
+    if (rawStatus === 'rejected-tl') onOpenRequests?.({ status: 'rejected', reviewStage: 'team-leader' });
+    else if (rawStatus === 'rejected-admin') onOpenRequests?.({ status: 'rejected', reviewStage: 'admin' });
+    else onOpenRequests?.({ status: rawStatus });
+  };
   return (
     <div className="analytics-charts-grid">
       {/* 1. Requests Trend (Area / Line Chart) */}
@@ -63,7 +74,7 @@ export default function AnalyticsCharts({
         ) : (
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={trendData.raw} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <AreaChart accessibilityLayer data={trendData.raw} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
@@ -83,9 +94,12 @@ export default function AnalyticsCharts({
                 <YAxis stroke="var(--muted)" fontSize={12} />
                 <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
                 <Legend wrapperStyle={{ color: 'var(--text)', fontSize: '0.8125rem' }} />
-                <Area type="monotone" dataKey="pending" name="Pending" stroke="#f59e0b" fillOpacity={1} fill="url(#colorPending)" />
-                <Area type="monotone" dataKey="approved" name="Forwarded" stroke="#3b82f6" fillOpacity={1} fill="url(#colorApproved)" />
-                <Area type="monotone" dataKey="completed" name="Issued" stroke="#10b981" fillOpacity={1} fill="url(#colorCompleted)" />
+                <Area type="monotone" dataKey="pending" name="Pending" stroke="#f59e0b" fillOpacity={1} fill="url(#colorPending)" onClick={(point) => openTrendRequests(point, 'pending')} cursor="pointer" />
+                <Area type="monotone" dataKey="approved" name="Approved" stroke="#3b82f6" fillOpacity={1} fill="url(#colorApproved)" onClick={(point) => openTrendRequests(point, 'approved')} cursor="pointer" />
+                <Area type="monotone" dataKey="processing" name="With Admin" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.1} onClick={(point) => openTrendRequests(point, 'processing')} cursor="pointer" />
+                <Area type="monotone" dataKey="rejected" name="Rejected" stroke="#ef4444" fill="#ef4444" fillOpacity={0.08} onClick={(point) => openTrendRequests(point, 'rejected')} cursor="pointer" />
+                <Area type="monotone" dataKey="completed" name="Completed" stroke="#10b981" fillOpacity={1} fill="url(#colorCompleted)" onClick={(point) => openTrendRequests(point, 'completed')} cursor="pointer" />
+                <Area type="monotone" dataKey="cancelled" name="Cancelled" stroke="#64748b" fill="#64748b" fillOpacity={0.08} onClick={(point) => openTrendRequests(point, 'cancelled')} cursor="pointer" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -113,7 +127,7 @@ export default function AnalyticsCharts({
         ) : (
           <div className="chart-container donut-layout">
             <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
+              <PieChart accessibilityLayer>
                 <Pie
                   data={typesData.breakdown}
                   dataKey="count"
@@ -124,7 +138,11 @@ export default function AnalyticsCharts({
                   outerRadius={85}
                   paddingAngle={4}
                   label={({ certificateType, percentage }) => `${certificateType} (${percentage}%)`}
-                  onClick={() => onOpenRequests?.()}
+                  onClick={(entry) => {
+                    const datum = readDatum(entry);
+                    if (datum?.certificateType) onOpenRequests?.({ certificateType: datum.certificateType });
+                  }}
+                  cursor="pointer"
                 >
                   {typesData.breakdown.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
@@ -183,6 +201,7 @@ export default function AnalyticsCharts({
             <div className="chart-container">
               <ResponsiveContainer width="100%" height={chartHeight}>
                 <BarChart
+                  accessibilityLayer
                   layout="vertical"
                   data={chartData}
                   margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
@@ -214,8 +233,8 @@ export default function AnalyticsCharts({
                     }}
                   />
                   <Legend wrapperStyle={{ color: 'var(--text)', fontSize: '0.8125rem', paddingTop: '8px' }} />
-                  <Bar dataKey="totalInterns" name="Total Interns" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={20} onClick={(entry) => onSelectDomain?.(entry.domain)} cursor="pointer" />
-                  <Bar dataKey="certificatesCount" name="Certificates Issued" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={20} />
+                  <Bar dataKey="totalInterns" name="Total Interns" fill="#3b82f6" radius={[0, 4, 4, 0]} maxBarSize={20} onClick={(entry) => { const datum = readDatum(entry); if (datum?.domain) onOpenRequests?.({ domain: datum.domain }); }} cursor="pointer" />
+                  <Bar dataKey="certificatesCount" name="Certificates Issued" fill="#10b981" radius={[0, 4, 4, 0]} maxBarSize={20} onClick={(entry) => { const datum = readDatum(entry); if (datum?.domain) onOpenRequests?.({ domain: datum.domain }); }} cursor="pointer" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -249,28 +268,27 @@ export default function AnalyticsCharts({
         ) : (
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart layout="vertical" data={pipelineData.pipeline} margin={{ left: 40 }}>
+              <BarChart accessibilityLayer layout="vertical" data={pipelineData.pipeline} margin={{ left: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} stroke="var(--border)" />
                 <XAxis type="number" stroke="var(--muted)" fontSize={12} />
                 <YAxis type="category" dataKey="stage" stroke="var(--muted)" tick={{ fontSize: 11 }} width={120} />
                 <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
-                <Bar dataKey="count" name="Requests Count" fill="#8b5cf6" radius={[0, 4, 4, 0]} onClick={(entry) => onOpenRequests?.(entry.status)}>
+                <Bar dataKey="count" name="Requests Count" fill="#8b5cf6" radius={[0, 4, 4, 0]} onClick={openPipelineRequests}>
                   {pipelineData.pipeline.map((entry, idx) => (
                     <Cell
                       key={`cell-p-${idx}`}
-                      onClick={() => entry.status === 'processing' && onOpenRequests?.()}
                       fill={
                         entry.status === 'pending'
                           ? '#f59e0b'
-                          : entry.status === 'approved'
+                          : ['approved', 'processing'].includes(entry.status)
                           ? '#3b82f6'
                           : entry.status === 'completed'
                           ? '#10b981'
-                          : entry.status === 'rejected'
+                          : entry.status.startsWith('rejected')
                           ? '#ef4444'
                           : '#8b5cf6'
                       }
-                      style={{ cursor: entry.status === 'processing' ? 'pointer' : 'default' }}
+                      style={{ cursor: 'pointer' }}
                     />
                   ))}
                 </Bar>
@@ -287,6 +305,7 @@ export default function AnalyticsCharts({
             <h3>TL Average Review Time (Hours)</h3>
             <p className="chart-subtitle">Turnaround speed per Team Leader</p>
           </div>
+          <AnalyticsExportActions onExport={onExport} type="team-leaders" />
         </div>
         {loadingMap.teamLeaders ? (
           <div className="chart-skeleton">Loading TL turnaround...</div>
@@ -300,12 +319,12 @@ export default function AnalyticsCharts({
         ) : (
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={240}>
-              <BarChart data={teamLeadersData}>
+              <BarChart accessibilityLayer data={teamLeadersData}>
                 <CartesianGrid strokeDasharray="3 3" opacity={0.2} stroke="var(--border)" />
                 <XAxis dataKey="fullName" stroke="var(--muted)" tick={{ fontSize: 11 }} />
                 <YAxis stroke="var(--muted)" fontSize={12} label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: 'var(--muted)' }} />
                 <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
-                <Bar dataKey="avgReviewTimeHours" name="Avg Review Time (hrs)" fill="#06b6d4" radius={[4, 4, 0, 0]} onClick={(entry) => onSelectTeamLeader?.(entry.id)} cursor="pointer" />
+                <Bar dataKey="avgReviewTimeHours" name="Avg Review Time (hrs)" fill="#06b6d4" radius={[4, 4, 0, 0]} onClick={(entry) => { const datum = readDatum(entry); if (datum?.id) onOpenRequests?.({ teamLeaderId: datum.id }); }} cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           </div>

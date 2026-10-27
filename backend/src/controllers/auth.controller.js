@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { sendEmail } from "../utils/sendEmail.js";
 import { logAudit } from "../utils/auditLogger.js";
+import { authCookieOptions } from '../utils/authCookie.js';
 
 dotenv.config()
 
@@ -20,8 +21,12 @@ export async function login(req, res) {
         });
     }
 
-    // Compare the plain-text request password with the stored bcrypt hash.
-    const isCredentialValid = await user.comparePassword(password);
+    // Intern codes are first-login secrets. Once a password is set, only that
+    // password can authenticate the intern. Staff credentials keep bcrypt flow.
+    const credential = password ?? req.body.internCode;
+    const isCredentialValid = user.role === 'intern' && !user.passwordSetAt
+        ? credential === user.internCode || await user.comparePassword(credential)
+        : await user.comparePassword(credential);
 
     if (!isCredentialValid) {
         await logAudit({ action: 'LOGIN_FAILURE', targetType: 'Authentication', meta: { email }, req });
@@ -44,7 +49,7 @@ export async function login(req, res) {
         role: user.role
     }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.cookie("token", token);
+    res.cookie("token", token, authCookieOptions());
     await logAudit({ actor: user, action: 'LOGIN_SUCCESS', targetType: 'Authentication', targetId: user._id, req });
 
     return res.status(200).json({
@@ -158,7 +163,12 @@ export async function resetPassword(req, res) {
             });
         }
 
+        if (user.role === 'intern' && !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(newPassword)) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters and contain a letter and a number' });
+        }
+
         user.password = await bcrypt.hash(newPassword, 10);
+        user.passwordSetAt = new Date();
         user.resetPasswordToken = undefined;
         user.resetPasswordExpires = undefined;
         await user.save();

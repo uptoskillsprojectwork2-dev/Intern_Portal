@@ -4,6 +4,7 @@ import { generateInternCode } from '../utils/generateInternCode.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import { logAudit } from '../utils/auditLogger.js';
+import { invalidateAnalyticsCache } from '../utils/redisCache.js';
 import { createNotification } from '../utils/notificationService.js';
 
 export async function createIntern(req, res) {
@@ -33,11 +34,13 @@ export async function createIntern(req, res) {
 			password: internCode,
 			internshipDetails: {
 				teamLeader: teamLeader._id,
+				teamLeaderId: teamLeader._id,
 				teamleaderEmail: teamLeader.email.toLowerCase(),
 				status: 'ongoing',
 				createdBy: teamLeader._id,
 			},
 		});
+		await invalidateAnalyticsCache();
 		await logAudit({ userId: teamLeader._id, action: 'INTERN_CREATED', entityType: 'User', entityId: user._id, meta: { role: user.role }, req });
 
 		return res.status(201).json({
@@ -52,15 +55,10 @@ export async function createIntern(req, res) {
 export async function getInternsForTL(req, res) {
 	try {
 		const tlId = req.user.id;
-		const tlEmail = req.user.email?.toLowerCase();
-
 		const filter = {
 			role: 'intern',
 			isArchived: { $ne: true },
-			$or: [
-				{ 'internshipDetails.teamLeader': tlId },
-				{ 'internshipDetails.teamleaderEmail': tlEmail }
-			]
+			'internshipDetails.teamLeaderId': tlId
 		};
 
 		if (req.query.search) {
@@ -111,10 +109,7 @@ export async function getAssignedInternById(req, res) {
 
 		// Server-side ownership check
 		const tlId = req.user.id.toString();
-		const tlEmail = req.user.email?.toLowerCase();
-		const isAssigned =
-			(intern.internshipDetails?.teamLeader && intern.internshipDetails.teamLeader.toString() === tlId) ||
-			(intern.internshipDetails?.teamleaderEmail && intern.internshipDetails.teamleaderEmail.toLowerCase() === tlEmail);
+		const isAssigned = intern.internshipDetails?.teamLeaderId?.toString() === tlId;
 
 		if (!isAssigned) {
 			return res.status(403).json({ message: 'Access denied: Intern is not assigned to you' });
@@ -163,10 +158,7 @@ export async function updateAssignedIntern(req, res) {
 
 		// Server-side ownership check
 		const tlId = req.user.id.toString();
-		const tlEmail = req.user.email?.toLowerCase();
-		const isAssigned =
-			(intern.internshipDetails?.teamLeader && intern.internshipDetails.teamLeader.toString() === tlId) ||
-			(intern.internshipDetails?.teamleaderEmail && intern.internshipDetails.teamleaderEmail.toLowerCase() === tlEmail);
+		const isAssigned = intern.internshipDetails?.teamLeaderId?.toString() === tlId;
 
 		if (!isAssigned) {
 			return res.status(403).json({ message: 'Access denied: Intern is not assigned to you' });
@@ -213,6 +205,7 @@ export async function updateAssignedIntern(req, res) {
 		if (status !== undefined) { changes.status = { from: intern.internshipDetails.status, to: status }; intern.internshipDetails.status = status; }
 
 		await intern.save();
+		await invalidateAnalyticsCache();
 
 		await logAudit({
 			userId: req.user.id,
@@ -239,7 +232,8 @@ export async function updateAssignedIntern(req, res) {
 // Step 1: TL sees requests waiting for their review
 export const getRequestsForReview = async (req, res) => {
   try {
-    const requests = await CertificateRequest.find({ status: 'pending' })
+    const internIds = await User.distinct('_id', { role: 'intern', isArchived: { $ne: true }, 'internshipDetails.teamLeaderId': req.user.id });
+    const requests = await CertificateRequest.find({ status: 'pending', userId: { $in: internIds } })
       .populate('userId', 'fullName email internCode domain')
       .sort({ requestedAt: -1 });
 
@@ -263,6 +257,9 @@ export const reviewRequestAsTL = async (req, res) => {
     const request = await CertificateRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ message: 'Request not found' });
 
+    const ownedIntern = await User.exists({ _id: request.userId, role: 'intern', isArchived: { $ne: true }, 'internshipDetails.teamLeaderId': req.user.id });
+    if (!ownedIntern) return res.status(403).json({ message: 'Access denied: Request belongs to another team leader\'s intern' });
+
     if (request.status !== 'pending') {
       return res.status(409).json({ message: 'This request has already been reviewed' });
     }
@@ -282,6 +279,7 @@ export const reviewRequestAsTL = async (req, res) => {
     }
 
     await request.save();
+    await invalidateAnalyticsCache();
     await logAudit({ userId: req.user.id, action: action === 'forward' ? 'CERTIFICATE_REQUEST_FORWARDED' : 'CERTIFICATE_REQUEST_REJECTED', entityType: 'CertificateRequest', entityId: request._id, meta: { reviewStage: 'teamleader', rejectionReason: action === 'reject' ? rejectionReason : undefined }, req });
     const statusMessage = action === 'forward' ? 'Your certificate request was forwarded to the administrator.' : `Your certificate request was declined by your team leader.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`;
     const notifications = [createNotification({ userId: request.userId, title: action === 'forward' ? 'Request forwarded' : 'Request declined', message: statusMessage, type: 'certificate' })];
@@ -307,7 +305,7 @@ export const getUpcomingCompletionsForTL = async (req, res) => {
 
     const interns = await User.find({
       role: 'intern',
-      'internshipDetails.teamleaderEmail': req.user.email.toLowerCase(),
+      'internshipDetails.teamLeaderId': req.user.id,
       endDate: {
         $gte: today,
         $lte: thirdDay,
@@ -344,3 +342,5 @@ export const getUpcomingCompletionsForTL = async (req, res) => {
     });
   }
 };
+
+export const getMyInterns = getInternsForTL;

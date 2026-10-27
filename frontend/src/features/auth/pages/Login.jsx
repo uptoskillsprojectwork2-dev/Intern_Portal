@@ -148,7 +148,7 @@ export default function Login() {
             </label>
 
             <label className="field">
-              <b>Password</b>
+              <b>Intern Code or Password</b>
               <div
                 className={`input-wrap ${isPasswordInvalid ? 'invalid' : isPasswordValid ? 'valid' : ''
                   }`}

@@ -91,6 +91,7 @@ test('ADMIN & TEAM LEADER INTERN MANAGEMENT TEST SUITE', async (t) => {
       endDate: new Date('2026-06-30'),
       internshipDetails: {
         teamLeader: new mongoose.Types.ObjectId(tlAId),
+        teamLeaderId: new mongoose.Types.ObjectId(tlAId),
         teamleaderEmail: 'tla@portal.com',
         status: 'ongoing',
         mentor: 'Mentor Alpha'
@@ -108,6 +109,7 @@ test('ADMIN & TEAM LEADER INTERN MANAGEMENT TEST SUITE', async (t) => {
       endDate: new Date('2026-07-31'),
       internshipDetails: {
         teamLeader: new mongoose.Types.ObjectId(tlAId),
+        teamLeaderId: new mongoose.Types.ObjectId(tlAId),
         teamleaderEmail: 'tla@portal.com',
         status: 'upcoming'
       },
@@ -124,6 +126,7 @@ test('ADMIN & TEAM LEADER INTERN MANAGEMENT TEST SUITE', async (t) => {
       endDate: new Date('2026-08-31'),
       internshipDetails: {
         teamLeader: new mongoose.Types.ObjectId(tlBId),
+        teamLeaderId: new mongoose.Types.ObjectId(tlBId),
         teamleaderEmail: 'tlb@portal.com',
         status: 'ongoing'
       },
@@ -176,6 +179,7 @@ test('ADMIN & TEAM LEADER INTERN MANAGEMENT TEST SUITE', async (t) => {
   User.find = function(filter) {
     let result = usersDb.filter(u => {
       if (filter.role && u.role !== filter.role) return false;
+      if (filter['internshipDetails.teamLeaderId'] && u.internshipDetails?.teamLeaderId?.toString() !== filter['internshipDetails.teamLeaderId'].toString()) return false;
       if (filter.$or) {
         return filter.$or.some(cond => {
           if (cond['internshipDetails.teamLeader']) {
@@ -337,6 +341,7 @@ test('ADMIN & TEAM LEADER INTERN MANAGEMENT TEST SUITE', async (t) => {
     assert.equal(res.body.intern.internshipDetails.teamleaderEmail, 'tlb@portal.com');
     // Restore intern1 back to tlA for following tests
     usersDb.find(u => u._id.toString() === intern1Id).internshipDetails.teamLeader = new mongoose.Types.ObjectId(tlAId);
+    usersDb.find(u => u._id.toString() === intern1Id).internshipDetails.teamLeaderId = new mongoose.Types.ObjectId(tlAId);
     usersDb.find(u => u._id.toString() === intern1Id).internshipDetails.teamleaderEmail = 'tla@portal.com';
   });
 
@@ -390,6 +395,7 @@ test('ADMIN & TEAM LEADER INTERN MANAGEMENT TEST SUITE', async (t) => {
   await t.test('14. TL cannot see unassigned interns in list', async () => {
     // Re-set unassigned intern to have no TL
     usersDb.find(u => u._id.toString() === unassignedInternId).internshipDetails.teamLeader = undefined;
+    usersDb.find(u => u._id.toString() === unassignedInternId).internshipDetails.teamLeaderId = undefined;
     usersDb.find(u => u._id.toString() === unassignedInternId).internshipDetails.teamleaderEmail = undefined;
 
     const res = mockRes();

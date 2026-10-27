@@ -1,10 +1,12 @@
 import axios from 'axios';
+import { installApiInterceptors } from '../../shared/services/apiInterceptors';
 
 const tlApi = axios.create({
   baseURL: 'http://localhost:3000/api/teamleader',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 });
+installApiInterceptors(tlApi);
 
 export const getRequestsForReview = async () => {
   const response = await tlApi.get('/requests-for-review');

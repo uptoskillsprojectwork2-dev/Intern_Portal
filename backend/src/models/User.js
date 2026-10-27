@@ -72,6 +72,11 @@ const userSchema = new mongoose.Schema(
             }
         },
 
+        passwordSetAt: {
+            type: Date,
+            default: null
+        },
+
         resetPasswordToken: {
             type: String
         },
@@ -87,6 +92,7 @@ const userSchema = new mongoose.Schema(
         },
         internshipDetails:{
             teamLeader: { type: mongoose.Schema.Types.ObjectId, ref: 'user', index: true },
+            teamLeaderId: { type: mongoose.Schema.Types.ObjectId, ref: 'user', index: true },
             teamleaderEmail: { type: String, trim: true, lowercase: true },
             mentor: { type: String, trim: true },
             collegeName: { type: String, trim: true },
@@ -111,17 +117,18 @@ userSchema.index({ role: 1, domain: 1, 'internshipDetails.teamLeader': 1, create
 userSchema.index({ role: 1, isArchived: 1, archivedAt: 1 });
 
 userSchema.methods.comparePassword = async function (candidatePassword) {
-
+    if (!this.password || !candidatePassword) {
+        return false;
+    }
     return bcrypt.compare(
         candidatePassword,
         this.password
     );
-
 };
 
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
     if (!this.internCode) {
-        this.internCode = this.email
+        this.internCode = this.email;
     }
 
     if (!this.isModified("password")) {
@@ -132,7 +139,6 @@ userSchema.pre("save", async function (next) {
     if (!/^\$2[aby]\$\d{2}\$/.test(this.password)) {
         this.password = await bcrypt.hash(this.password, 10);
     }
-    next;
 });
 
 const userModel = mongoose.model(

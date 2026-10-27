@@ -21,14 +21,22 @@ import {
   unrevokeCertificate,
   retryCertificateGeneration,
   downloadCertificatePdf,
-  revokeCertificate,
-  unrevokeCertificate,
-  getAuditLogs
+  getCertificateTemplates,
+  getTemplatePlaceholders,
+  createCertificateTemplate,
+  updateCertificateTemplate,
+  getRetentionPolicy,
+  updateRetentionPolicy,
+  getArchivedInterns,
+  restoreArchivedIntern
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
 import requireAdmin from "../middlewares/requireAdmin.js";
 import { getAuditLogs, exportAuditLogs } from "../controllers/audit.controller.js";
+import { getRequests as getAnalyticsRequests } from '../controllers/adminAnalytics.controller.js';
+import { analyticsQueryValidator } from '../validators/adminAnalytics.validator.js';
+import { adminReviewValidator, templateCreateValidator, templateUpdateValidator } from '../validators/workflow.validator.js';
 
 const adminRouter = express.Router();
 
@@ -53,6 +61,7 @@ adminRouter.post(
   "/templates",
   verifyAuth,
   requireAdmin,
+  templateCreateValidator,
   createCertificateTemplate
 );
 
@@ -60,6 +69,7 @@ adminRouter.patch(
   "/templates/:id",
   verifyAuth,
   requireAdmin,
+  templateUpdateValidator,
   updateCertificateTemplate
 );
 
@@ -87,8 +97,9 @@ adminRouter.patch("/teamleaders/:id", verifyAuth, requireAdmin, updateTeamLeader
 adminRouter.get("/teamleaders/:id/interns", verifyAuth, requireAdmin, getInternsByTeamLeader);
 
 adminRouter.get("/forwarded-requests", verifyAuth, requireAdmin, getForwardedRequests);
+adminRouter.get('/requests', verifyAuth, requireAdmin, analyticsQueryValidator, getAnalyticsRequests);
 
-adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRequest);
+adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, adminReviewValidator, finalizeRequest);
 
 // Day 3 Certificate Draft Review routes
 adminRouter.get("/certificates/:id", verifyAuth, requireAdmin, getCertificateDraft);
@@ -98,13 +109,12 @@ adminRouter.patch("/certificates/:id", verifyAuth, requireAdmin, updateCertifica
 adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finalizeCertificate);
 
 // Day 5 Admin Overview, Download & Retry Generation routes
+
 adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
 adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
-adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
-adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
-adminRouter.get("/audit-logs", verifyAuth, requireAdmin, getAuditLogs);
 adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
+
 
 export default adminRouter;
