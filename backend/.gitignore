@@ -1,3 +1,9 @@
 node_modules
 .env
 uploads/
+report/
+
+tests/
+__tests__/
+*.test.js
+*.spec.js

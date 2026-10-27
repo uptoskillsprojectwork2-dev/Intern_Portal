@@ -13,9 +13,8 @@ import TLDashboard from '../features/teamleader/pages/TLDashboard';
 
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
 import CertificateReviewPage from '../features/admin/pages/CertificateReviewPage';
-import CertificateTemplateEditorPage from '../features/admin/pages/CertificateTemplateEditorPage';
-import CertificateVerificationPage from '../features/shared/pages/CertificateVerificationPage';
-
+import CertificateVerificationPage from '../features/public/pages/CertificateVerificationPage';
+import ThemeToggle from '../features/shared/components/ThemeToggle';
 import './App.css';
 
 export default function App() {
@@ -42,24 +41,10 @@ export default function App() {
       />
 
       <Routes>
-        {/* =========================
-            PUBLIC ROUTES
-        ========================== */}
-
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-
-        <Route
-          path="/forgot-password"
-          element={<ForgotPasswordPage />}
-        />
-
-        <Route
-          path="/reset-password/:token"
-          element={<ResetPasswordPage />}
-        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        <Route path="/verify" element={<CertificateVerificationPage />} />
 
         <Route
           path="/verify/:certificateNumber"

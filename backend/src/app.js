@@ -7,9 +7,9 @@ import authRouter from './routes/auth.routes.js';
 import internRouter from './routes/intern.routes.js';
 import adminRouter from './routes/admin.routes.js';
 import teamleaderRouter from './routes/teamleader.routes.js';
-import analyticsRouter from './routes/adminAnalytics.routes.js';
-import publicRouter from './routes/public.routes.js';
-import notificationRouter from './routes/notification.routes.js';
+import { verifyCertificatePublic } from './controllers/admin.controller.js';
+
+
 
 // Use public DNS providers (Cloudflare and Google) to avoid local DNS issues.
 // Remove or modify if you rely on system DNS or have internal DNS requirements.
@@ -42,6 +42,6 @@ app.use('/api/admin', adminRouter);
 
 app.use('/api/teamleader', teamleaderRouter);
 
-app.use('/api/public', publicRouter);
+app.get('/api/public/certificates/verify', verifyCertificatePublic);
 
 export default app;
