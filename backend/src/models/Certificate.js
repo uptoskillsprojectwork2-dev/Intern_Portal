@@ -87,39 +87,35 @@ const certificateSchema = new mongoose.Schema(
         index: true
     },
 
-    verificationIdVersion: {
-        type: Number,
-        enum: [1, 2],
-        default: 1,
+    verifyId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
         index: true
     },
 
-    revocationReason: {
-        type: String,
-        trim: true,
-        maxlength: 1000,
-        default: null
-    },
-
-    revokedFromStatus: {
-        type: String,
-        enum: ['finalized', 'issued'],
-        default: null
-    },
-
-    revokedAt: {
-        type: Date,
-        default: null
-    },
-
-    revokedBy: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
-        default: null
+    verificationIdVersion: {
+        type: Number,
+        default: 2
     },
 
     qrCodePath: {
         type: String
+    },
+
+    revokedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user"
+    },
+
+    revokedAt: {
+        type: Date
+    },
+
+    revocationReason: {
+        type: String,
+        trim: true
     },
 
     generatedBy: {

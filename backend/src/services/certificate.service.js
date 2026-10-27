@@ -12,6 +12,9 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import CertificateTemplate from '../models/CertificateTemplate.js';
 import { sendEmail } from '../utils/sendEmail.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 /* =========================================================
    CONSTANTS
 ========================================================= */
@@ -91,9 +94,40 @@ const generateVerificationCode = () => {
   return `VER-${randomBytes(16).toString('hex').toUpperCase()}`;
 };
 
-/* =========================================================
-   DATE FORMATTER
-========================================================= */
+const generateVerifyId = () => {
+  return `VERIFY-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+};
+
+const generateQrDataUrl = async (certificateNumber, verificationCode) => {
+  const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify?certificateNumber=${encodeURIComponent(certificateNumber)}&verificationCode=${encodeURIComponent(verificationCode)}`;
+  const seed = Array.from(verifyUrl).reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const squares = [];
+
+  for (let row = 0; row < 25; row += 1) {
+    for (let col = 0; col < 25; col += 1) {
+      const isFinder = (row < 7 && col < 7) || (row < 7 && col > 17) || (row > 17 && col < 7);
+      const pattern = (row * 17 + col * 13 + seed) % 7;
+      const filled = isFinder ? (row === 0 || col === 0 || row === 6 || col === 6 || (row > 1 && row < 5 && col > 1 && col < 5)) : (pattern === 0 || pattern === 1 || pattern === 3);
+      squares.push(filled ? '1' : '0');
+    }
+  }
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 25 25" shape-rendering="crispEdges">
+      <rect width="25" height="25" fill="#ffffff"/>
+      ${squares.map((cell, index) => {
+        const row = Math.floor(index / 25);
+        const col = index % 25;
+        if (cell === '1') {
+          return `<rect x="${col}" y="${row}" width="1" height="1" fill="#111827"/>`;
+        }
+        return '';
+      }).join('')}
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+};
 
 const formatDate = (date) => {
   if (!date) {
@@ -286,26 +320,12 @@ export const createCertificateDraft = async (requestId) => {
     throw error;
   }
 
-  /* ---------------------------------------------------------
-     Certificate number
-  --------------------------------------------------------- */
+  const certificateNumber = await generateCertificateNumber();
+  const verificationCode = generateVerificationCode();
+  const verifyId = generateVerifyId();
 
-  const certificateNumber =
-    await generateCertificateNumber();
-
-  /* ---------------------------------------------------------
-     Verification code
-  --------------------------------------------------------- */
-
-  const verificationCode =
-    generateVerificationCode();
-
-  /* ---------------------------------------------------------
-     Certificate title
-  --------------------------------------------------------- */
-
-  const certificateTitle =
-    getCertificateTitle(request.certificateType);
+  const certificateTitle = getCertificateTitle(request.certificateType);
+  const formattedCertType = certificateTitle;
 
   /* ---------------------------------------------------------
      QR CODE
@@ -681,92 +701,33 @@ export const createCertificateDraft = async (requestId) => {
   ========================================================= */
 
   const trustedCoreData = {
-    /* -------------------------------------------------------
-       New required placeholders
-    ------------------------------------------------------- */
-
-    fullName:
-      user.fullName || '',
-
-    internCode:
-      user.internCode || '',
-
-    domain:
-      user.domain || '',
-
-    startDate:
-      formatDate(user.startDate),
-
-    endDate:
-      formatDate(user.endDate),
-
-    issueDate:
-      formatDate(new Date()),
-
-    requestNumber:
-      request.requestNumber || certificateNumber,
-
-    certificateTitle,
-
-    qrCodeUrl:
-      qrCodeDataUrl,
-
-    /* -------------------------------------------------------
-       QR verification information
-    ------------------------------------------------------- */
-
-    verificationUrl,
-
-    /* -------------------------------------------------------
-       Legacy placeholders
-       These keep old templates working.
-    ------------------------------------------------------- */
-
-    InternName:
-      user.fullName || '',
-
-    internName:
-      user.fullName || '',
-
-    name:
-      user.fullName || '',
-
-    CertificateNumber:
-      certificateNumber,
-
-    certificateNumber,
-
-    Department:
-      user.domain || '',
-
-    department:
-      user.domain || '',
-
-    StartDate:
-      formatDate(user.startDate),
-
-    EndDate:
-      formatDate(user.endDate),
-
-    IssueDate:
-      formatDate(new Date()),
-
-    InternCode:
-      user.internCode || '',
-
-    CertificateType:
-      certificateTitle,
-
-    certificateType:
-      certificateTitle,
-
-    rawCertificateType:
-      request.certificateType || '',
-
-    VerificationCode:
-      verificationCode,
-
-    verificationCode,
+    InternName: user.fullName || '',
+    internName: user.fullName || '',
+    fullName: user.fullName || '',
+    name: user.fullName || '',
+    CertificateNumber: certificateNumber,
+    certificateNumber: certificateNumber,
+    Department: user.domain || '',
+    department: user.domain || '',
+    domain: user.domain || '',
+    StartDate: formatDate(user.startDate),
+    startDate: formatDate(user.startDate),
+    EndDate: formatDate(user.endDate),
+    endDate: formatDate(user.endDate),
+    IssueDate: formatDate(new Date()),
+    issueDate: formatDate(new Date()),
+    InternCode: user.internCode || '',
+    internCode: user.internCode || '',
+    CertificateType: formattedCertType,
+    certificateType: formattedCertType,
+    rawCertificateType: request.certificateType || '',
+    VerificationCode: verificationCode,
+    verificationCode: verificationCode,
+    VerifyId: verifyId,
+    verifyId: verifyId,
+    qrCodeDataUrl,
+    qrCodeUrl: qrCodeDataUrl,
+    verificationUrl
   };
 
   /* =========================================================
@@ -777,112 +738,29 @@ export const createCertificateDraft = async (requestId) => {
     ...supplementaryData,
     ...trustedCoreData,
   };
+  const htmlContent = Handlebars.compile(templateHtml)(templateData);
 
   /* =========================================================
      COMPILE HANDLEBARS TEMPLATE
   ========================================================= */
 
-  let compiledTemplate;
-
-  try {
-    compiledTemplate =
-      Handlebars.compile(templateHtml, {
-        strict: false,
-      });
-  } catch (compileError) {
-    const error = new Error(
-      `Certificate template compilation failed: ${compileError.message}`
-    );
-
-    error.statusCode = 400;
-
-    throw error;
-  }
-
-  /* =========================================================
-     RENDER HTML
-  ========================================================= */
-
-  let htmlContent;
-
-  try {
-    htmlContent =
-      compiledTemplate(templateData);
-  } catch (renderError) {
-    const error = new Error(
-      `Certificate template rendering failed: ${renderError.message}`
-    );
-
-    error.statusCode = 400;
-
-    throw error;
-  }
-
-  /* =========================================================
-     SAFETY CHECK
-  ========================================================= */
-
-  if (!htmlContent || !htmlContent.trim()) {
-    const error = new Error(
-      'Generated certificate HTML is empty'
-    );
-
-    error.statusCode = 400;
-
-    throw error;
-  }
-
-  /* =========================================================
-     CREATE CERTIFICATE
-  ========================================================= */
-
-  const certificate =
-    await Certificate.create({
-      certificateNumber,
-
-      userId:
-        user._id,
-
-      internCode:
-        user.internCode,
-
-      templateId:
-        template._id,
-
-      certificateType:
-        request.certificateType,
-
-      domain:
-        user.domain,
-
-      startDate:
-        user.startDate,
-
-      endDate:
-        user.endDate,
-
-      issuedDate:
-        new Date(),
-
-      status:
-        'draft',
-
-      htmlContent,
-
-      verificationCode,
-
-      verificationIdVersion: 2,
-
-      generatedBy:
-        request.reviewedBy,
-    });
-
-  /* =========================================================
-     LINK REQUEST TO CERTIFICATE
-  ========================================================= */
-
-  request.certificateId =
-    certificate._id;
+  const certificate = await Certificate.create({
+    certificateNumber,
+    userId: user._id,
+    internCode: user.internCode,
+    templateId: template._id,
+    certificateType: request.certificateType,
+    domain: user.domain,
+    startDate: user.startDate,
+    endDate: user.endDate,
+    issuedDate: new Date(),
+    status: 'draft',
+    htmlContent,
+    verificationCode,
+    verifyId,
+    verificationIdVersion: 2,
+    generatedBy: request.reviewedBy
+  });
 
   await request.save();
 
@@ -1220,21 +1098,17 @@ export const finalizeCertificate = async (
     throw error;
   }
 
-  /* -------------------------------------------------------
-     Render PDF
-  ------------------------------------------------------- */
+  if (!certificate.verifyId) {
+    certificate.verifyId = generateVerifyId();
+  }
 
-  const pdfBuffer =
-    await renderCertificatePdf(
-      certificate.htmlContent
-    );
+  const qrDataUrl = await generateQrDataUrl(certificate.certificateNumber, certificate.verificationCode);
+  const htmlWithQr = certificate.htmlContent.includes('qrcode') || certificate.htmlContent.includes('qrCode')
+    ? certificate.htmlContent
+    : `${certificate.htmlContent}<div style="text-align:center;margin-top:22px;"><img src="${qrDataUrl}" alt="Verification QR Code" style="width:140px;height:140px;display:block;margin:0 auto;" /><p style="text-align:center;font-size:12px;color:#666;margin-top:10px;">Verification ID: ${certificate.verifyId}</p></div>`;
 
-  /* -------------------------------------------------------
-     Upload directory
-  ------------------------------------------------------- */
-
-  const __filename =
-    fileURLToPath(import.meta.url);
+  // 1. Render PDF using Puppeteer
+  const pdfBuffer = await renderCertificatePdf(htmlWithQr);
 
   const __dirname =
     path.dirname(__filename);
@@ -1294,25 +1168,14 @@ export const finalizeCertificate = async (
     throw error;
   }
 
-  /* -------------------------------------------------------
-     Update certificate
-  ------------------------------------------------------- */
-
-  const finalizedAt =
-    new Date();
-
-  certificate.status =
-    'finalized';
-
-  certificate.pdfPath =
-    relativePdfPath;
-
-  certificate.finalizedAt =
-    finalizedAt;
-
-  certificate.issuedDate =
-    finalizedAt;
-
+  // 3. Mark Certificate as finalized and save pdfPath
+  certificate.status = 'finalized';
+  certificate.pdfPath = relativePdfPath;
+  certificate.qrCodePath = await generateQrDataUrl(certificate.certificateNumber, certificate.verificationCode);
+  if (!certificate.verifyId) {
+    certificate.verifyId = generateVerifyId();
+  }
+  certificate.htmlContent = htmlWithQr;
   await certificate.save();
 
   /* -------------------------------------------------------
@@ -1326,14 +1189,10 @@ export const finalizeCertificate = async (
     });
 
   if (request) {
-    request.status =
-      'completed';
-
-    request.completedAt =
-      finalizedAt;
-
-    await request.save();
-  }
+  request.status = 'completed';
+  request.completedAt = new Date();
+  await request.save();
+}
 
   return {
     certificate,

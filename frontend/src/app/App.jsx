@@ -1,3 +1,4 @@
+
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
@@ -7,9 +8,8 @@ import ResetPasswordPage from '../features/auth/pages/ResetPasswordPage';
 
 import ProtectedRoute from '../features/shared/components/ProtectedRoute';
 import ThemeToggle from '../features/shared/components/ThemeToggle';
-
-import CertificateVerificationPage from '../features/shared/pages/CertificateVerificationPage';
 import AccessDeniedPage from '../features/shared/components/AccessDeniedPage';
+import CertificateVerificationPage from '../features/public/pages/CertificateVerificationPage';
 
 import './App.css';
 
@@ -43,24 +43,10 @@ export default function App() {
       />
 
       <Routes>
-        {/* =========================
-            PUBLIC ROUTES
-        ========================== */}
-
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-
-        <Route
-          path="/forgot-password"
-          element={<ForgotPasswordPage />}
-        />
-
-        <Route
-          path="/reset-password/:token"
-          element={<ResetPasswordPage />}
-        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+        <Route path="/verify" element={<CertificateVerificationPage />} />
 
         <Route
           path="/verify/:certificateNumber"

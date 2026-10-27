@@ -21,14 +21,14 @@ import {
   unrevokeCertificate,
   retryCertificateGeneration,
   downloadCertificatePdf,
+  getCertificateTemplates,
   getTemplatePlaceholders,
   createCertificateTemplate,
   updateCertificateTemplate,
-  getCertificateTemplates,
   getRetentionPolicy,
   updateRetentionPolicy,
   getArchivedInterns,
-  restoreArchivedIntern,
+  restoreArchivedIntern
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
@@ -109,10 +109,12 @@ adminRouter.patch("/certificates/:id", verifyAuth, requireAdmin, updateCertifica
 adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finalizeCertificate);
 
 // Day 5 Admin Overview, Download & Retry Generation routes
+
 adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
 adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
 adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
+
 
 export default adminRouter;
