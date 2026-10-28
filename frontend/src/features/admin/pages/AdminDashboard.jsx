@@ -23,6 +23,7 @@ const AdminDashboard = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [fallbackView, setFallbackView] = useState('overview');
+  const [requestStatusFilter, setRequestStatusFilter] = useState('');
   const activeView = searchParams.get('view') || fallbackView;
 
   const initials = (user?.fullName || 'Admin')
@@ -357,9 +358,10 @@ const AdminDashboard = () => {
         {activeView === 'analytics' ? (
 
           <AnalyticsView
-            onOpenRequests={() =>
-              changeView('requests')
-            }
+            onOpenRequests={(status) => {
+              setRequestStatusFilter(status || '');
+              changeView('requests');
+            }}
           />
 
         ) : activeView === 'overview' ? (
@@ -609,7 +611,10 @@ const AdminDashboard = () => {
           /* =====================================================
              CERTIFICATE REQUESTS
           ====================================================== */
-          <ForwardedRequestsList />
+          <ForwardedRequestsList
+            statusFilter={requestStatusFilter}
+            onClearStatusFilter={() => setRequestStatusFilter('')}
+          />
 
         )}
 

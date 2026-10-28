@@ -18,6 +18,7 @@ import {
   exportAnalyticsCSV,
   buildAnalyticsCacheKey
 } from '../src/controllers/adminAnalytics.controller.js';
+import { getAllCertificateRequests } from '../src/controllers/admin.controller.js';
 import app from '../src/app.js';
 
 // Models
@@ -231,6 +232,7 @@ test('Admin Analytics Controller Tests', async (t) => {
     const origUserDistinct = User.distinct;
     const origUserCount = User.countDocuments;
     const origCertReqFind = CertificateRequest.find;
+    const origCertReqCount = CertificateRequest.countDocuments;
 
     User.find = (query) => {
       if (query.role === 'teamleader') {
@@ -245,6 +247,7 @@ test('Admin Analytics Controller Tests', async (t) => {
     User.distinct = async () => [tlId];
 
     User.countDocuments = async () => 4;
+    CertificateRequest.countDocuments = async () => 4;
     CertificateRequest.find = () => ({
       select: async () => []
     });
@@ -258,11 +261,13 @@ test('Admin Analytics Controller Tests', async (t) => {
     assert.equal(res.body.success, true);
     assert.ok(Array.isArray(res.body.data));
     assert.equal(res.body.data[0].fullName, 'TL One');
+    assert.equal(res.body.data[0].requestsReceived, 4);
 
     User.find = origUserFind;
     User.distinct = origUserDistinct;
     User.countDocuments = origUserCount;
     CertificateRequest.find = origCertReqFind;
+    CertificateRequest.countDocuments = origCertReqCount;
   });
 
   await t.test('GET /export should generate CSV and log to AuditLog', async () => {
@@ -346,6 +351,165 @@ test('Admin Analytics Controller Tests', async (t) => {
       CertificateRequest.find = origCertReqFind;
       AuditLog.create = origAuditCreate;
       mongoose.connection.readyState = origReadyState;
+    }
+  });
+
+  await t.test('GET /pipeline should return accurate Week 3 pipeline stages', async () => {
+    const origUserFind = User.find;
+    const origCertReqCount = CertificateRequest.countDocuments;
+    User.find = () => ({ select: async () => [{ _id: new mongoose.Types.ObjectId() }] });
+
+    CertificateRequest.countDocuments = async (query) => {
+      if (query.status === 'pending') return 3;
+      if (query.status === 'processing') return 2;
+      if (query.status === 'approved' && query.certificateId?.$ne !== undefined) return 4;
+      if (query.status === 'approved' && query.certificateId === null) return 1;
+      if (query.status === 'completed') return 5;
+      if (query.status === 'rejected' && query.forwardedAt === null) return 2;
+      if (query.status === 'rejected' && query.forwardedAt?.$ne !== undefined) return 1;
+      if (query.status === 'cancelled') return 0;
+      return 0;
+    };
+
+    try {
+      const req = { query: {} };
+      const res = mockRes();
+      await getPipeline(req, res);
+
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.body.success, true);
+      const { pipeline, failedGenerations } = res.body.data;
+      assert.equal(failedGenerations, 1);
+      assert.equal(pipeline.find((p) => p.status === 'pending').count, 3);
+      assert.equal(pipeline.find((p) => p.status === 'processing').count, 2);
+      assert.equal(pipeline.find((p) => p.status === 'approved').count, 4);
+      assert.equal(pipeline.find((p) => p.status === 'failed-generation').count, 1);
+      assert.equal(pipeline.find((p) => p.status === 'completed').count, 5);
+      assert.equal(pipeline.find((p) => p.status === 'rejected-tl').count, 2);
+      assert.equal(pipeline.find((p) => p.status === 'rejected-admin').count, 1);
+    } finally {
+      User.find = origUserFind;
+      CertificateRequest.countDocuments = origCertReqCount;
+    }
+  });
+
+  await t.test('GET /requests should return filtered requests list with pagination', async () => {
+    const origCertReqCount = CertificateRequest.countDocuments;
+    const origCertReqFind = CertificateRequest.find;
+
+    CertificateRequest.countDocuments = async (filter) => {
+      assert.equal(filter.status, 'pending');
+      return 1;
+    };
+
+    const mockQuery = {
+      populate: () => mockQuery,
+      sort: () => mockQuery,
+      skip: () => mockQuery,
+      limit: async () => [{ _id: new mongoose.Types.ObjectId(), status: 'pending', requestNumber: 'REQ-1' }]
+    };
+    CertificateRequest.find = () => mockQuery;
+
+    try {
+      const req = { query: { status: 'pending', page: '1', limit: '10' } };
+      const res = mockRes();
+      await getAllCertificateRequests(req, res);
+
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.body.success, true);
+      assert.equal(res.body.requests.length, 1);
+      assert.equal(res.body.pagination.total, 1);
+      assert.equal(res.body.pagination.page, 1);
+    } finally {
+      CertificateRequest.countDocuments = origCertReqCount;
+      CertificateRequest.find = origCertReqFind;
+    }
+  });
+
+  await t.test('GET /stuck should return list of overdue requests', async () => {
+    const origUserFind = User.find;
+    const origCertReqFind = CertificateRequest.find;
+
+    User.find = () => ({ select: async () => [{ _id: new mongoose.Types.ObjectId() }] });
+    const mockQuery = {
+      populate: () => mockQuery,
+      sort: async () => [
+        {
+          _id: new mongoose.Types.ObjectId(),
+          requestNumber: 'REQ-STUCK-1',
+          userId: { fullName: 'Stuck Intern', email: 'stuck@example.com', domain: 'Web Development' },
+          certificateType: 'Internship Completion',
+          requestedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+          status: 'pending',
+          reviewedBy: null,
+          forwardedBy: null,
+          certificateId: null
+        }
+      ]
+    };
+    CertificateRequest.find = () => mockQuery;
+
+    try {
+      const req = { query: { days: '3' } };
+      const res = mockRes();
+      await getStuck(req, res);
+
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.body.success, true);
+      assert.equal(res.body.data.length, 1);
+      assert.equal(res.body.data[0].requestNumber, 'REQ-STUCK-1');
+      assert.equal(res.body.data[0].internName, 'Stuck Intern');
+      assert(res.body.data[0].daysPending >= 4.9);
+    } finally {
+      User.find = origUserFind;
+      CertificateRequest.find = origCertReqFind;
+    }
+  });
+
+  await t.test('GET /upcoming-completions should return upcoming interns list', async () => {
+    const origUserFind = User.find;
+    const origCertReqFindOne = CertificateRequest.findOne;
+
+    const internId = new mongoose.Types.ObjectId();
+    const mockUserQuery = {
+      populate: async () => [
+        {
+          _id: internId,
+          fullName: 'Finishing Intern',
+          email: 'finish@example.com',
+          domain: 'Cloud Computing',
+          endDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          internshipDetails: { teamLeader: { fullName: 'TL Dave', email: 'dave@example.com' } }
+        }
+      ]
+    };
+    User.find = () => mockUserQuery;
+
+    const mockCertReqQuery = {
+      select: () => ({
+        sort: async () => ({
+          status: 'pending',
+          requestNumber: 'REQ-FINISH-1',
+          requestedAt: new Date()
+        })
+      })
+    };
+    CertificateRequest.findOne = () => mockCertReqQuery;
+
+    try {
+      const req = { query: { days: '30' } };
+      const res = mockRes();
+      await getUpcoming(req, res);
+
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.body.success, true);
+      assert.equal(res.body.data.length, 1);
+      assert.equal(res.body.data[0].fullName, 'Finishing Intern');
+      assert.equal(res.body.data[0].hasRequestedCertificate, true);
+      assert.equal(res.body.data[0].certificateStatus, 'pending');
+    } finally {
+      User.find = origUserFind;
+      CertificateRequest.findOne = origCertReqFindOne;
     }
   });
 });

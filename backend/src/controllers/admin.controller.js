@@ -1298,3 +1298,63 @@ export const restoreArchivedIntern = async (req, res) => {
     return res.status(500).json({ message: 'Unable to restore intern.' });
   }
 };
+
+export async function getAllCertificateRequests(req, res) {
+  try {
+    const { status, page = 1, limit = 20, domain, teamLeaderId } = req.query;
+    const filter = {};
+
+    if (status) {
+      if (status === 'failed-generation') {
+        filter.status = 'approved';
+        filter.certificateId = null;
+        filter.updatedAt = { $lt: new Date(Date.now() - 60 * 60 * 1000) };
+      } else if (status === 'rejected-tl') {
+        filter.status = 'rejected';
+        filter.forwardedAt = null;
+      } else if (status === 'rejected-admin') {
+        filter.status = 'rejected';
+        filter.forwardedAt = { $ne: null };
+      } else {
+        filter.status = status;
+      }
+    }
+
+    if (domain || teamLeaderId) {
+      const userFilter = { role: 'intern' };
+      if (domain) userFilter.domain = domain;
+      if (teamLeaderId) userFilter['internshipDetails.teamLeader'] = teamLeaderId;
+      const interns = await User.find(userFilter).select('_id');
+      filter.userId = { $in: interns.map((i) => i._id) };
+    }
+
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [total, requests] = await Promise.all([
+      CertificateRequest.countDocuments(filter),
+      CertificateRequest.find(filter)
+        .populate('userId', 'fullName email internCode domain')
+        .populate('reviewedBy', 'fullName email')
+        .populate('forwardedBy', 'fullName email')
+        .populate('certificateId', '_id certificateNumber status')
+        .sort({ requestedAt: -1 })
+        .skip(skip)
+        .limit(limitNum)
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      requests,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum) || 1
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ message: 'Error retrieving certificate requests', error: error.message });
+  }
+}

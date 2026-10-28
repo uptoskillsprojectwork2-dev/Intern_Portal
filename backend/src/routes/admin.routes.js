@@ -29,6 +29,7 @@ import {
   updateRetentionPolicy,
   getArchivedInterns,
   restoreArchivedIntern,
+  getAllCertificateRequests,
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";
@@ -92,6 +93,7 @@ adminRouter.patch("/teamleaders/:id", verifyAuth, requireAdmin, updateTeamLeader
 adminRouter.get("/teamleaders/:id/interns", verifyAuth, requireAdmin, getInternsByTeamLeader);
 
 adminRouter.get("/forwarded-requests", verifyAuth, requireAdmin, getForwardedRequests);
+adminRouter.get("/requests", verifyAuth, requireAdmin, getAllCertificateRequests);
 
 adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRequest);
 

@@ -52,7 +52,10 @@ export const fetchUpcoming = (days = 30, params = {}) =>
   request(`/api/admin/analytics/upcoming-completions${buildQueryString({ ...params, days })}`);
 
 export const fetchStuck = (days = 3, params = {}) =>
-  request(`/api/admin/analytics/stuck-requests${buildQueryString({ ...params, days })}`);
+  request(`/api/admin/analytics/stuck${buildQueryString({ ...params, days })}`);
+
+export const fetchFilteredRequests = (status, page = 1) =>
+  request(`/api/admin/requests${buildQueryString({ status, page })}`);
 
 export const downloadAnalytics = async (type = 'overview', params = {}, format = 'csv') => {
   const qs = buildQueryString({ ...params, type, format });

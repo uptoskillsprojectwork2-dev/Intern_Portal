@@ -254,23 +254,25 @@ export default function AnalyticsCharts({
                 <XAxis type="number" stroke="var(--muted)" fontSize={12} />
                 <YAxis type="category" dataKey="stage" stroke="var(--muted)" tick={{ fontSize: 11 }} width={120} />
                 <Tooltip contentStyle={tooltipStyle} itemStyle={{ color: 'var(--text)' }} />
-                <Bar dataKey="count" name="Requests Count" fill="#8b5cf6" radius={[0, 4, 4, 0]} onClick={(entry) => onOpenRequests?.(entry.status)}>
+                <Bar dataKey="count" name="Requests Count" fill="#8b5cf6" radius={[0, 4, 4, 0]}>
                   {pipelineData.pipeline.map((entry, idx) => (
                     <Cell
                       key={`cell-p-${idx}`}
-                      onClick={() => entry.status === 'processing' && onOpenRequests?.()}
+                      onClick={() => onOpenRequests?.(entry.status)}
                       fill={
                         entry.status === 'pending'
                           ? '#f59e0b'
+                          : entry.status === 'processing'
+                          ? '#8b5cf6'
                           : entry.status === 'approved'
                           ? '#3b82f6'
                           : entry.status === 'completed'
                           ? '#10b981'
-                          : entry.status === 'rejected'
+                          : entry.status.startsWith('rejected')
                           ? '#ef4444'
-                          : '#8b5cf6'
+                          : '#64748b'
                       }
-                      style={{ cursor: entry.status === 'processing' ? 'pointer' : 'default' }}
+                      style={{ cursor: 'pointer' }}
                     />
                   ))}
                 </Bar>

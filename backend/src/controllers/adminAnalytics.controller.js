@@ -13,14 +13,18 @@ import {
 import { getCache, setCache } from '../utils/redisCache.js';
 import { logAudit } from '../utils/auditLogger.js';
 
-const readFilters = (query) => ({
-  from: query.from,
-  to: query.to,
-  range: query.range,
-  domain: query.domain,
-  teamLeader: query.teamLeader,
-  groupBy: query.groupBy
-});
+const readFilters = (query) => {
+  const tl = query.teamLeaderId || query.teamLeader;
+  return {
+    from: query.from,
+    to: query.to,
+    range: query.range,
+    domain: query.domain,
+    teamLeader: tl,
+    teamLeaderId: tl,
+    groupBy: query.groupBy
+  };
+};
 
 export const buildAnalyticsCacheKey = (widget, query, extras = {}) =>
   `analytics:${widget}:${JSON.stringify({ ...readFilters(query), ...extras })}`;
@@ -102,7 +106,7 @@ function toExportRows(type, data) {
   if (type === 'team-leaders') return data;
   if (type === 'domains') return data.domains;
   if (type === 'pipeline') return [...data.pipeline, { stage: 'Failed draft generation (retry available)', status: 'failed-generation', count: data.failedGenerations }];
-  if (type === 'stuck-requests' || type === 'upcoming-completions') return data;
+  if (type === 'stuck' || type === 'stuck-requests' || type === 'upcoming-completions') return data;
   return [];
 }
 
@@ -125,6 +129,7 @@ export async function exportAnalyticsCSV(req, res) {
       'team-leaders': () => getTeamLeadersPerformance(filters),
       domains: () => getDomainsDistribution(filters),
       pipeline: () => getPipelineStages(filters),
+      stuck: () => getStuckRequests(Number(req.query.days || 3), filters),
       'stuck-requests': () => getStuckRequests(Number(req.query.days || 3), filters),
       'upcoming-completions': () => getUpcomingCompletions(Number(req.query.days || 30), filters)
     };
