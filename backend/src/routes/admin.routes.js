@@ -109,6 +109,9 @@ adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
 adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
+adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
+adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
+adminRouter.get("/audit-logs", verifyAuth, requireAdmin, getAuditLogs);
 adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
 
 export default adminRouter;
