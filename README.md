@@ -39,6 +39,12 @@ FRONTEND_URL=http://localhost:5173
 
 For MongoDB Atlas, replace `MONGO_URI` with the Atlas connection string and make sure the database user and network access rules allow your machine to connect. Do not commit `.env` or any secret values to GitHub.
 
+For deployment, set `FRONTEND_URL` to the public HTTPS frontend origin so certificate QR codes open the verification page. Set `VITE_API_BASE_URL` in the frontend build environment to the backend origin; the local default is `http://localhost:3000`.
+
+### Certificate verification and previously issued PDFs
+
+Newly generated certificate PDFs include a QR code with a random verification link. The verification ID backfill updates certificate records without rewriting or replacing already issued PDF files. Existing PDFs therefore remain unchanged and do not gain QR codes or verification links; reissue a certificate through the normal issuance flow if a recipient needs a PDF with a verification link. Backfilled certificates can still be checked through the public verification endpoint when their verification ID is provided separately.
+
 Install backend dependencies:
 
 ```bash

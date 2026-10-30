@@ -3,7 +3,9 @@ import User from '../models/User.js';
 import RetentionPolicy from '../models/RetentionPolicy.js';
 import { sendEmail } from '../utils/sendEmail.js';
 import logAction from '../utils/logAction.js';
-import { notify } from '../services/notification.service.js';
+import { notify as sendAppNotification } from '../services/notification.service.js';
+import { logAudit } from '../utils/auditLogger.js';
+import { createNotification } from '../utils/notificationService.js';
 
 const BATCH_SIZE = 100;
 const DAY_MS = 86400000;
@@ -40,7 +42,7 @@ async function forEachBatch(query, callback) {
   }
 }
 
-async function sendArchiveWarnings({ graceDays, dryRun, today }) {
+export async function sendArchiveWarnings({ graceDays, dryRun, today, notify = createNotification, audit = logAudit, send = sendEmail }) {
   let warnings = 0;
   const targetEndDate = plusDays(today, 7 - graceDays);
   await forEachBatch({
@@ -60,13 +62,38 @@ async function sendArchiveWarnings({ graceDays, dryRun, today }) {
         console.log(`[retention] DRY RUN: would email ${intern.email} that account archives on ${archiveDate.toISOString().slice(0, 10)}`);
       } else {
         try {
-          await notify(intern._id, 'ARCHIVE_WARNING', {
-            title: 'Account Archival Warning',
-            message: `Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then.`,
-            email: true,
+          await send({
+            to: intern.email,
+            subject: 'Your UPTOSKILL internship account will be archived in 7 days',
+            html: `<p>Hello ${escapeHtml(intern.fullName || 'Intern')},</p><p>Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then. Contact an administrator if you need help.</p>`,
+          });
+          if (typeof sendAppNotification === 'function') {
+            await sendAppNotification(intern._id, 'ARCHIVE_WARNING', {
+              title: 'Account Archival Warning',
+              message: `Your internship portal account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}. You can still sign in and access your certificates until then.`,
+              email: false,
+            }).catch(() => {});
+          }
+          await audit({
+            actor: { _id: null, role: 'system' },
+            action: 'INTERN_ARCHIVE_WARNING',
+            targetType: 'User',
+            targetId: intern._id,
+            entityType: 'User',
+            entityId: intern._id,
+            meta: { warningDays: 7, archiveDate: archiveDate.toISOString() },
+            req: { ip: 'system', headers: { 'user-agent': 'retention-job' } }
           });
           intern.archiveWarningSentAt = new Date();
           await intern.save();
+
+          await notify({
+            userId: intern._id,
+            title: 'Internship archive warning',
+            message: `Your internship account is scheduled for archival on ${archiveDate.toLocaleDateString('en-IN')}.`,
+            type: 'internship',
+            email: false,
+          });
         } catch (error) {
           console.error(`[retention] warning notification failed for ${intern._id}:`, error.message);
           continue;
@@ -89,7 +116,7 @@ async function sendArchiveWarnings({ graceDays, dryRun, today }) {
   return warnings;
 }
 
-async function archiveCompletedInterns({ graceDays, dryRun, today }) {
+export async function archiveCompletedInterns({ graceDays, dryRun, today, notify = createNotification, audit = logAudit }) {
   let archived = 0;
   await forEachBatch({
     role: 'intern',
@@ -102,6 +129,10 @@ async function archiveCompletedInterns({ graceDays, dryRun, today }) {
       plusDays(intern.endDate, graceDays) < today);
     for (const intern of eligible) {
       console.log(`[retention] ${dryRun ? 'DRY RUN: would archive' : 'archiving'} ${intern._id}`);
+      if (dryRun) {
+        archived += 1;
+        continue;
+      }
       try {
         await logAction({
           actor: { role: 'system' },
@@ -113,19 +144,35 @@ async function archiveCompletedInterns({ graceDays, dryRun, today }) {
       } catch (logErr) {
         // silent
       }
-    }
-    if (eligible.length && !dryRun) {
-      await User.updateMany(
-        { _id: { $in: eligible.map(({ _id }) => _id) }, isArchived: { $ne: true } },
+      const result = await User.updateOne(
+        { _id: intern._id, isArchived: { $ne: true } },
         { $set: { isArchived: true, archivedAt: new Date() } }
       );
+      if (result.modifiedCount) {
+        await audit({
+          actor: { _id: null, role: 'system' },
+          action: 'INTERN_ARCHIVED',
+          targetType: 'User',
+          targetId: intern._id,
+          entityType: 'User',
+          entityId: intern._id,
+          meta: { archiveReason: 'internship_completed', graceDays, archivedAt: new Date().toISOString() },
+          req: { ip: 'system', headers: { 'user-agent': 'retention-job' } }
+        });
+        await notify({
+          userId: intern._id,
+          title: 'Internship account archived',
+          message: 'Your internship account has been archived and is pending the configured retention period.',
+          type: 'internship',
+        });
+        archived += 1;
+      }
     }
-    archived += eligible.length;
   });
   return archived;
 }
 
-async function purgeArchivedInterns({ purgeDays, dryRun, today }) {
+export async function purgeArchivedInterns({ purgeDays, dryRun, today, notify = createNotification, audit = logAudit }) {
   let purged = 0;
   const cutoff = plusDays(today, -purgeDays);
   await forEachBatch({
@@ -137,6 +184,10 @@ async function purgeArchivedInterns({ purgeDays, dryRun, today }) {
     for (const intern of batch) {
       const id = intern._id.toString();
       console.log(`[retention] ${dryRun ? 'DRY RUN: would anonymize' : 'anonymizing'} ${id}`);
+      if (dryRun) {
+        purged += 1;
+        continue;
+      }
       try {
         await logAction({
           actor: { role: 'system' },
@@ -147,19 +198,35 @@ async function purgeArchivedInterns({ purgeDays, dryRun, today }) {
       } catch (logErr) {
         // silent
       }
-      if (!dryRun) {
-        await User.updateOne({ _id: intern._id, isArchived: true, personalDataPurged: { $ne: true } }, {
-          $set: {
-            fullName: `Former Intern ${id.slice(-8)}`,
-            email: `purged-${id}@privacy.invalid`,
-            internCode: `PURGED-${id}`,
-            mobileNo: '',
-            personalDataPurged: true,
-          },
-          $unset: { archiveWarningSentAt: 1 },
+      const result = await User.updateOne({ _id: intern._id, isArchived: true, personalDataPurged: { $ne: true } }, {
+        $set: {
+          fullName: `Former Intern ${id.slice(-8)}`,
+          email: `purged-${id}@privacy.invalid`,
+          internCode: `PURGED-${id}`,
+          mobileNo: '',
+          personalDataPurged: true,
+        },
+        $unset: { archiveWarningSentAt: 1 },
+      });
+      if (result.modifiedCount) {
+        await audit({
+          actor: { _id: null, role: 'system' },
+          action: 'INTERN_PERSONAL_DATA_PURGED',
+          targetType: 'User',
+          targetId: intern._id,
+          entityType: 'User',
+          entityId: intern._id,
+          meta: { purgeDays, archivedAt: intern.archivedAt ? new Date(intern.archivedAt).toISOString() : null },
+          req: { ip: 'system', headers: { 'user-agent': 'retention-job' } }
         });
+        await notify({
+          userId: intern._id,
+          title: 'Personal data purged',
+          message: 'Your internship personal data has been anonymized after the retention window expired.',
+          type: 'system',
+        });
+        purged += 1;
       }
-      purged += 1;
     }
   });
   return purged;

@@ -11,14 +11,6 @@ const notificationSchema = new mongoose.Schema(
     type: {
       type: String,
       required: true,
-      enum: [
-        "REQUEST_SUBMITTED",
-        "REQUEST_FORWARDED",
-        "REQUEST_REJECTED",
-        "REQUEST_APPROVED",
-        "CERTIFICATE_SENT",
-        "ARCHIVE_WARNING",
-      ],
       trim: true,
     },
 
@@ -55,12 +47,13 @@ const notificationSchema = new mongoose.Schema(
   }
 );
 
-// Compound index as requested in the specification
 notificationSchema.index({ userId: 1, isRead: 1, createdAt: -1 });
 
-// Avoid mongoose OverwriteModelError in hot reload environments
 const Notification =
   mongoose.models.notification ||
+  mongoose.models.Notification ||
   mongoose.model("notification", notificationSchema);
+
+mongoose.models.Notification = Notification;
 
 export default Notification;

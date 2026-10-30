@@ -14,8 +14,7 @@ import TLDashboard from '../features/teamleader/pages/TLDashboard';
 
 import AdminDashboard from '../features/admin/pages/AdminDashboard';
 import CertificateReviewPage from '../features/admin/pages/CertificateReviewPage';
-import CertificateTemplateEditorPage from '../features/admin/pages/CertificateTemplateEditorPage';
-
+import CertificateVerificationPage from '../features/public/pages/CertificateVerificationPage';
 import './App.css';
 
 export default function App() {
@@ -59,6 +58,10 @@ export default function App() {
           </div>
           <ResetPasswordPage />
         </>
+      } />
+
+      <Route path="/verify" element={
+        <VerifyPage theme={theme} onToggleTheme={toggleTheme} />
       } />
 
       <Route path="/verify/:verifyId" element={

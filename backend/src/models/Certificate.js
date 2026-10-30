@@ -99,6 +99,16 @@ const certificateSchema = new mongoose.Schema(
         trim: true
     },
 
+    revocationReason: {
+        type: String,
+        trim: true
+    },
+
+    revokedFromStatus: {
+        type: String,
+        trim: true
+    },
+
     recipientName: {
         type: String,
         trim: true

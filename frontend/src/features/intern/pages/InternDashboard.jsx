@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useIntern } from '../hooks/useIntern';
 import { useAuth } from '../../auth/hooks/useAuth';
 import RequestCertificateModal from '../components/RequestCertificateModal';
@@ -58,7 +58,8 @@ export default function InternDashboard({ initialView = 'dashboard' }) {
   const { profile, archiveNotice, loading, error, fetchProfile } = useIntern();
   const { handleLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState(initialView);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeNav, setActiveNav] = useState(searchParams.get('view') || initialView);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
 
   /* ── mobile editing state ── */
@@ -113,6 +114,10 @@ export default function InternDashboard({ initialView = 'dashboard' }) {
     handleLogout();
     navigate('/login');
   };
+  const changeNav = (view) => {
+    setActiveNav(view);
+    if (searchParams.has('view')) setSearchParams({});
+  };
 
   /* ── derived ── */
   const initials = profile ? getInitials(profile.fullName) : '?';
@@ -151,7 +156,7 @@ export default function InternDashboard({ initialView = 'dashboard' }) {
         <div className="id-nav-right">
           <NotificationBell
             role="intern"
-            onNavigate={(targetNav) => setActiveNav(targetNav)}
+            onNavigate={(targetNav) => changeNav(targetNav)}
           />
           <div className="id-avatar" aria-label="User avatar">
             {initials}
@@ -181,7 +186,7 @@ export default function InternDashboard({ initialView = 'dashboard' }) {
               key={item.id}
               id={`sidebar-nav-${item.id}`}
               className={`id-nav-item ${activeNav === item.id ? 'active' : ''}`}
-              onClick={() => setActiveNav(item.id)}
+              onClick={() => changeNav(item.id)}
             >
               <span className="id-nav-icon"><i className={item.icon}></i></span>
               {item.label}

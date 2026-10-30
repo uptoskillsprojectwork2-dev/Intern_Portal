@@ -5,8 +5,9 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { sendEmail } from "../utils/sendEmail.js";
 import logAction from "../utils/logAction.js";
+import { logAudit } from "../utils/auditLogger.js";
 
-dotenv.config()
+dotenv.config();
 
 export async function login(req, res) {
     const { email, password, internCode } = req.body;
@@ -21,6 +22,7 @@ export async function login(req, res) {
             targetType: 'User',
             meta: { email }
         });
+        await logAudit({ action: 'LOGIN_FAILURE', targetType: 'Authentication', meta: { email }, req });
         return res.status(401).json({
             message: "Invalid credentials"
         });
@@ -34,8 +36,11 @@ export async function login(req, res) {
             targetId: user._id,
             meta: { email, reason: 'archived' }
         });
+        await logAudit({ actor: user, action: 'LOGIN_BLOCKED_ARCHIVED', targetType: 'Authentication', targetId: user._id, req });
         return res.status(403).json({
-            message: "Your internship account has been archived. Contact admin."
+            message: user.role === "intern"
+                ? "Your internship account has been archived. Contact admin."
+                : "Account is archived. Please contact administrator."
         });
     }
 
@@ -63,6 +68,7 @@ export async function login(req, res) {
             targetId: user._id,
             meta: { email }
         });
+        await logAudit({ action: 'LOGIN_FAILURE', targetType: 'Authentication', meta: { email }, req });
         return res.status(401).json({
             message: "Invalid credentials"
         });
@@ -90,6 +96,7 @@ export async function login(req, res) {
         targetId: user._id,
         meta: { email: user.email }
     });
+    await logAudit({ actor: user, action: 'LOGIN_SUCCESS', targetType: 'Authentication', targetId: user._id, req });
 
     return res.status(200).json({
         message: "User logged in successfully",
@@ -130,45 +137,33 @@ export async function getMe(req, res) {
     try {
         const userId = req.user.id;
 
-        const user = await User.findById(userId).select('fullName email mobileNo role createdAt');
-
+        const user = await User.findById(userId).select('-password');
         if (!user) {
             return res.status(404).json({
-                message: "user not found"
-            })
+                message: 'User not found'
+            });
         }
 
-        res.status(200).json({
-            message: "user found",
-            id: user._id,
-            fullName: user.fullName,
-            email: user.email,
-            mobileNo: user.mobileNo,
-            role: user.role,
-            createdAt: user.createdAt
-        })
+        return res.status(200).json({
+            user
+        });
     } catch (err) {
-        res.status(500).json({
-            message: "internal server error"
-        })
+        return res.status(500).json({
+            message: err.message
+        });
     }
 }
 
 export async function forgotPassword(req, res) {
     const { email } = req.body;
 
-    if (typeof email !== "string" || !email.trim()) {
-        return res.status(400).json({
-            message: "Email is required"
-        });
-    }
+    const genericMessage = "If an account with that email exists, a password reset link has been sent.";
 
     try {
-        const normalizedEmail = email.trim().toLowerCase();
-        const user = await User.findOne({ email: normalizedEmail });
-        const genericMessage = "If an account with this email exists, a reset link has been sent.";
+        const user = await User.findOne({ email: email?.toLowerCase() });
 
         if (!user) {
+            await logAudit({ action: 'PASSWORD_RESET_ATTEMPT_UNKNOWN_EMAIL', targetType: 'Authentication', meta: { email }, req });
             return res.status(200).json({ message: genericMessage });
         }
 
@@ -196,6 +191,7 @@ export async function forgotPassword(req, res) {
             targetId: user._id,
             meta: { email: user.email }
         });
+        await logAudit({ actor: user, action: 'PASSWORD_RESET_REQUESTED', targetType: 'Authentication', targetId: user._id, req });
 
         return res.status(200).json({ message: genericMessage });
     } catch (err) {
@@ -223,6 +219,7 @@ export async function resetPassword(req, res) {
         });
 
         if (!user) {
+            await logAudit({ action: 'PASSWORD_RESET_FAILED', targetType: 'Authentication', req });
             return res.status(400).json({
                 message: "Reset link is invalid or has expired"
             });
@@ -241,6 +238,7 @@ export async function resetPassword(req, res) {
             targetId: user._id,
             meta: { email: user.email }
         });
+        await logAudit({ actor: user, action: 'PASSWORD_RESET_COMPLETED', targetType: 'Authentication', targetId: user._id, req });
 
         return res.status(200).json({
             message: "Password reset successful. You can now log in."

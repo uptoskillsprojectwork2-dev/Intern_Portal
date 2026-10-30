@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../auth/hooks/useAuth';
 
 import CreateIntern from '../components/CreateIntern';
@@ -41,14 +41,18 @@ import './AdminDashboard.css';
 const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
-  const [activeView, setActiveView] = useState(initialView || 'overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlView = searchParams.get('view');
+  const [activeView, setActiveView] = useState(urlView || initialView || 'overview');
   const [selectedRequestStatus, setSelectedRequestStatus] = useState('processing');
 
   useEffect(() => {
-    if (initialView) {
+    if (urlView) {
+      setActiveView(urlView === 'audit' ? 'audit_logs' : urlView);
+    } else if (initialView) {
       setActiveView(initialView);
     }
-  }, [initialView]);
+  }, [urlView, initialView]);
 
   const [stats, setStats] = useState({
     totalInterns: 0,
@@ -96,6 +100,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
 
   const changeView = (view) => {
     setActiveView(view);
+    if (searchParams.has('view')) setSearchParams({});
   };
 
   const viewTitle = {
@@ -111,6 +116,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
     archived_interns: 'Account Retention & Lifecycle',
     requests: 'Certificate Requests',
     audit_logs: 'System Audit Logs & Governance',
+    audit: 'System Audit Logs & Governance',
   };
 
   const viewDesc = {
@@ -126,6 +132,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
     intern: 'Complete the details below to create a new intern portal account.',
     teamleader: 'Complete the details below to create a new Team Leader account.',
     audit_logs: 'Tamper-evident activity logs across authentication, certificate workflows, and retention tasks.',
+    audit: 'Tamper-evident activity logs across authentication, certificate workflows, and retention tasks.',
   };
 
   return (
@@ -494,7 +501,7 @@ const AdminDashboard = ({ theme, onToggleTheme, initialView }) => {
           <CertificateTemplateEditorPage embedded={true} />
         ) : activeView === 'retention' || activeView === 'archived_interns' ? (
           <RetentionManagement />
-        ) : activeView === 'audit_logs' ? (
+        ) : activeView === 'audit_logs' || activeView === 'audit' ? (
           <AuditLogsPage />
         ) : (
           <ForwardedRequestsList initialStatus={selectedRequestStatus} />

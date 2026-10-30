@@ -7,6 +7,7 @@ import { logAudit } from '../utils/auditLogger.js';
 import logAction from '../utils/logAction.js';
 import { notify } from '../services/notification.service.js';
 import { invalidateAnalyticsCache } from '../utils/redisCache.js';
+import { createNotification } from '../utils/notificationService.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -39,6 +40,7 @@ export async function createIntern(req, res) {
 				createdBy: teamLeader._id,
 			},
 		});
+		await logAudit({ userId: teamLeader._id, action: 'INTERN_CREATED', entityType: 'User', entityId: user._id, meta: { role: user.role }, req });
 
 		return res.status(201).json({
 			message: 'Intern created successfully',
@@ -284,6 +286,15 @@ export const reviewRequestAsTL = async (req, res) => {
     await request.save();
     await invalidateAnalyticsCache();
 
+    await logAudit({
+      userId: req.user.id,
+      action: action === 'forward' ? 'CERTIFICATE_REQUEST_FORWARDED' : 'CERTIFICATE_REQUEST_REJECTED',
+      entityType: 'CertificateRequest',
+      entityId: request._id,
+      meta: { reviewStage: 'teamleader', rejectionReason: action === 'reject' ? rejectionReason : undefined },
+      req
+    });
+
     if (action === 'reject') {
       await logAction({
         req,
@@ -297,12 +308,18 @@ export const reviewRequestAsTL = async (req, res) => {
       // Notify intern (in-app and email)
       try {
         const typeName = (request.certificateType || '').replace(/_/g, ' ');
-        await notify(request.userId, 'REQUEST_REJECTED', {
-          title: 'Certificate Request Rejected',
-          message: `Your request for ${typeName} was rejected by Team Leader. Reason: ${rejectionReason}`,
-          requestId: request._id,
-          email: true,
-        });
+        if (typeof notify === 'function') {
+          await notify(request.userId, 'REQUEST_REJECTED', {
+            title: 'Certificate Request Rejected',
+            message: `Your request for ${typeName} was rejected by Team Leader. Reason: ${rejectionReason}`,
+            requestId: request._id,
+            email: true,
+          }).catch(() => {});
+        }
+        if (typeof createNotification === 'function') {
+          const statusMessage = `Your certificate request was declined by your team leader.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`;
+          await createNotification({ userId: request.userId, title: 'Request declined', message: statusMessage, type: 'certificate' }).catch(() => {});
+        }
       } catch (notifyErr) {
         console.error('[notification] Failed to send REQUEST_REJECTED notification:', notifyErr);
       }
@@ -316,23 +333,32 @@ export const reviewRequestAsTL = async (req, res) => {
         meta: { certificateType: request.certificateType }
       });
 
+      // Notify intern that request was forwarded
+      if (typeof createNotification === 'function') {
+        await createNotification({ userId: request.userId, title: 'Request forwarded', message: 'Your certificate request was forwarded to the administrator.', type: 'certificate' }).catch(() => {});
+      }
+
       // Notify all admins (in-app only)
       try {
-        const admins = await User.find({ role: 'admin' }).select('_id');
+        const admins = await User.find({ role: 'admin' }).select('_id').lean();
         const typeName = (request.certificateType || '').replace(/_/g, ' ');
         for (const admin of admins) {
-          await notify(admin._id, 'REQUEST_FORWARDED', {
-            title: 'Certificate Request Forwarded',
-            message: `Certificate request ${request.requestNumber || ''} (${typeName}) was forwarded by Team Leader for admin review.`,
-            requestId: request._id,
-            email: false,
-          });
+          if (typeof notify === 'function') {
+            await notify(admin._id, 'REQUEST_FORWARDED', {
+              title: 'Certificate Request Forwarded',
+              message: `Certificate request ${request.requestNumber || ''} (${typeName}) was forwarded by Team Leader for admin review.`,
+              requestId: request._id,
+              email: false,
+            }).catch(() => {});
+          }
+          if (typeof createNotification === 'function') {
+            await createNotification({ userId: admin._id, title: 'Certificate request needs review', message: 'A team leader forwarded a certificate request for your review.', type: 'certificate' }).catch(() => {});
+          }
         }
       } catch (notifyErr) {
         console.error('[notification] Failed to send REQUEST_FORWARDED notification:', notifyErr);
       }
     }
-
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

@@ -7,6 +7,8 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "seed:templates": "node seeds/seedTemplates.js",
+    "backfill:certificate-verification-ids": "node scripts/backfillCertificateVerificationIds.js",
+    "backup:certificates": "node scripts/backupCertificates.js",
     "dev": "npx nodemon server.js"
   },
   "keywords": [],

@@ -20,6 +20,8 @@ import {
   updateCertificateDraft,
   finalizeCertificate,
   getAllCertificates,
+  revokeCertificate,
+  unrevokeCertificate,
   retryCertificateGeneration,
   downloadCertificatePdf,
   getTemplatePlaceholders,
@@ -32,9 +34,7 @@ import {
   restoreArchivedIntern,
   getOverviewStats,
   getAuditLogs,
-  exportAuditLogs,
-  revokeCertificate,
-  unrevokeCertificate
+  exportAuditLogs
 } from "../controllers/admin.controller.js";
 import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
 import verifyAuth from "../middlewares/verifyAuth.js";

@@ -4,6 +4,10 @@ import verifyAuth from '../middlewares/verifyAuth.js';
 import {
   getMyRequests,
   getProfile,
+  getNotifications,
+  markNotificationRead,
+  markNotificationAsRead,
+  markAllNotificationsRead,
   submitCertificateRequest,
   getCertificateForRequest,
   downloadCertificateForRequest,
@@ -48,5 +52,9 @@ internRouter.get('/requests', getMyRequests);
 // Day 5 Intern Certificate Fetch and Secure Download routes
 internRouter.get('/requests/:id/certificate', getCertificateForRequest);
 internRouter.get('/requests/:id/certificate/download', downloadCertificateForRequest);
+
+internRouter.get('/notifications', getNotifications);
+internRouter.patch('/notifications/:id/read', markNotificationRead);
+internRouter.patch('/notifications/read-all', markAllNotificationsRead);
 
 export default internRouter;

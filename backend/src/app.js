@@ -10,6 +10,7 @@ import teamleaderRouter from './routes/teamleader.routes.js';
 import analyticsRouter from './routes/adminAnalytics.routes.js';
 import notificationRouter from './routes/notification.routes.js';
 import verifyRouter from './routes/verify.routes.js';
+import { verifyCertificatePublic } from './controllers/admin.controller.js';
 
 // Use public DNS providers (Cloudflare and Google) to avoid local DNS issues.
 // Remove or modify if you rely on system DNS or have internal DNS requirements.
@@ -60,15 +61,16 @@ app.use('/api/auth', authRouter);
 
 app.use('/api/intern', internRouter);
 
+app.use('/api/notifications', notificationRouter);
+
 app.use('/api/admin/analytics', analyticsRouter);
 
 app.use('/api/admin', adminRouter);
 
 app.use('/api/teamleader', teamleaderRouter);
 
-app.use('/api/notifications', notificationRouter);
-
 // Public certificate verification route (unauthenticated, rate limited)
 app.use('/api/verify', verifyRouter);
+app.get('/api/public/certificates/verify', verifyCertificatePublic);
 
 export default app;

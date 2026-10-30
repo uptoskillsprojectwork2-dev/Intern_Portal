@@ -19,12 +19,46 @@ import {
   sendCertificateEmail
 } from '../services/certificate.service.js';
 import { logAudit } from '../utils/auditLogger.js';
-import AuditLog from '../models/AuditLog.model.js';
+import AuditLog from '../models/AuditLog.js';
 import logAction from '../utils/logAction.js';
 import { invalidateAnalyticsCache } from '../utils/redisCache.js';
 import { notify } from '../services/notification.service.js';
+import { createNotification } from '../utils/notificationService.js';
+import Notification from '../models/Notification.js';
 
 dotenv.config();
+
+const stripSensitiveAuditFields = (value, seen = new WeakSet()) => {
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map((item) => stripSensitiveAuditFields(item, seen));
+  if (typeof value === 'object') {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+    const sanitized = {};
+    for (const [key, entry] of Object.entries(value)) {
+      const normalizedKey = key.toLowerCase();
+      if (['password', 'token', 'resetpasswordtoken', 'resetpasswordexpires', 'secret', 'authorization', 'cookie', 'session'].includes(normalizedKey)) {
+        continue;
+      }
+      sanitized[key] = stripSensitiveAuditFields(entry, seen);
+    }
+    return sanitized;
+  }
+  return value;
+};
+
+export const notifyUser = async ({ userId, title, message, type = 'general' }) => {
+  if (!userId || !title || !message) return null;
+  if (mongoose.connection.readyState !== 1) return null;
+  return Notification.create({
+    userId,
+    title: String(title).trim(),
+    message: String(message).trim(),
+    type
+  });
+};
+
 
 export async function createIntern(req, res) {
     try {
@@ -87,6 +121,7 @@ export async function createIntern(req, res) {
             targetId: user._id,
             meta: { role: 'intern', email: user.email, domain: user.domain }
         });
+        await logAudit({ userId: req.user.id, action: 'INTERN_CREATED', entityType: 'User', entityId: user._id, meta: { role: user.role }, req });
 
         res.status(200).json({
             message: "User registered successfully",
@@ -141,6 +176,7 @@ export async function createTeamLeader(req, res) {
             targetId: user._id,
             meta: { role: 'teamleader', email: user.email }
         });
+        await logAudit({ userId: req.user.id, action: 'TEAM_LEADER_CREATED', entityType: 'User', entityId: user._id, meta: { role: user.role }, req });
 
         const token = jwt.sign({
             id: user._id,
@@ -312,7 +348,7 @@ export async function updateIntern(req, res) {
 
         await logAudit({
             userId: req.user.id,
-            action: 'UPDATE_INTERN_BY_ADMIN',
+            action: 'INTERN_UPDATED',
             entityType: 'User',
             entityId: intern._id,
             description: changes,
@@ -400,7 +436,7 @@ export async function assignInternTeamLeader(req, res) {
 
         await logAudit({
             userId: req.user.id,
-            action: prevTlId ? 'REASSIGN_INTERN_TEAM_LEADER' : 'ASSIGN_INTERN_TEAM_LEADER',
+            action: prevTlId ? 'INTERN_TEAM_LEADER_REASSIGNED' : 'INTERN_TEAM_LEADER_ASSIGNED',
             entityType: 'User',
             entityId: intern._id,
             description: {
@@ -790,7 +826,18 @@ export const finalizeRequest = async (req, res) => {
     let certificate = null;
     if (action === 'approve') {
       certificate = await createCertificateDraft(request._id);
+      await logAudit({ userId: req.user.id, action: 'CERTIFICATE_DRAFT_CREATED', entityType: 'Certificate', entityId: certificate._id, meta: { requestId: request._id, certificateType: request.certificateType }, req });
     }
+
+    await logAudit({ userId: req.user.id, action: action === 'approve' ? 'CERTIFICATE_REQUEST_APPROVED' : 'CERTIFICATE_REQUEST_REJECTED', entityType: 'CertificateRequest', entityId: request._id, meta: { certificateType: request.certificateType, reviewStage: 'admin' }, req });
+    await createNotification({
+      userId: request.userId,
+      title: action === 'approve' ? 'Certificate request approved' : 'Certificate request declined',
+      message: action === 'approve'
+        ? 'Your certificate request was approved and is being prepared.'
+        : `Your certificate request was declined.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`,
+      type: 'certificate',
+    });
 
     await invalidateAnalyticsCache();
 
@@ -815,6 +862,7 @@ export const updateCertificateDraft = async (req, res) => {
   try {
     const { htmlContent } = req.body;
     const certificate = await modifyCertificateDraft(req.params.id, htmlContent);
+    await logAudit({ userId: req.user.id, action: 'CERTIFICATE_DRAFT_UPDATED', entityType: 'Certificate', entityId: certificate._id, meta: { htmlUpdated: true }, req });
     res.status(200).json({ message: 'Draft saved successfully', certificate });
   } catch (err) {
     const status = err.statusCode || 500;
@@ -828,6 +876,7 @@ export const finalizeCertificate = async (req, res) => {
 
     // 1. Finalize certificate and render PDF
     const { certificate, request, absolutePdfPath } = await finalizeCertificateService(id);
+    await logAudit({ userId: req.user.id, action: 'CERTIFICATE_FINALIZED', entityType: 'Certificate', entityId: certificate._id, meta: { requestId: request._id, certificateType: certificate.certificateType }, req });
     await invalidateAnalyticsCache();
 
     // Trigger in-app notification for intern (email already handled via sendCertificateEmail)
@@ -858,6 +907,14 @@ export const finalizeCertificate = async (req, res) => {
       emailError = mailErr.message || 'Email delivery failed';
     }
 
+    await createNotification({
+      userId: certificate.userId?._id || certificate.userId,
+      title: 'Certificate ready',
+      message: 'Your certificate has been finalized and is ready to download.',
+      type: 'certificate',
+      email: !emailSent,
+    });
+
     if (emailError) {
       return res.status(207).json({
         message: 'Certificate finalized and PDF generated successfully, but email delivery could not be completed.',
@@ -883,11 +940,61 @@ export const finalizeCertificate = async (req, res) => {
 /**
  * Day 5 Admin Overview: Retrieves all certificates with safe intern details.
  */
+export const verifyCertificatePublic = async (req, res) => {
+  try {
+    const { certificateNumber, verificationCode, verifyId } = req.query;
+
+    if (!certificateNumber && !verificationCode && !verifyId) {
+      return res.status(400).json({ message: 'certificateNumber, verificationCode, or verifyId is required' });
+    }
+
+    const query = verifyId
+      ? { verifyId }
+      : { certificateNumber, verificationCode };
+
+    const foundCertificate = await Certificate.findOne(query);
+    const certificate = foundCertificate && typeof foundCertificate.populate === 'function'
+      ? await foundCertificate.populate('userId', 'fullName email internCode domain')
+      : foundCertificate;
+
+    if (!certificate) {
+      return res.status(404).json({ message: 'Certificate not found', valid: false });
+    }
+
+    const isValid = certificate.status === 'finalized' && certificate.revokedAt == null;
+
+    return res.status(200).json({
+      message: isValid ? 'Certificate verified successfully' : (certificate.status === 'revoked' ? 'Certificate has been revoked' : 'Certificate is not currently valid'),
+      certificate: {
+        _id: certificate._id,
+        certificateNumber: certificate.certificateNumber,
+        verificationCode: certificate.verificationCode,
+        verifyId: certificate.verifyId,
+        certificateType: certificate.certificateType,
+        domain: certificate.domain,
+        status: certificate.status,
+        issuedDate: certificate.issuedDate,
+        revokedAt: certificate.revokedAt,
+        revocationReason: certificate.revocationReason,
+        isValid,
+        intern: certificate.userId ? {
+          fullName: certificate.userId.fullName,
+          email: certificate.userId.email,
+          internCode: certificate.userId.internCode,
+          domain: certificate.userId.domain
+        } : null
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Internal server error', error: err.message });
+  }
+};
+
 export const getAllCertificates = async (req, res) => {
   try {
     const certificates = await Certificate.find()
       .populate('userId', 'fullName email internCode domain')
-      .select('certificateNumber certificateType domain issuedDate issuedAt status pdfPath internCode userId createdAt isRevoked revokedAt revokedReason verifyId recipientName certificateTitle')
+      .select('certificateNumber certificateType domain issuedDate issuedAt status pdfPath internCode userId createdAt isRevoked revokedAt revokedReason revocationReason verifyId recipientName certificateTitle')
       .sort({ createdAt: -1 });
 
     return res.status(200).json({ certificates });
@@ -896,110 +1003,115 @@ export const getAllCertificates = async (req, res) => {
   }
 };
 
-/**
- * Task F: Revoke certificate
- * PATCH /api/admin/certificates/:id/revoke
- * Sets revocation fields, logs CERTIFICATE_REVOKED, and notifies the intern.
- */
 export const revokeCertificate = async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid certificate ID.' });
+  }
+
   try {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid certificate ID format' });
+    const reason = String(req.body?.reason || '').trim();
+    if (!reason) {
+      return res.status(400).json({ message: 'A revocation reason is required.' });
     }
-
-    if (!reason || typeof reason !== 'string' || !reason.trim()) {
-      return res.status(400).json({ message: 'Revocation reason is required' });
+    if (reason.length > 1000) {
+      return res.status(400).json({ message: 'Revocation reason must be 1000 characters or fewer.' });
     }
+    const revokedAt = new Date();
+    const revokedBy = req.user?.id || req.user?._id;
+    const certificate = await Certificate.findOneAndUpdate(
+      { _id: req.params.id, status: { $in: ['finalized', 'issued'] } },
+      [{
+        $set: {
+          revokedFromStatus: '$status',
+          status: 'revoked',
+          isRevoked: true,
+          revokedAt,
+          revokedBy,
+          revocationReason: reason,
+          revokedReason: reason
+        }
+      }],
+      { new: true, runValidators: true }
+    );
 
-    const certificate = await Certificate.findById(id).populate('userId', 'fullName email internCode');
     if (!certificate) {
-      return res.status(404).json({ message: 'Certificate not found' });
+      const existing = await Certificate.findById(req.params.id).select('status');
+      if (!existing) return res.status(404).json({ message: 'Certificate not found.' });
+      if (existing.status === 'revoked') {
+        return res.status(200).json({ message: 'Certificate was already revoked.', certificate: existing });
+      }
+      return res.status(409).json({ message: 'Only issued certificates can be revoked.' });
     }
 
-    certificate.isRevoked = true;
-    certificate.revokedAt = new Date();
-    certificate.revokedBy = req.user.id || req.user._id;
-    certificate.revokedReason = reason.trim();
-    await certificate.save();
-
-    await logAudit({
-      userId: req.user.id || req.user._id,
-      action: 'CERTIFICATE_REVOKED',
-      entityType: 'Certificate',
-      entityId: certificate._id,
-      description: {
-        certificateNumber: certificate.certificateNumber,
-        reason: certificate.revokedReason,
-        revokedBy: req.user.id || req.user._id
-      },
-      req
-    });
-
-    if (certificate.userId) {
-      const recipientId = certificate.userId._id || certificate.userId;
-      await notify(recipientId, 'CERTIFICATE_REVOKED', {
+    await Promise.all([
+      logAudit({
+        userId: revokedBy,
+        action: 'CERTIFICATE_REVOKED',
+        entityType: 'Certificate',
+        entityId: certificate._id,
+        meta: { revokedAt: revokedAt.toISOString(), reason },
+        description: {
+          certificateNumber: certificate.certificateNumber,
+          reason,
+          revokedBy
+        },
+        req
+      }),
+      typeof createNotification === 'function' ? createNotification({
+        userId: certificate.userId,
+        title: 'Certificate revoked',
+        message: `Certificate ${certificate.certificateNumber} has been revoked. Contact an administrator if you have questions.`,
+        type: 'certificate',
+      }).catch(() => {}) : Promise.resolve(),
+      typeof notify === 'function' && certificate.userId ? notify(certificate.userId._id || certificate.userId, 'CERTIFICATE_REVOKED', {
         title: 'Certificate Revoked',
-        message: `Your certificate (${certificate.certificateNumber}) has been revoked by an administrator. Reason: ${certificate.revokedReason}`,
+        message: `Your certificate (${certificate.certificateNumber}) has been revoked by an administrator. Reason: ${reason}`,
         email: true
-      }).catch((notifErr) => {
-        console.error('Failed to notify intern of certificate revocation:', notifErr.message);
-      });
-    }
+      }).catch(() => {}) : Promise.resolve()
+    ]);
 
-    return res.status(200).json({
-      message: 'Certificate revoked successfully',
-      certificate
-    });
-  } catch (err) {
-    return res.status(500).json({ message: 'Server error', error: err.message });
+    return res.status(200).json({ message: 'Certificate revoked.', certificate });
+  } catch (error) {
+    console.error('Certificate revocation failed:', error.message);
+    return res.status(500).json({ message: 'Unable to revoke certificate.' });
   }
 };
 
-/**
- * Task F: Unrevoke certificate
- * PATCH /api/admin/certificates/:id/unrevoke
- * Reverses a mistaken revoke, also logged.
- */
 export const unrevokeCertificate = async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid certificate ID.' });
+  }
   try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid certificate ID format' });
-    }
-
-    const certificate = await Certificate.findById(id);
+    const unrevokedBy = req.user?.id || req.user?._id;
+    const certificate = await Certificate.findOneAndUpdate(
+      { _id: req.params.id, status: 'revoked' },
+      [
+        { $set: { status: { $ifNull: ['$revokedFromStatus', 'issued'] }, isRevoked: false } },
+        { $unset: ['revokedAt', 'revokedBy', 'revocationReason', 'revokedReason', 'revokedFromStatus'] }
+      ],
+      { new: true, runValidators: true }
+    );
     if (!certificate) {
-      return res.status(404).json({ message: 'Certificate not found' });
+      const existing = await Certificate.findById(req.params.id).select('status');
+      if (!existing) return res.status(404).json({ message: 'Certificate not found.' });
+      return res.status(409).json({ message: 'Only revoked certificates can be reinstated.' });
     }
-
-    certificate.isRevoked = false;
-    certificate.revokedAt = null;
-    certificate.revokedBy = null;
-    certificate.revokedReason = null;
-    await certificate.save();
-
     await logAudit({
-      userId: req.user.id || req.user._id,
+      userId: unrevokedBy,
       action: 'CERTIFICATE_UNREVOKED',
       entityType: 'Certificate',
       entityId: certificate._id,
+      meta: { restoredStatus: certificate.status },
       description: {
         certificateNumber: certificate.certificateNumber,
-        unrevokedBy: req.user.id || req.user._id
+        unrevokedBy
       },
       req
     });
-
-    return res.status(200).json({
-      message: 'Certificate unrevoked successfully',
-      certificate
-    });
-  } catch (err) {
-    return res.status(500).json({ message: 'Server error', error: err.message });
+    return res.json({ message: 'Certificate reinstated.', certificate });
+  } catch (error) {
+    console.error('Certificate reinstatement failed:', error.message);
+    return res.status(500).json({ message: 'Unable to reinstate certificate.' });
   }
 };
 
@@ -1041,6 +1153,7 @@ export const retryCertificateGeneration = async (req, res) => {
 
     // Re-use existing createCertificateDraft service
     const certificate = await createCertificateDraft(request._id);
+    await logAudit({ userId: req.user.id, action: 'CERTIFICATE_DRAFT_CREATED', entityType: 'Certificate', entityId: certificate._id, meta: { requestId: request._id, retried: true }, req });
     await invalidateAnalyticsCache();
 
     return res.status(200).json({
@@ -1213,6 +1326,8 @@ export const createCertificateTemplate = async (req, res) => {
       createdBy: req.user.id
     });
 
+    await logAudit({ userId: req.user.id, action: 'CERTIFICATE_TEMPLATE_CREATED', entityType: 'CertificateTemplate', entityId: template._id, meta: { templateCode: template.templateCode, version: template.version }, req });
+
     return res.status(201).json({
       message: "Certificate template created successfully",
       template
@@ -1344,6 +1459,8 @@ export const updateCertificateTemplate = async (req, res) => {
 
     await template.save();
 
+    await logAudit({ userId: req.user.id, action: 'CERTIFICATE_TEMPLATE_UPDATED', entityType: 'CertificateTemplate', entityId: template._id, meta: { templateCode: template.templateCode, version: template.version, status: template.status }, req });
+
     return res.status(200).json({
       message: "Certificate template updated successfully",
       template
@@ -1433,6 +1550,27 @@ export const updateRetentionPolicy = async (req, res) => {
     } catch (logErr) {
       // silent
     }
+
+    try {
+      await Promise.all([
+        logAudit({
+          userId: req.user.id,
+          action: 'RETENTION_POLICY_UPDATED',
+          entityType: 'RetentionPolicy',
+          entityId: policy._id,
+          targetType: 'RetentionPolicy',
+          targetId: policy._id,
+          meta: { graceDays, purgeDays },
+          req,
+        }),
+        createNotification({
+          userId: req.user.id,
+          title: 'Retention policy updated',
+          message: `The internship retention policy was updated to archive accounts after ${graceDays} days and purge data after ${purgeDays} days.`,
+          type: 'system',
+        })
+      ]);
+    } catch (_) {}
     return res.status(200).json({ message: 'Retention policy saved.', policy });
   } catch (error) {
     console.error('Update retention policy error:', error);
@@ -1505,6 +1643,27 @@ export const restoreArchivedIntern = async (req, res) => {
     } catch (logErr) {
       // silent
     }
+
+    try {
+      await Promise.all([
+        logAudit({
+          userId: req.user.id,
+          action: 'INTERN_RESTORED_FROM_ARCHIVE',
+          entityType: 'User',
+          entityId: intern._id,
+          targetType: 'User',
+          targetId: intern._id,
+          meta: { restoredAt: intern.archiveRestoredAt.toISOString() },
+          req,
+        }),
+        createNotification({
+          userId: intern._id,
+          title: 'Internship account restored',
+          message: 'Your archived internship account has been restored and can be used again.',
+          type: 'internship',
+        })
+      ]);
+    } catch (_) {}
     return res.status(200).json({ message: 'Intern restored.', intern: {
       _id: intern._id,
       fullName: intern.fullName,
