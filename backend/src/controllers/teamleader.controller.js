@@ -5,6 +5,7 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import { logAudit } from '../utils/auditLogger.js';
 import { createNotification } from '../utils/notificationService.js';
+import { invalidateAnalyticsCache } from '../utils/redisCache.js';
 
 export async function createIntern(req, res) {
 	try {
@@ -290,6 +291,7 @@ export const reviewRequestAsTL = async (req, res) => {
       notifications.push(...admins.map(({ _id }) => createNotification({ userId: _id, title: 'Certificate request needs review', message: 'A team leader forwarded a certificate request for your review.', type: 'certificate' })));
     }
     await Promise.all(notifications);
+    await invalidateAnalyticsCache();
     res.json({ request });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

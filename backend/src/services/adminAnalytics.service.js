@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
-import Department from '../models/Department.js';
 
 // Helper to resolve date range windows
 export function resolveDateWindow(from, to, range = '6m') {
@@ -48,7 +47,8 @@ async function getScopedInternIds(filters = {}, { includeDates = true } = {}) {
   const dateRange = resolveDateWindow(filters.from, filters.to, filters.range);
   const query = { role: 'intern' };
   if (filters.domain) query.domain = filters.domain;
-  if (filters.teamLeader) query['internshipDetails.teamLeader'] = filters.teamLeader;
+  const tl = filters.teamLeaderId || filters.teamLeader;
+  if (tl) query['internshipDetails.teamLeader'] = tl;
   if (includeDates) query.createdAt = { $gte: dateRange.startDate, $lte: dateRange.endDate };
   const interns = await User.find(query).select('_id');
   return interns.map(({ _id }) => _id);
@@ -95,7 +95,8 @@ export async function getOverviewKPIs(filters = {}) {
   );
 
   const internIds = await getScopedInternIds(filters, { includeDates: false });
-  const scopedLeaderIds = filters.domain || filters.teamLeader
+  const tlFilter = filters.teamLeaderId || filters.teamLeader;
+  const scopedLeaderIds = filters.domain || tlFilter
     ? await User.distinct('internshipDetails.teamLeader', { role: 'intern', _id: { $in: internIds }, 'internshipDetails.teamLeader': { $ne: null } })
     : null;
   const internFilter = {
@@ -126,7 +127,7 @@ export async function getOverviewKPIs(filters = {}) {
     prevIssuedCertificates
   ] = await Promise.all([
     User.countDocuments(internFilter),
-    User.countDocuments({ ...internFilter, 'internshipDetails.status': 'ongoing' }),
+    User.countDocuments({ ...internFilter, 'internshipDetails.status': 'ongoing', isArchived: { $ne: true } }),
     User.countDocuments({ ...internFilter, 'internshipDetails.status': 'upcoming' }),
     User.countDocuments({ ...internFilter, 'internshipDetails.status': 'completed' }),
     User.countDocuments({ ...internFilter, 'internshipDetails.status': 'cancelled' }),
@@ -144,7 +145,7 @@ export async function getOverviewKPIs(filters = {}) {
       ]
     }),
     CertificateRequest.countDocuments({ ...dateMatchCurrent, ...requestScope }),
-    CertificateRequest.countDocuments({ status: { $in: ['processing', 'approved', 'completed'] }, ...dateMatchCurrent, ...requestScope }),
+    CertificateRequest.countDocuments({ status: { $in: ['approved', 'completed'] }, ...dateMatchCurrent, ...requestScope }),
     CertificateRequest.countDocuments({ status: 'rejected', ...dateMatchCurrent, ...requestScope }),
     CertificateRequest.countDocuments({ ...dateMatchPrev, ...requestScope }),
     Certificate.countDocuments({
@@ -303,21 +304,36 @@ export async function getTurnaroundStats(filters = {}) {
   const { startDate, endDate } = resolveDateWindow(filters.from, filters.to, filters.range);
 
   const internIds = await getScopedInternIds(filters, { includeDates: false });
-  const [facet = { review: [], finalize: [], total: [] }] = await CertificateRequest.aggregate([
+  const [facet = { review: [], finalize: [], total: [], adminDecision: [], generationTime: [] }] = await CertificateRequest.aggregate([
     { $match: { requestedAt: { $gte: startDate, $lte: endDate }, userId: { $in: internIds } } },
     { $set: { reviewDate: { $ifNull: ['$forwardedAt', '$reviewedAt'] }, completedDate: { $ifNull: ['$completedAt', '$updatedAt'] } } },
     { $facet: {
       review: [ { $match: { reviewDate: { $ne: null } } }, { $set: { seconds: { $dateDiff: { startDate: '$requestedAt', endDate: '$reviewDate', unit: 'second' } } } }, { $match: { seconds: { $gte: 0 } } }, { $project: { hours: { $divide: ['$seconds', 3600] } } } ],
       finalize: [ { $match: { status: 'completed', reviewDate: { $ne: null }, completedDate: { $ne: null } } }, { $set: { seconds: { $dateDiff: { startDate: '$reviewDate', endDate: '$completedDate', unit: 'second' } } } }, { $match: { seconds: { $gte: 0 } } }, { $project: { hours: { $divide: ['$seconds', 3600] } } } ],
+      adminDecision: [ { $match: { forwardedAt: { $ne: null }, reviewedAt: { $ne: null } } }, { $set: { seconds: { $dateDiff: { startDate: '$forwardedAt', endDate: '$reviewedAt', unit: 'second' } } } }, { $match: { seconds: { $gte: 0 } } }, { $project: { hours: { $divide: ['$seconds', 3600] } } } ],
+      generationTime: [ { $match: { status: 'completed', completedDate: { $ne: null } } }, { $set: { refDate: { $ifNull: ['$reviewedAt', '$forwardedAt'] } } }, { $match: { refDate: { $ne: null } } }, { $set: { seconds: { $dateDiff: { startDate: '$refDate', endDate: '$completedDate', unit: 'second' } } } }, { $match: { seconds: { $gte: 0 } } }, { $project: { hours: { $divide: ['$seconds', 3600] } } } ],
       total: [ { $match: { status: 'completed', completedDate: { $ne: null } } }, { $set: { seconds: { $dateDiff: { startDate: '$requestedAt', endDate: '$completedDate', unit: 'second' } } } }, { $match: { seconds: { $gte: 0 } } }, { $project: { hours: { $divide: ['$seconds', 3600] } } } ]
     } }
   ]);
-  const values = (rows) => rows.map(({ hours }) => hours);
+  const values = (rows) => (rows || []).map(({ hours }) => hours);
+
+  const timeToTLReview = calculatePercentiles(values(facet.review));
+  const timeToAdminFinalize = calculatePercentiles(values(facet.finalize));
+  const totalTurnaround = calculatePercentiles(values(facet.total));
+  const adminDecisionTime = facet.adminDecision && facet.adminDecision.length > 0
+    ? calculatePercentiles(values(facet.adminDecision))
+    : timeToAdminFinalize;
+  const generationTime = facet.generationTime && facet.generationTime.length > 0
+    ? calculatePercentiles(values(facet.generationTime))
+    : timeToAdminFinalize;
 
   return {
-    timeToTLReview: calculatePercentiles(values(facet.review)),
-    timeToAdminFinalize: calculatePercentiles(values(facet.finalize)),
-    totalTurnaround: calculatePercentiles(values(facet.total))
+    timeToTLReview,
+    timeToAdminFinalize,
+    totalTurnaround,
+    tlDecisionTime: timeToTLReview,
+    adminDecisionTime,
+    generationTime
   };
 }
 
@@ -329,78 +345,89 @@ export async function getTeamLeadersPerformance(filters = {}) {
   const assignedLeaderIds = await User.distinct('internshipDetails.teamLeader', {
     role: 'intern', _id: { $in: scopedInternIds }, 'internshipDetails.teamLeader': { $ne: null }
   });
-  const leaderQuery = { role: 'teamleader', _id: { $in: assignedLeaderIds } };
-  if (filters.teamLeader) leaderQuery._id = filters.teamLeader;
-  const teamLeaders = await User.find(leaderQuery).select('_id fullName email');
-  const { startDate, endDate } = resolveDateWindow(filters.from, filters.to, filters.range);
+      const tlId = filters.teamLeaderId || filters.teamLeader;
+      const leaderQuery = { role: 'teamleader', _id: { $in: assignedLeaderIds } };
+      if (tlId) leaderQuery._id = tlId;
+      const teamLeaders = await User.find(leaderQuery).select('_id fullName email');
+      const { startDate, endDate } = resolveDateWindow(filters.from, filters.to, filters.range);
 
-  const performanceList = await Promise.all(
-    teamLeaders.map(async (tl) => {
-      const internsAssigned = await User.countDocuments({
-        role: 'intern',
-        'internshipDetails.teamLeader': tl._id,
-        _id: { $in: scopedInternIds }
-      });
+      const performanceList = await Promise.all(
+        teamLeaders.map(async (tl) => {
+          const internsAssigned = await User.countDocuments({
+            role: 'intern',
+            'internshipDetails.teamLeader': tl._id,
+            _id: { $in: scopedInternIds }
+          });
 
-      // Requests reviewed by this TL
-      const reviewedRequests = await CertificateRequest.find({
-        $or: [{ forwardedBy: tl._id }, { reviewedBy: tl._id }],
-        $and: [
-          { $or: [{ forwardedAt: { $gte: startDate, $lte: endDate } }, { forwardedAt: null, reviewedAt: { $gte: startDate, $lte: endDate } }] },
-          { userId: { $in: scopedInternIds } }
-        ]
-      }).select('requestedAt reviewedAt forwardedAt status');
+          const assignedInterns = await User.find({
+            role: 'intern',
+            'internshipDetails.teamLeader': tl._id,
+            _id: { $in: scopedInternIds }
+          }).select('_id');
+          const assignedInternIds = assignedInterns.map((i) => i._id);
 
-      const reviewedCount = reviewedRequests.length;
-      const rejectedCount = reviewedRequests.filter((r) => r.status === 'rejected').length;
+          const requestsReceived = await CertificateRequest.countDocuments({
+            userId: { $in: assignedInternIds },
+            requestedAt: { $gte: startDate, $lte: endDate }
+          });
 
-      const reviewDurations = reviewedRequests
-        .filter((r) => r.requestedAt && (r.forwardedAt || r.reviewedAt))
-        .map((r) => ((r.forwardedAt || r.reviewedAt) - r.requestedAt) / (1000 * 60 * 60))
-        .filter((hours) => Number.isFinite(hours) && hours >= 0);
+          // Requests reviewed by this TL
+          const reviewedRequests = await CertificateRequest.find({
+            $or: [{ forwardedBy: tl._id }, { reviewedBy: tl._id }],
+            $and: [
+              { $or: [{ forwardedAt: { $gte: startDate, $lte: endDate } }, { forwardedAt: null, reviewedAt: { $gte: startDate, $lte: endDate } }] },
+              { userId: { $in: scopedInternIds } }
+            ]
+          }).select('requestedAt reviewedAt forwardedAt status');
 
-      const avgReviewTimeHours = calculatePercentiles(reviewDurations).avg;
-      const rejectionRate = reviewedCount > 0 ? Number(((rejectedCount / reviewedCount) * 100).toFixed(1)) : 0;
+          const reviewedCount = reviewedRequests.length;
+          const forwardedCount = reviewedRequests.filter((r) => r.forwardedAt || r.status === 'processing').length;
+          const rejectedCount = reviewedRequests.filter((r) => r.status === 'rejected').length;
 
-      // Pending requests for this TL's interns
-      const assignedInterns = await User.find({
-        role: 'intern',
-        'internshipDetails.teamLeader': tl._id,
-        _id: { $in: scopedInternIds }
-      }).select('_id');
+          const reviewDurations = reviewedRequests
+            .filter((r) => r.requestedAt && (r.forwardedAt || r.reviewedAt))
+            .map((r) => ((r.forwardedAt || r.reviewedAt) - r.requestedAt) / (1000 * 60 * 60))
+            .filter((hours) => Number.isFinite(hours) && hours >= 0);
 
-      const assignedInternIds = assignedInterns.map((i) => i._id);
+          const avgReviewTimeHours = calculatePercentiles(reviewDurations).avg;
+          const rejectionRate = reviewedCount > 0 ? Number(((rejectedCount / reviewedCount) * 100).toFixed(1)) : 0;
 
-      const pendingRequests = await CertificateRequest.find({
-        userId: { $in: assignedInternIds },
-        status: 'pending',
-        requestedAt: { $gte: startDate, $lte: endDate }
-      }).select('requestedAt');
+          const pendingRequests = await CertificateRequest.find({
+            userId: { $in: assignedInternIds },
+            status: 'pending',
+            requestedAt: { $gte: startDate, $lte: endDate }
+          }).select('requestedAt');
 
-      const now = new Date();
-      let maxPendingDays = 0;
-      let hasOverdueRequests = false;
+          const now = new Date();
+          let maxPendingDays = 0;
+          let hasOverdueRequests = false;
 
-      pendingRequests.forEach((req) => {
-        const days = (now - new Date(req.requestedAt)) / (1000 * 60 * 60 * 24);
-        if (days > maxPendingDays) maxPendingDays = Number(days.toFixed(1));
-        if (days >= 3) hasOverdueRequests = true; // flagged if > 3 days pending
-      });
+          pendingRequests.forEach((req) => {
+            const days = (now - new Date(req.requestedAt)) / (1000 * 60 * 60 * 24);
+            if (days > maxPendingDays) maxPendingDays = Number(days.toFixed(1));
+            if (days >= 3) hasOverdueRequests = true;
+          });
 
-      return {
-        id: tl._id,
-        fullName: tl.fullName,
-        email: tl.email,
-        internsAssigned,
-        requestsReviewed: reviewedCount,
-        pendingReviews: pendingRequests.length,
-        avgReviewTimeHours,
-        rejectionRate,
-        hasOverdueRequests,
-        maxPendingDays
-      };
-    })
-  );
+          return {
+            id: tl._id,
+            fullName: tl.fullName,
+            email: tl.email,
+            internsAssigned,
+            requestsReceived,
+            requestsForwarded: forwardedCount,
+            forwardedCount,
+            requestsRejected: rejectedCount,
+            rejectedCount,
+            requestsReviewed: reviewedCount,
+            pendingReviews: pendingRequests.length,
+            avgReviewTimeHours,
+            avgTLDecisionTimeHours: avgReviewTimeHours,
+            rejectionRate,
+            hasOverdueRequests,
+            maxPendingDays
+          };
+        })
+      );
 
   return performanceList.sort((a, b) => b.pendingReviews - a.pendingReviews);
 }
@@ -410,7 +437,14 @@ export async function getTeamLeadersPerformance(filters = {}) {
  */
 export async function getDomainsDistribution(filters = {}) {
   const internIds = await getScopedInternIds(filters);
-  const departments = await Department.find({ isActive: true }).select('departmentCode departmentName');
+  const uniqueDomains = await User.distinct('domain', {
+    role: 'intern',
+    domain: { $ne: null, $nin: ['', 'N/A'] }
+  });
+  const departments = uniqueDomains.map((d) => ({
+    departmentCode: d,
+    departmentName: d
+  }));
 
   const userDomainCounts = await User.aggregate([
     { $match: { role: 'intern', _id: { $in: internIds } } },
@@ -471,39 +505,49 @@ export async function getPipelineStages(filters = {}) {
   const internIds = await getScopedInternIds(filters, { includeDates: false });
   const matchQuery = scopedRequestMatch(filters, startDate, endDate, internIds);
 
-  const stagesData = await CertificateRequest.aggregate([
-    { $match: matchQuery },
-    {
-      $group: {
-        _id: '$status',
-        count: { $sum: 1 }
-      }
-    }
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+  const [
+    pendingCount,
+    processingCount,
+    completedCount,
+    cancelledCount,
+    rejectedTLCount,
+    rejectedAdminCount,
+    approvedWithDraftCount,
+    failedGenerationCount
+  ] = await Promise.all([
+    CertificateRequest.countDocuments({ ...matchQuery, status: 'pending' }),
+    CertificateRequest.countDocuments({ ...matchQuery, status: 'processing' }),
+    CertificateRequest.countDocuments({ ...matchQuery, status: 'completed' }),
+    CertificateRequest.countDocuments({ ...matchQuery, status: 'cancelled' }),
+    CertificateRequest.countDocuments({ ...matchQuery, status: 'rejected', forwardedAt: null }),
+    CertificateRequest.countDocuments({ ...matchQuery, status: 'rejected', forwardedAt: { $ne: null } }),
+    CertificateRequest.countDocuments({
+      ...matchQuery,
+      status: 'approved',
+      certificateId: { $ne: null }
+    }),
+    CertificateRequest.countDocuments({
+      ...matchQuery,
+      status: 'approved',
+      certificateId: null,
+      updatedAt: { $lt: oneHourAgo }
+    })
   ]);
 
-  const map = { pending: 0, approved: 0, processing: 0, completed: 0, rejected: 0, cancelled: 0 };
-  stagesData.forEach((s) => {
-    if (map[s._id] !== undefined) map[s._id] = s.count;
-  });
-
-  // Failed generations count (requests in processing/draft state or flagged)
-  const failedGenerations = await CertificateRequest.countDocuments({
-    status: 'approved',
-    certificateId: { $in: [null] },
-    ...matchQuery,
-    updatedAt: { $lt: new Date(Date.now() - 30 * 60 * 1000) } // old processing requests are reported separately as stalled generations
-  });
-
   const pipeline = [
-    { stage: 'Pending TL Review', status: 'pending', count: map.pending },
-    { stage: 'Forwarded to Admin', status: 'processing', count: map.processing },
-    { stage: 'Admin Approved / Draft Ready', status: 'approved', count: map.approved },
-    { stage: 'Completed & Issued', status: 'completed', count: map.completed },
-    { stage: 'Rejected', status: 'rejected', count: map.rejected },
-    { stage: 'Cancelled', status: 'cancelled', count: map.cancelled }
+    { stage: 'With Team Leader', status: 'pending', count: pendingCount },
+    { stage: 'With Admin', status: 'processing', count: processingCount },
+    { stage: 'Awaiting finalization', status: 'approved', count: approvedWithDraftCount },
+    { stage: 'Failed generation', status: 'failed-generation', count: failedGenerationCount },
+    { stage: 'Completed', status: 'completed', count: completedCount },
+    { stage: 'Rejected by TL', status: 'rejected-tl', count: rejectedTLCount },
+    { stage: 'Rejected by Admin', status: 'rejected-admin', count: rejectedAdminCount },
+    { stage: 'Cancelled', status: 'cancelled', count: cancelledCount }
   ];
 
-  return { pipeline, failedGenerations };
+  return { pipeline, failedGenerations: failedGenerationCount };
 }
 
 /**
@@ -530,11 +574,13 @@ export async function getUpcomingCompletions(days = 30, filters = {}) {
 
   const internFilter = {
     role: 'intern',
-    'internshipDetails.status': { $nin: ['completed', 'cancelled'] },
+    'internshipDetails.status': 'ongoing',
+    isArchived: { $ne: true },
     endDate: { $gte: startDate, $lte: futureDate }
   };
   if (filters.domain) internFilter.domain = filters.domain;
-  if (filters.teamLeader) internFilter['internshipDetails.teamLeader'] = filters.teamLeader;
+  const tl = filters.teamLeaderId || filters.teamLeader;
+  if (tl) internFilter['internshipDetails.teamLeader'] = tl;
   const interns = await User.find(internFilter).populate('internshipDetails.teamLeader', 'fullName email');
 
   const results = await Promise.all(
@@ -571,7 +617,7 @@ export async function getStuckRequests(days = 3, filters = {}) {
     : null;
   const internIds = await getScopedInternIds(filters, { includeDates: false });
   const requests = await CertificateRequest.find({
-    status: { $in: ['pending', 'approved'] },
+    status: { $in: ['pending', 'processing', 'approved'] },
     requestedAt: {
       ...(dateRange ? { $gte: dateRange.startDate, $lte: new Date(Math.min(cutoff.getTime(), dateRange.endDate.getTime())) } : { $lte: cutoff })
     },
@@ -579,6 +625,7 @@ export async function getStuckRequests(days = 3, filters = {}) {
   })
     .populate('userId', 'fullName email domain')
     .populate('reviewedBy', 'fullName email')
+    .populate('forwardedBy', 'fullName email')
     .populate('certificateId', '_id')
     .sort({ requestedAt: 1 });
 
@@ -586,6 +633,10 @@ export async function getStuckRequests(days = 3, filters = {}) {
 
   return requests.map((req) => {
     const daysPending = Number(((now - new Date(req.requestedAt)) / (1000 * 60 * 60 * 24)).toFixed(1));
+    const reviewerName = req.reviewedBy?.fullName ||
+      (req.status === 'processing'
+        ? (req.forwardedBy?.fullName ? `Forwarded by ${req.forwardedBy.fullName}` : 'With Admin')
+        : 'Pending TL Review');
 
     return {
       id: req._id,
@@ -597,10 +648,10 @@ export async function getStuckRequests(days = 3, filters = {}) {
       requestedAt: req.requestedAt,
       status: req.status,
       daysPending,
-      reviewedBy: req.reviewedBy?.fullName || 'Pending TL Review',
-        reviewLink: req.certificateId
-          ? `/admin/certificates/${req.certificateId._id || req.certificateId}/review`
-          : req.status === 'approved' ? 'requests-queue' : null
+      reviewedBy: reviewerName,
+      reviewLink: req.certificateId
+        ? `/admin/certificates/${req.certificateId._id || req.certificateId}/review`
+        : req.status === 'approved' ? 'requests-queue' : null
     };
   });
 }

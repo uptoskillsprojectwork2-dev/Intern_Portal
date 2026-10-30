@@ -36,6 +36,7 @@ export const analyticsQueryValidator = [
       return true;
     }),
   query('teamLeader').optional().isMongoId().withMessage('teamLeader must be a valid ID'),
+  query('teamLeaderId').optional().isMongoId().withMessage('teamLeaderId must be a valid ID'),
   query('domain').optional().isString().trim().isLength({ max: 100 }).withMessage('domain must be 100 characters or fewer'),
   query('groupBy')
     .optional()
@@ -56,6 +57,7 @@ export const analyticsExportValidator = [
       'team-leaders',
       'domains',
       'pipeline',
+      'stuck',
       'stuck-requests',
       'upcoming-completions'
     ])

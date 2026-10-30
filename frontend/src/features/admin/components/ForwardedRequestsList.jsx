@@ -1,15 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useForwardedRequests from '../hooks/useForwardedRequests';
 import { retryCertificateGeneration } from '../services/admin.service';
+import { fetchFilteredRequests } from '../analytics/services/analytics.service';
 import Toast from '../../../shared/components/Toast';
 import './ForwardedRequestsList.css';
 
 const formatDate = (date) => date ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
 
-export default function ForwardedRequestsList() {
+export default function ForwardedRequestsList({ statusFilter, onClearStatusFilter }) {
   const navigate = useNavigate();
-  const { requests, loading, error, refetch, approveRequest, rejectRequest } = useForwardedRequests();
+  const { requests: defaultRequests, loading: defaultLoading, error: defaultError, refetch: defaultRefetch, approveRequest, rejectRequest } = useForwardedRequests();
+  const [filteredRequests, setFilteredRequests] = useState(null);
+  const [filterLoading, setFilterLoading] = useState(false);
+  const [filterError, setFilterError] = useState(null);
+
+  useEffect(() => {
+    let ignore = false;
+    if (statusFilter) {
+      Promise.resolve().then(() => {
+        if (!ignore) {
+          setFilterLoading(true);
+          setFilterError(null);
+        }
+      });
+      fetchFilteredRequests(statusFilter)
+        .then((res) => {
+          if (!ignore) {
+            setFilteredRequests(res.requests || []);
+          }
+        })
+        .catch((err) => {
+          if (!ignore) {
+            setFilterError(err.message || 'Failed to fetch filtered requests');
+          }
+        })
+        .finally(() => {
+          if (!ignore) {
+            setFilterLoading(false);
+          }
+        });
+    }
+
+    return () => {
+      ignore = true;
+    };
+  }, [statusFilter]);
+
+  const fetchFiltered = useCallback(() => {
+    if (!statusFilter) return;
+    setFilterLoading(true);
+    setFilterError(null);
+    fetchFilteredRequests(statusFilter)
+      .then((res) => setFilteredRequests(res.requests || []))
+      .catch((err) => setFilterError(err.message || 'Failed to fetch filtered requests'))
+      .finally(() => setFilterLoading(false));
+  }, [statusFilter]);
+
+  const requests = statusFilter ? (filteredRequests || []) : defaultRequests;
+  const loading = statusFilter ? filterLoading : defaultLoading;
+  const error = statusFilter ? filterError : defaultError;
+  const refetch = statusFilter ? fetchFiltered : defaultRefetch;
   const [rejectingId, setRejectingId] = useState(null);
   const [reason, setReason] = useState('');
   const [actionError, setActionError] = useState(null);
@@ -71,9 +122,23 @@ export default function ForwardedRequestsList() {
       <div className="forwarded-requests-heading">
         <div>
           <p className="admin-eyebrow">CERTIFICATE DESK</p>
-          <h2 id="forwarded-requests-title">Requests awaiting approval & recovery</h2>
+          <h2 id="forwarded-requests-title">
+            {statusFilter ? `Certificate Requests: ${statusFilter}` : 'Requests awaiting approval & recovery'}
+          </h2>
+          {statusFilter && (
+            <div style={{ marginTop: '6px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span className={`forwarded-status-tag ${statusFilter}`}>{statusFilter.toUpperCase()}</span>
+              <button
+                type="button"
+                onClick={onClearStatusFilter}
+                style={{ fontSize: '0.75rem', cursor: 'pointer', padding: '3px 8px', borderRadius: '4px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)' }}
+              >
+                ✕ Show All Forwarded
+              </button>
+            </div>
+          )}
         </div>
-        <span className="forwarded-requests-count">{requests.length} awaiting</span>
+        <span className="forwarded-requests-count">{requests.length} {statusFilter ? 'found' : 'awaiting'}</span>
       </div>
 
       {toast && (
@@ -150,4 +215,4 @@ export default function ForwardedRequestsList() {
       })}</div>}
     </section>
   );
-}
+}
