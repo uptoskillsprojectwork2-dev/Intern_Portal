@@ -9,7 +9,6 @@ import {
   submitCertificateRequest,
   getCertificateForRequest,
   downloadCertificateForRequest,
-  getNotifications,
   markNotificationRead,
   markAllNotificationsRead
 } from '../controllers/intern.controller.js';

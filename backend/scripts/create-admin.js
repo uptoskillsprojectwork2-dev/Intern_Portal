@@ -1,54 +1,54 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
+import User from '../src/models/User.js';
 
 dotenv.config();
 
-const email = 'admin@uptoskills.com';
-const password = 'admin123';
+const mongoUri = process.env.MONGO_URI;
+const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+const password = process.env.ADMIN_PASSWORD;
 
-const createUser = async () => {
-  const mongoUri = process.env.MONGO_URI;
+if (!mongoUri || !email || !password) {
+  console.error('[FATAL] MONGO_URI, ADMIN_EMAIL, and ADMIN_PASSWORD must be set in environment variables.');
+  process.exit(1);
+}
 
-  if (!mongoUri) {
-    console.error('MONGO_URI is not defined in backend/.env');
-    process.exit(1);
-  }
+if (password.length < 8) {
+  console.error('[FATAL] ADMIN_PASSWORD must be at least 8 characters long.');
+  process.exit(1);
+}
 
+const createAdmin = async () => {
   try {
     await mongoose.connect(mongoUri);
     console.log('Connected to MongoDB');
 
-    const existing = await mongoose.connection.db.collection('users').findOne({ email });
-
+    const existing = await User.findOne({ email });
     if (existing) {
-      console.log('User already exists:', email);
+      console.log('Admin user already exists:', email);
+      await mongoose.disconnect();
       process.exit(0);
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const result = await mongoose.connection.db.collection('users').insertOne({
-      fullName: 'Admin User',
+    const admin = await User.create({
+      fullName: 'System Admin',
       email,
-      password: hashedPassword,
+      password,
       role: 'admin',
-      mobileNo: '0000000000',
       internCode: 'ADMIN-001',
-      createdAt: new Date(),
-      updatedAt: new Date(),
     });
 
     console.log('Admin user created successfully');
-    console.log('Email:', email);
-    console.log('Password:', password);
-    console.log('User ID:', result.insertedId);
+    console.log('Email:', admin.email);
+    console.log('User ID:', admin._id.toString());
 
+    await mongoose.disconnect();
     process.exit(0);
   } catch (error) {
     console.error('Error creating admin user:', error.message);
+    await mongoose.disconnect();
     process.exit(1);
   }
 };
 
-createUser();
+createAdmin();

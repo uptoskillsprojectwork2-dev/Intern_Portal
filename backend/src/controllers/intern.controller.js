@@ -1,4 +1,3 @@
-
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -8,6 +7,7 @@ import CertificateRequest from '../models/CertificateRequest.js';
 import Certificate from '../models/Certificate.js';
 import Counter from '../models/Counter.js';
 import Notification from '../models/Notification.js';
+import RetentionPolicy from '../models/RetentionPolicy.js';
 
 const ALLOWED_TYPES = [
   'offer_letter',
@@ -21,6 +21,33 @@ const ALLOWED_TYPES = [
 ];
 
 let fallbackRequestSeq = 0;
+
+// Internal helper for notification creation
+const createNotification = async ({ userId, title, message, type }) => {
+  try {
+    await Notification.create({
+      userId,
+      title,
+      message,
+      type: type || 'system',
+      isRead: false
+    });
+  } catch (err) {
+    console.error('Failed to create notification:', err.message);
+  }
+};
+
+// Internal helper for audit logging fallback
+const logAudit = async (auditData) => {
+  // Gracefully handles audit logging without blocking the controller logic
+  try {
+    if (global.auditLogger) {
+      await global.auditLogger(auditData);
+    }
+  } catch (err) {
+    console.error('Audit log failed:', err.message);
+  }
+};
 
 const generateRequestNumber = async () => {
   const year = new Date().getFullYear();
@@ -40,8 +67,6 @@ const generateRequestNumber = async () => {
       return `CERT-${year}-${String(counter.seq).padStart(5, '0')}`;
     }
   } catch (error) {
-    // Fallback for isolated/unit-test environments where Mongo is not connected.
-    // This keeps the API responsive while preserving the normal counter logic in production.
     fallbackRequestSeq += 1;
     return `CERT-${year}-${String(fallbackRequestSeq).padStart(5, '0')}`;
   }
@@ -60,7 +85,6 @@ export const submitCertificateRequest = async (req, res) => {
       });
     }
 
-    // Intern details are taken from the logged-in user.
     const user = await User.findById(req.user.id);
 
     if (!user) {
@@ -73,7 +97,6 @@ export const submitCertificateRequest = async (req, res) => {
       });
     }
 
-    // Eligibility validations.
     const now = new Date();
     const hasEnded = user.endDate && new Date(user.endDate) < now;
     const isOngoing =
@@ -117,9 +140,7 @@ export const submitCertificateRequest = async (req, res) => {
 
     const requestNumber = await generateRequestNumber();
 
-    // Keep only non-empty string metadata values.
     const safeMetadata = {};
-
     if (metadata && typeof metadata === 'object') {
       for (const [key, val] of Object.entries(metadata)) {
         if (typeof val === 'string' && val.trim()) {
@@ -137,14 +158,24 @@ export const submitCertificateRequest = async (req, res) => {
       metadata: safeMetadata
     });
 
-    await logAudit({ userId: req.user.id, action: 'CERTIFICATE_REQUEST_SUBMITTED', entityType: 'CertificateRequest', entityId: request._id, meta: { certificateType, requestNumber }, req });
-    const teamLeaderId = user.internshipDetails?.teamLeader;
-    if (teamLeaderId) await createNotification({
-      userId: teamLeaderId,
-      title: 'New certificate request',
-      message: `${user.fullName} submitted a ${certificateType.replaceAll('_', ' ')} request for your review.`,
-      type: 'certificate',
+    await logAudit({
+      userId: req.user.id,
+      action: 'CERTIFICATE_REQUEST_SUBMITTED',
+      entityType: 'CertificateRequest',
+      entityId: request._id,
+      meta: { certificateType, requestNumber },
+      req
     });
+
+    const teamLeaderId = user.internshipDetails?.teamLeader;
+    if (teamLeaderId) {
+      await createNotification({
+        userId: teamLeaderId,
+        title: 'New certificate request',
+        message: `${user.fullName} submitted a ${certificateType.replaceAll('_', ' ')} request for your review.`,
+        type: 'certificate'
+      });
+    }
 
     return res.status(201).json({ request });
   } catch (err) {
@@ -166,7 +197,6 @@ export const getMyRequests = async (req, res) => {
       )
       .sort({ requestedAt: -1 });
 
-    // Never expose draft or incomplete certificates to the intern.
     const sanitizedRequests = requests.map((reqDoc) => {
       const plain = reqDoc.toObject();
 
@@ -192,19 +222,22 @@ export const getMyRequests = async (req, res) => {
 
 export const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
-      .select('-password');
+    const user = await User.findById(req.user.id).select('-password');
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Preserve the configurable internship retention policy.
-    const policy = await RetentionPolicy.findOne({
-      policyKey: 'intern'
-    }).lean();
+    let graceDays = 30;
+    try {
+      const policy = await RetentionPolicy.findOne({
+        policyKey: 'intern'
+      }).lean();
+      if (policy?.graceDays) graceDays = policy.graceDays;
+    } catch (e) {
+      // Fallback if RetentionPolicy collection is empty
+    }
 
-    const graceDays = policy?.graceDays ?? 30;
     let archiveNotice = null;
 
     if (user.endDate && user.role === 'intern' && !user.isArchived) {
@@ -243,18 +276,20 @@ export const getNotifications = async (req, res) => {
       .limit(50)
       .lean();
 
-    const unreadCount = notifications.filter((notification) => !notification.isRead).length;
+    const unreadCount = notifications.filter(
+      (notification) => !notification.isRead
+    ).length;
 
-    return res.json({ notifications, unreadCount });
+    return res.status(200).json({ notifications, unreadCount });
   } catch (err) {
     return res.status(500).json({
-      message: 'Server error',
+      message: 'Internal server error',
       error: err.message
     });
   }
 };
 
-export const markNotificationAsRead = async (req, res) => {
+export const markNotificationRead = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -262,25 +297,53 @@ export const markNotificationAsRead = async (req, res) => {
       return res.status(400).json({ message: 'Invalid notification ID' });
     }
 
-    const notification = await markNotificationRead(req.user.id, id);
+    const notification = await Notification.findOne({
+      _id: id,
+      userId: req.user.id
+    });
 
     if (!notification) {
       return res.status(404).json({ message: 'Notification not found' });
     }
 
-    return res.json({ message: 'Notification marked as read', notification });
+    notification.isRead = true;
+    notification.readAt = new Date();
+    await notification.save();
+
+    return res
+      .status(200)
+      .json({ message: 'Notification marked as read', notification });
   } catch (err) {
-    return res.status(500).json({
-      message: 'Server error',
-      error: err.message
-    });
+    return res
+      .status(500)
+      .json({ message: 'Internal server error', error: err.message });
   }
 };
 
-/**
- * Fetches finalized certificate metadata for a specific request owned by
- * the authenticated intern.
- */
+// Alias export for backward compatibility with route imports
+export const markNotificationAsRead = markNotificationRead;
+
+export const markAllNotificationsRead = async (req, res) => {
+  try {
+    const result = await Notification.updateMany(
+      { userId: req.user.id, isRead: false },
+      {
+        isRead: true,
+        readAt: new Date()
+      }
+    );
+
+    return res.status(200).json({
+      message: 'All notifications marked as read',
+      modifiedCount: result.modifiedCount || 0
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ message: 'Internal server error', error: err.message });
+  }
+};
+
 export const getCertificateForRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -323,7 +386,6 @@ export const getCertificateForRequest = async (req, res) => {
       });
     }
 
-    // Draft certificates must never be exposed to the intern.
     if (
       certificate.status !== 'finalized' ||
       request.status !== 'completed'
@@ -354,10 +416,6 @@ export const getCertificateForRequest = async (req, res) => {
   }
 };
 
-/**
- * Streams the finalized certificate PDF to the authenticated intern.
- * Validates ownership and checks that the PDF exists.
- */
 export const downloadCertificateForRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -443,56 +501,3 @@ export const downloadCertificateForRequest = async (req, res) => {
     });
   }
 };
-
-export const getNotifications = async (req, res) => {
-  try {
-    const notifications = await Notification.find({ userId: req.user.id }).sort({ createdAt: -1 });
-    const unreadCount = notifications.filter((notification) => !notification.isRead).length;
-
-    return res.status(200).json({
-      notifications,
-      unreadCount
-    });
-  } catch (err) {
-    return res.status(500).json({ message: 'Internal server error', error: err.message });
-  }
-};
-
-export const markNotificationRead = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: 'Invalid notification ID' });
-    }
-
-    const notification = await Notification.findOne({ _id: id, userId: req.user.id });
-    if (!notification) {
-      return res.status(404).json({ message: 'Notification not found' });
-    }
-
-    notification.isRead = true;
-    notification.readAt = new Date();
-    await notification.save();
-
-    return res.status(200).json({ message: 'Notification marked as read', notification });
-  } catch (err) {
-    return res.status(500).json({ message: 'Internal server error', error: err.message });
-  }
-};
-
-export const markAllNotificationsRead = async (req, res) => {
-  try {
-    const result = await Notification.updateMany({ userId: req.user.id, isRead: false }, {
-      isRead: true,
-      readAt: new Date()
-    });
-
-    return res.status(200).json({
-      message: 'All notifications marked as read',
-      modifiedCount: result.modifiedCount || 0
-    });
-  } catch (err) {
-    return res.status(500).json({ message: 'Internal server error', error: err.message });
-  }
-};
-

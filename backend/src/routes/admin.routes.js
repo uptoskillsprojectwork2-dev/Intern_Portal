@@ -1,5 +1,9 @@
 import express from 'express';
+import verifyAuth from "../middlewares/verifyAuth.js";
+import requireAdmin from "../middlewares/requireAdmin.js";
 import { registerValidator, teamLeaderValidator } from "../validators/auth.validator.js";
+import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
+import { getAuditLogs, exportAuditLogs } from "../controllers/audit.controller.js";
 import {
   createIntern,
   createTeamLeader,
@@ -21,90 +25,62 @@ import {
   unrevokeCertificate,
   retryCertificateGeneration,
   downloadCertificatePdf,
-  revokeCertificate,
-  unrevokeCertificate,
-  getAuditLogs
+  getCertificateTemplates,
+  getTemplatePlaceholders,
+  createCertificateTemplate,
+  updateCertificateTemplate,
+  getRetentionPolicy,
+  updateRetentionPolicy,
+  getArchivedInterns,
+  restoreArchivedIntern
 } from "../controllers/admin.controller.js";
-import { updateInternValidator, assignTeamLeaderValidator } from "../validators/intern.validator.js";
-import verifyAuth from "../middlewares/verifyAuth.js";
-import requireAdmin from "../middlewares/requireAdmin.js";
-import { getAuditLogs, exportAuditLogs } from "../controllers/audit.controller.js";
 
 const adminRouter = express.Router();
 
+// Audit Logs Routes
 adminRouter.get('/audit-logs/export', verifyAuth, requireAdmin, exportAuditLogs);
 adminRouter.get('/audit-logs', verifyAuth, requireAdmin, getAuditLogs);
 
-adminRouter.get(
-  "/templates",
-  verifyAuth,
-  requireAdmin,
-  getCertificateTemplates
-);
+// Template Management Routes
+adminRouter.get("/templates", verifyAuth, requireAdmin, getCertificateTemplates);
+adminRouter.get("/templates/placeholders", verifyAuth, requireAdmin, getTemplatePlaceholders);
+adminRouter.post("/templates", verifyAuth, requireAdmin, createCertificateTemplate);
+adminRouter.patch("/templates/:id", verifyAuth, requireAdmin, updateCertificateTemplate);
 
-adminRouter.get(
-  "/templates/placeholders",
-  verifyAuth,
-  requireAdmin,
-  getTemplatePlaceholders
-);
-
-adminRouter.post(
-  "/templates",
-  verifyAuth,
-  requireAdmin,
-  createCertificateTemplate
-);
-
-adminRouter.patch(
-  "/templates/:id",
-  verifyAuth,
-  requireAdmin,
-  updateCertificateTemplate
-);
-
+// Retention & Archival Routes
 adminRouter.get('/retention-policy', verifyAuth, requireAdmin, getRetentionPolicy);
 adminRouter.patch('/retention-policy', verifyAuth, requireAdmin, updateRetentionPolicy);
 adminRouter.get('/interns/archived', verifyAuth, requireAdmin, getArchivedInterns);
 adminRouter.patch('/interns/:id/restore', verifyAuth, requireAdmin, restoreArchivedIntern);
 
-// POST api/auth/register-intern
+// User Provisioning Routes
 adminRouter.post("/create-intern", verifyAuth, requireAdmin, registerValidator, createIntern);
-
-// POST api/auth/register-tl
 adminRouter.post("/create-tl", verifyAuth, requireAdmin, teamLeaderValidator, createTeamLeader);
 
-// Intern Management routes
+// Intern Management Routes
 adminRouter.get("/interns", verifyAuth, requireAdmin, getAllInterns);
 adminRouter.get("/interns/:id", verifyAuth, requireAdmin, getInternById);
 adminRouter.patch("/interns/:id", verifyAuth, requireAdmin, updateInternValidator, updateIntern);
 adminRouter.patch("/interns/:id/assignment", verifyAuth, requireAdmin, assignTeamLeaderValidator, assignInternTeamLeader);
 
-// Team Leader Management routes
+// Team Leader Management Routes
 adminRouter.get("/teamleaders", verifyAuth, requireAdmin, getAllTeamLeaders);
 adminRouter.get("/teamleaders/:id", verifyAuth, requireAdmin, getTeamLeaderById);
 adminRouter.patch("/teamleaders/:id", verifyAuth, requireAdmin, updateTeamLeader);
 adminRouter.get("/teamleaders/:id/interns", verifyAuth, requireAdmin, getInternsByTeamLeader);
 
+// Certificate Request Processing Routes
 adminRouter.get("/forwarded-requests", verifyAuth, requireAdmin, getForwardedRequests);
-
 adminRouter.patch("/requests/:id/finalize", verifyAuth, requireAdmin, finalizeRequest);
+adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
 
-// Day 3 Certificate Draft Review routes
+// Certificate Lifecycle & Management Routes
+adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.get("/certificates/:id", verifyAuth, requireAdmin, getCertificateDraft);
 adminRouter.patch("/certificates/:id", verifyAuth, requireAdmin, updateCertificateDraft);
-
-// Day 4 Certificate Finalization & Email Delivery route
 adminRouter.post("/certificates/:id/finalize", verifyAuth, requireAdmin, finalizeCertificate);
-
-// Day 5 Admin Overview, Download & Retry Generation routes
-adminRouter.get("/certificates", verifyAuth, requireAdmin, getAllCertificates);
 adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
 adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
 adminRouter.get("/certificates/:id/download", verifyAuth, requireAdmin, downloadCertificatePdf);
-adminRouter.patch("/certificates/:id/revoke", verifyAuth, requireAdmin, revokeCertificate);
-adminRouter.patch("/certificates/:id/unrevoke", verifyAuth, requireAdmin, unrevokeCertificate);
-adminRouter.get("/audit-logs", verifyAuth, requireAdmin, getAuditLogs);
-adminRouter.post("/requests/:id/retry-generation", verifyAuth, requireAdmin, retryCertificateGeneration);
 
 export default adminRouter;
